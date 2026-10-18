@@ -26,7 +26,8 @@
 | Command                                                                      | Result                                                            |
 | ---------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `pnpm turbo run build lint typecheck test --filter=@hms/database --dry=json` | `typecheck -> @hms/database#build`, `test -> @hms/database#build` |
-| `pnpm turbo run build lint typecheck`                                        | see the PR                                                        |
+| `pnpm turbo run build lint typecheck`                                        | 37 successful, 37 total (no cache)                                |
+| `pnpm boundaries:check`                                                      | no dependency violations (235 modules)                            |
 
 ## Known limitations
 
