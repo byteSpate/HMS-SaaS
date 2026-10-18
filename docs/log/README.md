@@ -65,3 +65,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-10-15 | [Swagger: dev and production servers in one doc](2026-10-15-swagger-dev-prod-servers.md)                    |
 | 2026-10-15 | [Docs: staging deployment and the development boundary](2026-10-15-docs-staging-deployment-boundary.md)     |
 | 2026-10-18 | [Plan: request pipeline, permission guard, response envelope](2026-10-18-T-PLT-07-request-pipeline-plan.md) |
+| 2026-10-18 | [CI: fix the Prisma generate race in @hms/database](2026-10-18-ci-prisma-generate-race.md)                  |
