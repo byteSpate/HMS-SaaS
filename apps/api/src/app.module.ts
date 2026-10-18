@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { IdentityAccessModule, loadAuthConfig } from '@hms/mod-identity-access';
-import { DatabaseModule } from '@hms/platform';
+import { DatabaseModule, RequestPipelineModule } from '@hms/platform';
 import { AppController } from './app.controller.js';
 import { HealthController } from './health/health.controller.js';
 import { parseCorsOrigins } from './http/cors.js';
@@ -14,6 +14,8 @@ function requireEnv(name: string): string {
 
 @Module({
   imports: [
+    // First, so the request context and request log wrap every module's routes (D section 8.6).
+    RequestPipelineModule.forRoot(),
     DatabaseModule.forRoot(requireEnv('DATABASE_URL')),
     IdentityAccessModule.forRoot(loadAuthConfig(process.env), undefined, {
       allowedOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),

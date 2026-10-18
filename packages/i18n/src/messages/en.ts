@@ -78,6 +78,7 @@ export const en = {
       MEMBERSHIP_NOT_ACTIVE: 'Your access to this hospital is not active.',
       NOT_FOUND: 'Record not found.',
       VALIDATION_FAILED: 'Please check the highlighted fields.',
+      PAYLOAD_TOO_LARGE: 'The request is too large. Send less data and try again.',
       INTERNAL_ERROR: 'Something went wrong on our side. Please try again.',
       SERVICE_UNAVAILABLE: 'The service is temporarily unavailable.',
     },

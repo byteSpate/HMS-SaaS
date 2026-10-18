@@ -81,6 +81,7 @@ export const bnBD: Messages = {
       MEMBERSHIP_NOT_ACTIVE: 'এই হাসপাতালে আপনার অ্যাক্সেস সক্রিয় নয়।',
       NOT_FOUND: 'রেকর্ড পাওয়া যায়নি।',
       VALIDATION_FAILED: 'চিহ্নিত ঘরগুলো পরীক্ষা করুন।',
+      PAYLOAD_TOO_LARGE: 'অনুরোধটি অনেক বড়। কম তথ্য পাঠিয়ে আবার চেষ্টা করুন।',
       INTERNAL_ERROR: 'আমাদের দিকে কিছু ভুল হয়েছে। আবার চেষ্টা করুন।',
       SERVICE_UNAVAILABLE: 'সেবাটি সাময়িকভাবে পাওয়া যাচ্ছে না।',
     },

@@ -11,7 +11,7 @@ import {
   type SessionResponse,
   type UpdatePreferencesRequest,
 } from '@hms/contracts';
-import { ZodBodyPipe } from '@hms/platform';
+import { ZodBodyPipe, type CorrelatedRequest } from '@hms/platform';
 import { AuthService, type IssuedSession, type RequestMeta } from '../application/auth.service.js';
 import { AllowWithoutTenant, Public } from './decorators.js';
 import { getAuthContext, getSessionToken, type AuthenticatedRequest } from './request-context.js';
@@ -21,16 +21,13 @@ import {
   sessionCookieOptions,
 } from './session-cookie.js';
 
-// The id is stored in append-only tables, so only a short safe token is accepted from clients.
-const SAFE_REQUEST_ID = /^[A-Za-z0-9-]{1,64}$/;
-
-function metaOf(request: AuthenticatedRequest): RequestMeta {
-  const correlationId = request.headers['x-request-id'];
+// The correlation ID was checked and set by requestIdMiddleware (T-PLT-07); it is absent only
+// when the module runs without the API's request pipeline (some tests).
+function metaOf(request: AuthenticatedRequest & CorrelatedRequest): RequestMeta {
+  const { correlationId } = request;
   return {
     ...(request.ip ? { ipAddress: request.ip } : {}),
-    ...(typeof correlationId === 'string' && SAFE_REQUEST_ID.test(correlationId)
-      ? { correlationId }
-      : {}),
+    ...(correlationId ? { correlationId } : {}),
   };
 }
 

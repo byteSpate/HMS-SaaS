@@ -3,6 +3,7 @@
 import { Inject, Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { DomainError } from '@hms/domain-kernel';
+import { bindRequestIdentity } from '@hms/platform';
 import { AUTH_CONFIG, type AuthConfig } from '../application/auth.config.js';
 import { AuthService } from '../application/auth.service.js';
 import { isValidCsrfToken } from '../infrastructure/csrf-token.js';
@@ -37,6 +38,8 @@ export class SessionGuard implements CanActivate {
     if (!ctx) throw new DomainError('UNAUTHENTICATED', 'Login required');
     request.auth = ctx;
     request.sessionToken = token;
+    // From here on, log lines and audit rows of this request carry the tenant and user (T-PLT-07).
+    bindRequestIdentity(ctx);
     return true;
   }
 }

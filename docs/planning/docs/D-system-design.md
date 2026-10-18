@@ -452,13 +452,13 @@ Every API request passes the same layers in a fixed order (PROPOSED, T-PLT-07). 
 
 | Order | Nest layer | Component | Job | Task |
 | --- | --- | --- | --- | --- |
-| 1 | Express middleware (`configureApp`) | trust proxy, cookie parser, CORS | Real visitor IP from nginx, cookies, CORS allow-list (ADR-021) | T-ACC-01 (done) |
-| 2 | Nest middleware | `RequestIdMiddleware` | Accept a well-formed `X-Request-Id` from nginx, otherwise create a UUID v7; echo it in the response header. It becomes the `correlationId`. | T-PLT-07 |
-| 3 | Nest middleware | `RequestContextMiddleware` | Open an `AsyncLocalStorage` store for the request holding `correlationId`; guards add `tenantId`, `userId`, `membershipId` later. Logs, audit, outbox and job enqueueing read it without passing it through every call. | T-PLT-07 |
-| 4 | Nest middleware | Security headers and body limit | `helmet` with API defaults (HSTS stays with nginx); JSON body limit (1 MB proposed) answered as a `PAYLOAD_TOO_LARGE` problem | T-PLT-07 |
-| 5 | Nest middleware | Request logger (`nestjs-pino`) | One line per request: `route`, `status`, `durationMs`, `correlationId`, `tenantId`. Redaction paths come from T-PLT-06. | T-PLT-07, T-PLT-06 |
+| 1 | Express middleware (`configureApp`) | `requestIdMiddleware` (`platform`) | Accept a well-formed `X-Request-Id` from nginx or the client, otherwise create a random UUID; echo it in the response header and keep it on the request. It becomes the `correlationId`. It runs first, before body parsing, so even a rejected body (413, malformed JSON) gets an ID. | T-PLT-07 (done) |
+| 2 | Express middleware (`configureApp`) | trust proxy, `helmet`, cookie parser, CORS | Real visitor IP from nginx; security headers with API defaults (HSTS stays with nginx); cookies; CORS allow-list (ADR-021) | T-ACC-01, T-PLT-07 (done) |
+| 3 | Express body parser (`configureApp`) | JSON parser with a 1 MB limit | A larger body is answered as a `PAYLOAD_TOO_LARGE` problem; uploads go to object storage by presigned URL instead | T-PLT-07 (done) |
+| 4 | Nest middleware (`RequestPipelineModule`) | `RequestContextMiddleware` | Open an `AsyncLocalStorage` store for the request holding `correlationId`; `SessionGuard` adds `tenantId`, `userId`, `membershipId`. Logs, audit, outbox and job enqueueing read it without passing it through every call. | T-PLT-07 (done) |
+| 5 | Nest middleware (`RequestPipelineModule`) | Request logger (`nestjs-pino`) | One line per request, written when the response finishes: method, path without query string, status, `durationMs`, `correlationId`, `tenantId`, `userId`. Headers are never logged. Redaction rules for other log lines come from T-PLT-06. | T-PLT-07 (done), T-PLT-06 |
 | 6 | Guards | `SessionGuard`, `CsrfGuard`, `TenantGuard`, then `PermissionGuard` reading `@RequirePermission` (default deny, §7.2) | Authorization steps 1 to 4 of §7.2 | T-ACC-01 (done), T-ACC-02 |
-| 7 | Guard | Rate-limit guard (`@nestjs/throttler`, Valkey storage) | Per-session API limit (NFR-SEC-005) answered as `RATE_LIMITED`; login per IP and account limits are T-ACC-03 | T-PLT-07, T-ACC-03 |
+| 7 | Guard | Rate-limit guard (`@nestjs/throttler`, Valkey storage) | Per-session API limit (NFR-SEC-005) answered as `RATE_LIMITED`; login per IP and account limits are T-ACC-03 | T-PLT-07 (second part, needs the Valkey client), T-ACC-03 |
 | 8 | Interceptors | Idempotency, audit, then `ResponseEnvelopeInterceptor`: checks the handler result against its contract schema (ADR-005) and wraps it as `{ data, meta }` (§8.2) | §9, §7.3, ADR-005 | T-PLT-01, T-PLT-02, T-PLT-08 |
 | 9 | Pipe | Zod validation pipe | Input contract check, `VALIDATION_FAILED` | ADR-005 |
 | 10 | Controller, application service | `withTenant()` | Business command or query (§6.2) | module tasks |

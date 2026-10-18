@@ -174,16 +174,18 @@ describe('auth over HTTP', () => {
     expect(res.headers.get('set-cookie')).toBeNull();
   });
 
-  it('does not store a client-supplied request id that is not a safe token', async () => {
+  it('replaces a client-supplied request id that is not a safe token (T-PLT-07)', async () => {
     const user = await seedLogin(1);
-    await fetch(`${base}/auth/login`, {
+    const res = await fetch(`${base}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Request-Id': 'bad id; drop table' },
       body: JSON.stringify({ username: user.username, password: 'wrong' }),
     });
+    const issuedId = res.headers.get('x-request-id');
+    expect(issuedId).not.toBe('bad id; drop table');
     const events = await prisma.authEvent.findMany({ where: { userId: user.id } });
     expect(events).not.toHaveLength(0);
-    expect(events.every((e) => e.correlationId === null)).toBe(true);
+    expect(events.every((e) => e.correlationId === issuedId)).toBe(true);
   });
 
   it('returns 422 for an empty username', async () => {
