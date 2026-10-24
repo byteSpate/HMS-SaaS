@@ -27,10 +27,14 @@ Created an editable Word document and matching Markdown text covering 14 ERP mod
 ## Verification
 
 - Generated the Word file using the bundled Python document runtime.
-- Rendered the document with the documents skill renderer and visually inspected all seven pages; corrected the title style border and rechecked the final render.
+- Rendered the document with the documents skill renderer and visually inspected all eight pages; corrected the title style border and rechecked the final render.
 - Checked that all 15 module groups and Weeks 1-20 appear, with one final contingency week.
 - Cross-checked release scope, dependencies and exclusions against the decision registers and module specifications.
 - Checked Markdown formatting and whitespace before committing. Application tests are not applicable to this documentation-only change.
+
+## Gantt chart addition
+
+Added a landscape Gantt chart to the Word document and a matching standalone PNG referenced by the Markdown. It shows parallel development windows, continuous QA, acceptance weeks and milestone targets through Week 20. Rendered the updated document and visually checked the chart and existing pages. The schedule and staffing assumptions are unchanged.
 
 ## Known limitations
 

@@ -202,3 +202,9 @@ S6 docs/site-planning/A-decisions-and-questions.md and G-implementation-plan.md:
 S7 docs/site-planning/C2-cms-requirements.md: website editing and publishing scope.
 
 Source baseline: origin/dev at e593a8f, reviewed 24 October 2026. The module scope and phase order come from the repository; the 20-week maximum is the owner's requested constraint; allocations and staffing are planning estimates. Deploy impact of this documentation change: none.
+
+## Development timeline Gantt chart
+
+![Gantt chart showing the 20-week development timeline](HMS-Development-Gantt.png)
+
+The chart shows parallel AI-assisted work, continuous QA and release acceptance. Targets: Week 8 RP-A readiness, Week 12 inpatient acceptance, Week 16 operations acceptance, Week 18 feature complete, Week 19 integrated acceptance and Week 20 contingency/handoff. The lighter QA bar is continuous testing. Website data work pauses between Weeks 12 and 15 while dependent services mature. All existing scope and staffing assumptions apply.
