@@ -6,9 +6,9 @@ This pack plans the **public, patient-facing website** that sits beside the Hosp
 
 The first release (**WEB-A**) is a **frontend-only site with mock data**, laid out like continental.health but built with HMS fonts, colors and components. Each customer gets its own ERP installation and website on its own domain (C-089, superseding the earlier shared SaaS direction), and hospital owners edit everything on it through a built-in CMS (C-072, WEB-B). Later releases add ERP data and transactions (booking, reports, portal).
 
-**Routing (C-075..C-081):** the website is the root of `healthcare.bytespate.com` with no login; the ERP and the CMS live under `/staff` behind one login, and each user lands on the ERP, the CMS or a choice between them according to their permissions. The API stays on `healthcareapi.bytespate.com`. Details: [D section 13](D-system-design.md#13-one-host-public-site-and-staff-app-c-075c-081).
+**Routing:** the public website remains at the root of the site host; ERP stays under `/staff`. The CMS interface now belongs in `apps/site` and the fictional demo opens at `/cms` (`/cms/bn`, `/cms/en`), superseding the earlier `/staff/website` editor location (C-091, C-092). Production API authentication and storage are future work.
 
-Confirmed CMS decisions dated 2026-10-25 are recorded in [A, C-086..C-090](A-decisions-and-questions.md): the same person edits and publishes, ready-made sections, editable branding with selectable themes and curated fonts, ERP prices controlled by finance, and no subscription plan restrictions. These are planning changes; CMS implementation has not started.
+Confirmed CMS decisions dated 2026-10-25 are recorded in [A, C-086..C-090](A-decisions-and-questions.md): the same person edits and publishes, ready-made sections, editable branding with selectable themes and curated fonts, ERP prices controlled by finance, and no subscription plan restrictions. The browser-only demo is implemented as T-CMS-DEMO-01; production CMS integration has not started.
 
 ## Start here
 

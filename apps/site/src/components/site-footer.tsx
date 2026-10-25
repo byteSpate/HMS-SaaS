@@ -4,7 +4,7 @@
 import type { Site } from '@hms/contracts';
 import type { Locale } from '@hms/i18n';
 import { Icon, type IconName } from '@hms/ui';
-import { getTranslations } from 'next-intl/server';
+import { useTranslations } from 'next-intl';
 import { localize } from '../content';
 import { Container } from './container';
 import { Logo } from './logo';
@@ -21,8 +21,8 @@ const SOCIAL: Record<
   whatsapp: { icon: 'whatsapp', name: 'WhatsApp' },
 };
 
-export async function SiteFooter({ site, locale }: { site: Site; locale: Locale }) {
-  const t = await getTranslations();
+export function SiteFooter({ site, locale }: { site: Site; locale: Locale }) {
+  const t = useTranslations();
   const { contacts, socialLinks } = site.settings;
   const phones = [
     { label: t('shell.emergency'), phone: contacts.emergency },
@@ -34,7 +34,11 @@ export async function SiteFooter({ site, locale }: { site: Site; locale: Locale 
     <footer className="bg-heading pb-20 text-on-primary md:pb-0">
       <Container className="grid gap-10 py-12 md:grid-cols-2 lg:grid-cols-5">
         <div className="flex flex-col gap-4 lg:col-span-2">
-          <Logo name={localize(site.settings.hospitalName, locale)} inverse />
+          <Logo
+            src={site.theme.logo.src}
+            name={localize(site.settings.hospitalName, locale)}
+            inverse
+          />
           <p className="max-w-sm text-sm opacity-90">{localize(site.settings.tagline, locale)}</p>
           <h2 className="font-heading text-base font-semibold text-on-primary">
             {t('shell.contactUs')}

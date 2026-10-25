@@ -4,6 +4,7 @@
 // field cannot exist in one place and not another. Implements: T-WEB-04, P-036, P-040, C-070,
 // C-072, docs/site-planning/E-content-model.md.
 import { z } from 'zod';
+import { isAccessibleWebsiteColor } from './website-brand.js';
 
 // Shared value types (E section 1)
 
@@ -99,7 +100,18 @@ export const siteSchema = z
         defaultBranch: slugSchema,
       })
       .strict(),
-    theme: z.object({ logo: imageRefSchema, primaryOverride: z.string().nullable() }).strict(),
+    theme: z
+      .object({
+        logo: imageRefSchema,
+        favicon: imageRefSchema.optional(),
+        primaryOverride: z
+          .string()
+          .refine(isAccessibleWebsiteColor, 'Color must contrast with all website surfaces')
+          .nullable(),
+        preset: z.enum(['clinical', 'spacious']).default('clinical'),
+        font: z.enum(['hind', 'noto']).default('hind'),
+      })
+      .strict(),
     navigation: z
       .object({
         topBar: z.array(menuItemSchema),

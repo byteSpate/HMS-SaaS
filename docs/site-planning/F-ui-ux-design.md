@@ -224,3 +224,7 @@ Rules for adding motion later: give each effect a reason from the table's "Why" 
 | Sending       | Contact, appointment request, service forms, booking confirm | Button spinner and "Sending...", form `aria-busy`, button disabled                  |
 
 Pages are static HTML, so they get no route loading screens: a `loading.tsx` makes Next send every page as a skeleton with the real content hidden until a script swaps it in, which breaks no-script reading, delays the largest paint and turns the not-found page into a 200.
+
+## CMS demo admin (C-091, C-092)
+
+The first CMS interface is a fictional browser-only demonstration inside `apps/site`, at `/cms/bn` and `/cms/en`. It reuses the staff design system, AppShell, PageLayout and form controls. Navigation offers Pages, Settings and branding, Menus and footer, and Version history. Draft and published previews reuse the public renderer. All commands explicitly describe their demo scope; no account or real data is required. Surface details and the established-system direction contract are in [CMS-demo-design](CMS-demo-design.md).

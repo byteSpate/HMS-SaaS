@@ -128,11 +128,13 @@ Self-hosted fonts with unicode-range subsets are already in `@hms/ui` (C-056). I
 
 ## 11. Website CMS (EP-32, WEB-B)
 
+**Current implementation: T-CMS-DEMO-01 (C-091, C-092).** The CMS screens and preview are entirely in `apps/site`. They read fictional seed content and browser local storage (`hms.cms.demo.v1`). Shared contracts validate snapshots. No authentication, network calls or ERP/database writes occur. The public-site adapter still reads the committed mock files. Saving, publishing and restoring below describe future production behavior; in the demo those operations only update local browser snapshots. `/cms` bypasses public locale routing and all CMS responses carry noindex and private/no-store headers.
+
 Requirements: [C2](C2-cms-requirements.md). Decisions: C-072, P-035..P-042.
 
 ```mermaid
 flowchart LR
-  ED[Hospital editor] --> WEB[apps/web<br/>Website area: pages, sections,<br/>collections, media, theme, publish]
+  ED[Hospital editor] --> WEB[apps/site CMS<br/>Website area: pages, sections,<br/>collections, media, theme, publish]
   WEB -->|admin API, session + permissions| API[apps/api]
   API --> MOD[mod-website<br/>drafts, versions, audit]
   MOD --> DB[(PostgreSQL<br/>tenant RLS)]
@@ -144,10 +146,10 @@ flowchart LR
 ```
 
 - **Shared schemas:** site settings, navigation, every section type and every collection type are Zod schemas in `@hms/contracts`. The editor builds its forms from them, the API validates against them, and `apps/site` renders with them, so a field cannot exist in one place and not another.
-- **Section registry:** `apps/site` keeps a map from section type to a React component; `apps/web` keeps a map from section type to an editor form. Adding a section type means adding a schema, a renderer and an editor form together (one task).
+- **Section registry:** `apps/site` keeps a map from section type to a React component; `apps/site/src/cms` owns section editing (C-091). Adding a section type means adding a schema, a renderer and an editor form together (one task).
 - **Publish flow:** the same authorized editor changes drafts and publishes without second-person approval (C-086); "Publish" validates the whole site, writes an immutable `website_version` snapshot, records an audit event and calls the site's revalidation endpoint for the changed paths (P-037, P-041).
-- **Public read API:** `GET /api/v1/public/site` and per-collection endpoints return only the published snapshot for the tenant resolved from the request host; no session, no draft data, rate limited and cacheable.
-- **Preview:** `apps/web` opens `apps/site` in preview mode with a short-lived signed token that lets it read the draft for that tenant only.
+- **Public read API:** `GET /api/v1/public/site` and per-collection endpoints return only the published snapshot for the installation hospital (C-089); no session, no draft data, rate limited and cacheable.
+- **Production preview (future):** the CMS in `apps/site` opens a preview with a short-lived signed token that lets it read the draft for that tenant only.
 - **Doctor and price data:** read from ERP modules and merged with CMS public fields at publish time (P-042); the site never writes to the ERP.
 - **WEB-A to WEB-B switch:** only the content adapter changes from "read JSON files" to "read published snapshot" (P-026, P-040).
 
@@ -163,7 +165,7 @@ flowchart LR
 
 ## 13. One host: public site and staff app (C-075..C-081)
 
-Only two hosts exist: `healthcare.bytespate.com` and `healthcareapi.bytespate.com` (C-075). The public site takes the root of the first; the staff app (ERP and CMS) moves under `/staff` (C-076). The API host is unchanged. This section is a proposal for ADR-023 "Public site and staff app share one host", which would amend ADR-021 point 1 (one container per host); it is merged into the ERP ADRs only on approval. This section describes existing staging routing; customer installation direction is now C-089 (section 8).
+Only two hosts exist: `healthcare.bytespate.com` and `healthcareapi.bytespate.com` (C-075). The public site takes the root of the first; the staff ERP app moves under `/staff` (C-076); the CMS demo stays in `apps/site` at `/cms` (C-091, C-092). The API host is unchanged. This section is a proposal for ADR-023 "Public site and staff app share one host", which would amend ADR-021 point 1 (one container per host); it is merged into the ERP ADRs only on approval. This section describes existing staging routing; customer installation direction is now C-089 (section 8).
 
 ### 13.1 Request routing
 
@@ -177,13 +179,13 @@ flowchart LR
   S -.->|WEB-B: public read API| A
 ```
 
-| Path                                     | Served by   | Login                       |
-| ---------------------------------------- | ----------- | --------------------------- |
-| `/`, `/bn/...`, `/en/...`                | `apps/site` | Never                       |
-| `/staff/login`, `/staff/choose-hospital` | `apps/web`  | -                           |
-| `/staff/start`                           | `apps/web`  | Yes (choice screen)         |
-| `/staff/...` ERP screens                 | `apps/web`  | Yes, ERP permission         |
-| `/staff/website/...` CMS screens         | `apps/web`  | Yes, `website.*` permission |
+| Path                                     | Served by   | Login                                         |
+| ---------------------------------------- | ----------- | --------------------------------------------- |
+| `/`, `/bn/...`, `/en/...`                | `apps/site` | Never                                         |
+| `/staff/login`, `/staff/choose-hospital` | `apps/web`  | -                                             |
+| `/staff/start`                           | `apps/web`  | Yes (choice screen)                           |
+| `/staff/...` ERP screens                 | `apps/web`  | Yes, ERP permission                           |
+| `/cms/bn`, `/cms/en` demo editor         | `apps/site` | No login; fictional browser-only demo (C-092) |
 
 nginx sketch for the project lead (not applied by agents):
 
@@ -203,13 +205,13 @@ flowchart TD
   H -->|no| P
   C --> P{"landingFor(permissions)"}
   P -->|ERP only| E["/staff (ERP home)"]
-  P -->|website only| WS["/staff/website (CMS home)"]
+  P -->|website only| WS["/cms (CMS; future authenticated landing)"]
   P -->|both| ST["/staff/start: ERP or Website"]
   P -->|none| NA[No access message + sign out]
 ```
 
 - The existing login, CSRF, session and hospital choice (T-ACC-01, T-UI-02) are reused unchanged; only the last redirect calls `landingFor()` (P-046).
-- Permissions come with the session (T-ACC-02). Until the CMS exists no user holds `website.*`, so everyone lands on the ERP home and the behavior equals today's.
+- Permissions come with the session (T-ACC-02). The current CMS demo has no permission grants or real login. Until production CMS integration exists no user holds `website.*`, so everyone lands on the ERP home and the behavior equals today's.
 - The shell shows an "ERP / Website" switch only when both sides are allowed (FR-WEB-ROUTE-004). The API enforces permissions on every call; the landing is routing, not security.
 
 ### 13.3 Security on a shared origin (C-080)

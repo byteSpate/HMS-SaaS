@@ -8,6 +8,7 @@ export default createMiddleware(routing);
 
 export const config = {
   // Everything except Next internals, files with an extension (images, fonts, robots.txt) and the
-  // staff app under /staff, which nginx routes to apps/web on the shared host (P-045, C-076).
-  matcher: '/((?!_next|staff(?:/|$)|.*\\..*).*)',
+  // staff app under /staff and demo CMS under /cms. CMS has its own bilingual root layout
+  // in apps/site (C-091, C-092); nginx still routes /staff to apps/web (P-045, C-076).
+  matcher: '/((?!_next|(?:staff|cms)(?:/|$)|.*\\..*).*)',
 };

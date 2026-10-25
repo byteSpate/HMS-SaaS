@@ -89,21 +89,22 @@ flowchart LR
 
 ### EP-32 Website CMS (WEB-B, outline; detailed when scheduled)
 
-Scope update 2026-10-25: C-086..C-090 settle Q-078, Q-080..082 and Q-086. The same editor publishes, ready-made sections support selectable themes and curated fonts, finance controls ERP prices, and each customer gets its own installation and domain without subscription plan restrictions. Exact theme/font options and technical upload limits remain implementation design work.
+**T-CMS-DEMO-01 (2026-10-25, C-091, C-092):** browser-only demo in `apps/site`, using fictional CareSpate content. Includes bilingual settings, branding, menus/footer, page and SEO editing, custom demo pages, ready-made section add/remove/order/visibility, draft and published previews, demo publication, restoration and reset. No authentication, API or database integration. The production task rows below are future work; their CMS UI belongs in `apps/site`.
 
+Scope update 2026-10-25: C-086..C-090 settle Q-078, Q-080..082 and Q-086. The same editor publishes, ready-made sections support selectable themes and curated fonts, finance controls ERP prices, and each customer gets its own installation and domain without subscription plan restrictions. Exact theme/font options and technical upload limits remain implementation design work.
 
 | Task                                                    | Outcome                                                                                                                                      | Requirements                     | Depends on                          | Blocking Qs    |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ----------------------------------- | -------------- |
 | **T-CMS-01** Data model                                 | `mod-website` tables, RLS, migrations, seed from the CareSpate template                                                                      | C2 FR-CMS-001, -019; E section 4 | RG-W1, ERP foundation               | -              |
-| **T-CMS-02** Admin and public APIs                      | Draft CRUD, publish, versions, restore; public read for the installation hospital; permissions                                                                | FR-CMS-010..012, -014            | T-CMS-01                            | -          |
-| **T-CMS-03** Site settings, theme and navigation editor | Settings, hospital name, logo, favicon, contrast-checked color, selectable themes, curated fonts, header and footer menus                                                            | FR-CMS-001, -013                 | T-CMS-02                            | -          |
-| **T-CMS-04** Page and section editor                    | Add, reorder, hide, edit sections per schema; custom pages; SEO fields                                                                       | FR-CMS-002..004, -016, -017      | T-CMS-02                            | -          |
-| **T-CMS-05** Media library                              | Upload, resize to WebP, alt text, usage view                                                                                                 | FR-CMS-008, NFR-CMS-003          | T-CMS-02                            | -          |
-| **T-CMS-06** Collections editors                        | Departments, centres, packages, branches, articles, notices, jobs, guide; doctor public profiles on ERP practitioners; published price items | FR-CMS-005..007                  | T-CMS-02, ERP scheduling and tariff | -          |
-| **T-CMS-07** Preview and publish                        | Signed preview of drafts in `apps/site`, publish with validation, revalidation, version history and rollback                                 | FR-CMS-009, -010, -015           | T-CMS-03..06                        | -          |
-| **T-CMS-08** Site on CMS data                           | Content adapter reads the installation hospital published snapshot; customer domain configuration                                                                    | P-041, D section 11              | T-CMS-07                            | -          |
+| **T-CMS-02** Admin and public APIs                      | Draft CRUD, publish, versions, restore; public read for the installation hospital; permissions                                               | FR-CMS-010..012, -014            | T-CMS-01                            | -              |
+| **T-CMS-03** Site settings, theme and navigation editor | Settings, hospital name, logo, favicon, contrast-checked color, selectable themes, curated fonts, header and footer menus                    | FR-CMS-001, -013                 | T-CMS-02                            | -              |
+| **T-CMS-04** Page and section editor                    | Add, reorder, hide, edit sections per schema; custom pages; SEO fields                                                                       | FR-CMS-002..004, -016, -017      | T-CMS-02                            | -              |
+| **T-CMS-05** Media library                              | Upload, resize to WebP, alt text, usage view                                                                                                 | FR-CMS-008, NFR-CMS-003          | T-CMS-02                            | -              |
+| **T-CMS-06** Collections editors                        | Departments, centres, packages, branches, articles, notices, jobs, guide; doctor public profiles on ERP practitioners; published price items | FR-CMS-005..007                  | T-CMS-02, ERP scheduling and tariff | -              |
+| **T-CMS-07** Preview and publish                        | Signed preview of drafts in `apps/site`, publish with validation, revalidation, version history and rollback                                 | FR-CMS-009, -010, -015           | T-CMS-03..06                        | -              |
+| **T-CMS-08** Site on CMS data                           | Content adapter reads the installation hospital published snapshot; customer domain configuration                                            | P-041, D section 11              | T-CMS-07                            | -              |
 | **T-CMS-09** Form inbox                                 | Site forms deliver to a staff inbox with spam protection and retention                                                                       | FR-CMS-018                       | T-CMS-02                            | privacy review |
-| **T-CMS-10** Permission-based landing and switch        | `landingFor()`, the `/staff/start` choice screen, the "ERP / Website" switch in the shell, "no access" states for ERP and CMS URLs           | FR-WEB-ROUTE-003..005, P-046     | T-WEB-18, T-ACC-02, T-CMS-02        | -          |
+| **T-CMS-10** Permission-based landing and switch        | `landingFor()`, the `/staff/start` choice screen, the "ERP / Website" switch in the shell, "no access" states for ERP and CMS URLs           | FR-WEB-ROUTE-003..005, P-046     | T-WEB-18, T-ACC-02, T-CMS-02        | -              |
 | **T-CMS-11** Two-factor for website roles               | Website publish, theme and settings permissions marked privileged, so the TOTP flow is required for them                                     | FR-WEB-ROUTE-007, C-081          | T-ACC-04, T-CMS-02                  | -              |
 
 ### Later epics (kept visible)
@@ -112,6 +113,15 @@ Scope update 2026-10-25: C-086..C-090 settle Q-078, Q-080..082 and Q-086. The sa
 | ----------------------------------------------------------------- | ----------------------------------------------- |
 | WEB-B ERP data on the site (doctors, schedules, prices, branches) | Q-078; ERP scheduling and tariff modules; EP-32 |
 | WEB-C Booking, reports, portal, payments                          | Q-033, Q-013, Q-045; EP-27, EP-29               |
+
+## Demo acceptance (T-CMS-DEMO-01)
+
+- Given fictional content, editing and saving changes only browser storage; refreshing restores the draft.
+- Publishing creates a demo snapshot; further draft edits never change that snapshot or the public website.
+- Restoring a version creates a new draft revision; stale tabs cannot overwrite newer drafts.
+- Reset clears only CMS demo storage; invalid/full/disabled storage has an explicit recovery message.
+- English and Bangla editor screens have no axe violations at desktop and 360 px; no `/api/v1` request is made.
+- No new environment variables, migrations or deployment services.
 
 ## 4. Definition of Ready and Done
 
@@ -154,4 +164,4 @@ Built and pushed as stacked branches `feat/T-WEB-01-site-scaffold` .. `feat/T-WE
 | T-WEB-16 body map                                                                                    | Not started (stretch, Q-074)                                                                                                                   |
 | RG-W1                                                                                                | Waiting for the product owner: UAT-WEB-001..006 (Bangla copy review Q-079, phone walk-through, screen reader pass) and a Lighthouse mobile run |
 | T-WEB-18                                                                                             | Done on `dev` (2026-10-24, with the local dev proxy, P-044 revised). Not released to `main` until the project lead agrees (Q-087)              |
-| T-CMS-*                                                                                              | Not started                                                                                                                                    |
+| T-CMS-01..11                                                                                         | Production integration not started; T-CMS-DEMO-01 is implemented separately.                                                                   |

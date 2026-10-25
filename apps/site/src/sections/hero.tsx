@@ -1,18 +1,11 @@
 // Home hero: the page's h1, a supporting line, the doctor and department search, popular links
 // and the hero pictures, a slideshow when the content lists more than one (F section 3,
 // FR-WEB-HOME-*, C-085). Implements: T-WEB-06, T-WEB-15.
-import type { ImageRef, SectionOf } from '@hms/contracts';
+import type { ImageRef, SectionOf, Site } from '@hms/contracts';
 import type { Locale } from '@hms/i18n';
 import { Icon } from '@hms/ui';
 import { useTranslations } from 'next-intl';
-import {
-  getDepartment,
-  getSite,
-  listDepartments,
-  listDoctors,
-  localize,
-  normalizeQuery,
-} from '../content';
+import { getDepartment, listDepartments, listDoctors, localize, normalizeQuery } from '../content';
 import { Container } from '../components/container';
 import { HeroSearch, type SearchSuggestion } from '../components/hero-search';
 import { HeroSlides } from '../components/hero-slides';
@@ -48,10 +41,18 @@ function suggestionsFor(locale: Locale): SearchSuggestion[] {
   return [...departments, ...doctors];
 }
 
-export function HeroSection({ section, locale }: { section: SectionOf<'hero'>; locale: Locale }) {
+export function HeroSection({
+  section,
+  locale,
+  site,
+}: {
+  section: SectionOf<'hero'>;
+  locale: Locale;
+  site: Site;
+}) {
   const t = useTranslations();
   const { props } = section;
-  const { emergency } = getSite().settings.contacts;
+  const { emergency } = site.settings.contacts;
   const picture = (image: ImageRef, first: boolean) => (
     <ImageSlot
       image={image}

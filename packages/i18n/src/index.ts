@@ -23,3 +23,6 @@ export const messages: Record<Locale, Messages> = { en, 'bn-BD': bnBD };
 
 /** Public website catalog (apps/site), kept apart from the staff catalog (P-024). */
 export const siteMessages: Record<Locale, SiteMessages> = { en: siteEn, 'bn-BD': siteBnBD };
+
+export { cmsEn } from './messages/cms/en.js';
+export { cmsBnBD } from './messages/cms/bn-BD.js';

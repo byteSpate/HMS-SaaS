@@ -80,3 +80,7 @@
 ## 4. Test data
 
 All data is the fictional mock content (E). No real patient, doctor or hospital data is used, matching `packages/testkit` rules (synthetic data only).
+
+## CMS demo checks (C-091, C-092)
+
+`apps/site/src/cms/demo-store.test.ts` covers draft/publication isolation, reload persistence, restore, stale revisions, corrupt/blocked/full storage, schema validation and 20-version retention. `apps/site/e2e/cms.spec.ts` covers both languages, desktop and phone axe checks, no API requests, draft and published previews, restore and reset, and verifies the public home page is unchanged. The CMS demo is not a production access-control or audit implementation.

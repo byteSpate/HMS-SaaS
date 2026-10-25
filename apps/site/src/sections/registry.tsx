@@ -2,7 +2,7 @@
 // type, skipping hidden ones (P-036, FR-WEB-GEN-008, AT-WEB-008). Adding a section type means a
 // schema in @hms/contracts, a component here and, later, an editor form (D section 11).
 // Implements: T-WEB-06.
-import type { Section } from '@hms/contracts';
+import type { Section, Site } from '@hms/contracts';
 import type { Locale } from '@hms/i18n';
 import {
   ArticleListSection,
@@ -25,12 +25,13 @@ import {
   ServiceStripSection,
   StatsSection,
 } from './content-sections';
+import { getSite } from '../content';
 import { HeroSection } from './hero';
 
-function SectionView({ section, locale }: { section: Section; locale: Locale }) {
+function SectionView({ section, locale, site }: { section: Section; locale: Locale; site: Site }) {
   switch (section.type) {
     case 'hero':
-      return <HeroSection section={section} locale={locale} />;
+      return <HeroSection section={section} locale={locale} site={site} />;
     case 'quickActions':
       return <QuickActionsSection section={section} locale={locale} />;
     case 'serviceStrip':
@@ -48,7 +49,7 @@ function SectionView({ section, locale }: { section: Section; locale: Locale }) 
     case 'articleList':
       return <ArticleListSection section={section} locale={locale} />;
     case 'emergencyBand':
-      return <EmergencyBandSection section={section} locale={locale} />;
+      return <EmergencyBandSection section={section} locale={locale} site={site} />;
     case 'richText':
       return <RichTextSection section={section} locale={locale} />;
     case 'imageText':
@@ -76,9 +77,11 @@ function SectionView({ section, locale }: { section: Section; locale: Locale }) 
 export function SectionList({
   sections,
   locale,
+  site = getSite(),
 }: {
   sections: readonly Section[];
   locale: Locale;
+  site?: Site;
 }) {
   return (
     <>
@@ -86,7 +89,7 @@ export function SectionList({
         .filter((section) => !section.hidden)
         .map((section) => (
           <div key={section.id} data-section={section.type} data-section-id={section.id}>
-            <SectionView section={section} locale={locale} />
+            <SectionView section={section} locale={locale} site={site} />
           </div>
         ))}
     </>

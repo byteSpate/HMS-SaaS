@@ -4,7 +4,7 @@
 import type { Site } from '@hms/contracts';
 import type { Locale } from '@hms/i18n';
 import { buttonClassName } from '@hms/ui';
-import { getTranslations } from 'next-intl/server';
+import { useTranslations } from 'next-intl';
 import { localize } from '../content';
 import { Link } from '../i18n/navigation';
 import { Container } from './container';
@@ -14,8 +14,8 @@ import { MobileMenu } from './mobile-menu';
 import { NavDropdown } from './nav-dropdown';
 import { toNavLinks } from './nav-types';
 
-export async function SiteHeader({ site, locale }: { site: Site; locale: Locale }) {
-  const t = await getTranslations();
+export function SiteHeader({ site, locale }: { site: Site; locale: Locale }) {
+  const t = useTranslations();
   const items = toNavLinks(site.navigation.header, locale);
   const [cta] = toNavLinks([site.navigation.headerCta], locale);
   if (!cta) return null;
@@ -23,7 +23,7 @@ export async function SiteHeader({ site, locale }: { site: Site; locale: Locale 
   return (
     <header className="header-elevate sticky top-0 z-30 border-b border-border bg-surface">
       <Container className="flex min-h-16 items-center justify-between gap-4 py-2">
-        <Logo name={localize(site.settings.shortName, locale)} />
+        <Logo src={site.theme.logo.src} name={localize(site.settings.shortName, locale)} />
         <nav aria-label={t('shell.mainNavigation')} className="hidden xl:block">
           <ul className="flex items-center gap-1">
             {items.map((item) => (

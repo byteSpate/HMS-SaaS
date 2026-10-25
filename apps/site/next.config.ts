@@ -14,17 +14,27 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: '/cms/:path*',
+        headers: [
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+          { key: 'Cache-Control', value: 'private, no-store' },
+        ],
+      },
+      {
         source: '/:path*',
         headers: securityHeaders({ development: process.env.NODE_ENV !== 'production' }),
       },
     ];
   },
   async redirects() {
-    return ['/login', '/choose-hospital'].map((path) => ({
-      source: path,
-      destination: `/staff${path}`,
-      permanent: true,
-    }));
+    return [
+      { source: '/cms', destination: '/cms/bn', permanent: false },
+      ...['/login', '/choose-hospital'].map((path) => ({
+        source: path,
+        destination: `/staff${path}`,
+        permanent: true,
+      })),
+    ];
   },
 };
 

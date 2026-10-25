@@ -2,12 +2,12 @@
 // rich text, image with text, call to action, FAQ, stats, gallery, the patient guide and the
 // call-back request. Text is rendered as text, never as HTML (C-080).
 // Implements: T-WEB-06, T-WEB-12, T-WEB-15 (services strip, C-085).
-import type { LocalizedRichText, LocalizedText, SectionOf } from '@hms/contracts';
+import type { LocalizedRichText, LocalizedText, SectionOf, Site } from '@hms/contracts';
 import type { Locale } from '@hms/i18n';
 import { buttonClassName, Icon, isIconName } from '@hms/ui';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
-import { getSite, listDepartments, listGuide, localize, localizeRich } from '../content';
+import { listDepartments, listGuide, localize, localizeRich } from '../content';
 import { AppointmentRequestForm } from '../components/appointment-request-form';
 import { Container } from '../components/container';
 import { CountUp } from '../components/count-up';
@@ -97,9 +97,10 @@ export function QuickActionsSection({
 export function EmergencyBandSection({
   section,
   locale,
-}: Base & { section: SectionOf<'emergencyBand'> }) {
+  site,
+}: Base & { section: SectionOf<'emergencyBand'>; site: Site }) {
   const t = useTranslations();
-  const { contacts } = getSite().settings;
+  const { contacts } = site.settings;
   return (
     <section className="bg-heading text-on-primary">
       <Container className="grid items-center gap-8 py-12 md:grid-cols-[2fr_1fr]">

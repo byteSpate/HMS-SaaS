@@ -15,3 +15,13 @@
   --font-heading:
     'TikTok Sans Variable', 'Hind Siliguri', 'Noto Sans Bengali Variable', system-ui, sans-serif;
 }
+
+/* Supported spacious website preset; the editor keeps the clinical UI density (C-087). */
+[data-website-theme='spacious'] [data-section] > section {
+  padding-block: 4rem;
+}
+@media (min-width: 768px) {
+  [data-website-theme='spacious'] [data-section] > section {
+    padding-block: 6rem;
+  }
+}

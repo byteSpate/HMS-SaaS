@@ -5,7 +5,15 @@ import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link } from '../i18n/navigation';
 
-export function Logo({ name, inverse = false }: { name: string; inverse?: boolean }) {
+export function Logo({
+  name,
+  inverse = false,
+  src,
+}: {
+  name: string;
+  inverse?: boolean;
+  src?: string;
+}) {
   const t = useTranslations();
   return (
     <Link
@@ -14,7 +22,7 @@ export function Logo({ name, inverse = false }: { name: string; inverse?: boolea
       className="flex min-w-0 shrink-0 items-center gap-3 rounded-control"
     >
       <Image
-        src="/brand/bytespate-mark.png"
+        src={src ?? '/brand/bytespate-mark.png'}
         alt=""
         width={40}
         height={40}

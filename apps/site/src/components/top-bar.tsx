@@ -5,14 +5,14 @@
 import type { Site } from '@hms/contracts';
 import type { Locale } from '@hms/i18n';
 import { Icon } from '@hms/ui';
-import { getTranslations } from 'next-intl/server';
+import { useTranslations } from 'next-intl';
 import { localize } from '../content';
 import { Container } from './container';
 import { LanguageLinks } from './language-links';
 import { SiteLink } from './site-link';
 
-export async function TopBar({ site, locale }: { site: Site; locale: Locale }) {
-  const t = await getTranslations();
+export function TopBar({ site, locale }: { site: Site; locale: Locale }) {
+  const t = useTranslations();
   const { contacts } = site.settings;
   return (
     <div role="region" aria-label={t('shell.quickContact')} className="bg-heading text-on-primary">
