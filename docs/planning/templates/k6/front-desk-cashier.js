@@ -1,8 +1,8 @@
 // =====================================================================================
 // TEMPLATE — UNTESTED. k6 load-test skeleton for the reception + cashier journeys (docs/M §7).
 // Endpoints, payloads and auth flow are ILLUSTRATIVE (D §8 conventions); align with the real
-// contracts once they exist. Run only against staging with SYNTHETIC tenants (AS-009).
-//   k6 run -e BASE_URL=https://staging.example.invalid -e TENANT=alpha templates/k6/front-desk-cashier.js
+// contracts once they exist. Run only against staging with SYNTHETIC data (AS-009).
+//   k6 run -e BASE_URL=https://staging.example.invalid templates/k6/front-desk-cashier.js
 // =====================================================================================
 import http from 'k6/http';
 import { check, group, sleep } from 'k6';

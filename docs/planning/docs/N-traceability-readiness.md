@@ -24,10 +24,7 @@
 
 | BO | BW | Requirement | Decision / source | Module | API command / data | Permission | Tests | Gate | Readiness |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| BO-06 | BW-14 | FR-SAA-001 | C-001, C-029 | identity-access, all | all; `tenant_id` + RLS (E §6) | — | AT-ISO-001..012, UAT-ADM-006 | RG-1, RG-4 | Proposed (P-003; spike T-FND-04) |
-| BO-06 | BW-14 | FR-SAA-002 | v0.3 | identity-access (control) | `ProvisionTenant`; `tenant`, `provisioning_run` | `vendor.tenant.provision` | AT-SAA-001 | RG-1 | Specified |
-| BO-06 | — | FR-SAA-004 | v0.3 | identity-access | guard; `tenant_entitlement` | — | AT-SAA-002 | RG-1 | Specified |
-| BO-05 | all | FR-ACC-009, FR-ACC-010 | C-029 | authz | guards; `membership` | per C00 §8 | AT-ACC-011, AT-ISO-009 | RG-1 | Specified |
+| BO-05 | all | FR-ACC-009, FR-ACC-010 | C-029 | authz | guards; `membership` | per C00 §8 | AT-ACC-011 | RG-1 | Specified |
 | BO-04 | — | FR-ACC-003..006 | SRC-N02/N10, P-008 | identity-access | `Login`, `VerifyTotp`; `user_session` | — | AT-ACC-001..010 | RG-1 | Specified-interim (Q-051 defaults) |
 | BO-05 | all | FR-AUD-001..006 | C-029 | platform | interceptor; `audit_event` | `audit.view` | AT-AUD-001..006, UAT-ADM-004 | RG-1 | Specified (Q-053 retention open) |
 | BO-08 | all | FR-I18N-001..006 | C-025 | i18n, web | catalogs; `name_bn/name_en` | — | AT-I18N-001..005, UAT-I18N-001..006 | RG-1, RG-3 | Specified-interim (Q-050) |
@@ -75,7 +72,7 @@
 
 | Area | Specified enough now | Proposed (needs approval) | Blocked by questions |
 | --- | --- | --- | --- |
-| Platform / tenancy / auth / audit | Requirements, permissions, audit, error model | P-003 RLS approach (spike), P-008 auth, P-009 contracts, P-010 outbox/jobs | Q-051 (policy values), Q-053 (retention) |
+| Platform / auth / audit | Requirements, permissions, audit, error model | P-008 auth, P-009 contracts, P-010 outbox/jobs | Q-051 (policy values), Q-053 (retention) |
 | Front desk and scheduling | Search, register, duplicates, check-in, visits | MRN pattern format | Q-034, Q-035, Q-036 (merge), Q-037 |
 | Billing (OPD) | Separate invoices, full-payment gate, methods, idempotency, sessions, receipts | Allocation storage (P-020), money model (P-011) | Q-004, Q-019..Q-024, Q-038, Q-039, Q-045, Q-068 |
 | OPD clinical | Prescription/dispense separation, sign/amend versions, orders and gate | Worklist statuses | Q-017, Q-066, Q-067 |
@@ -119,7 +116,7 @@ Status on 2026-10-14:
 - [ ] Monitoring and alerting live. On-call and support hours agreed (Q-043).
 - [ ] Data migration completed and reconciled, if any (Q-048).
 - [ ] Security review of auth, tenancy, exports and file access. Secrets rotated from staging values.
-- [ ] Contracts with the hospital cover support access (FR-SUP-001) and incident communication.
+- [ ] Contracts with the hospital cover incident communication.
 - [ ] The separately scoped review of deferred government topics (DEF-001) has been considered by the owner. This pack makes **no compliance claim**.
 
 ## 5. Release gates
@@ -141,7 +138,6 @@ The rating method (likelihood × impact, 1–5) is PROPOSED. **Ratings are not a
 | --- | --- | --- | --- | --- |
 | R-01 | Wrong patient selected | Banner, per-tab context, context IDs re-checked server-side, duplicate review (F §3) | UAT-REC-*, UAT-E2E-001 | Front desk lead |
 | R-02 | Doctor-fee payment unlocks unpaid tests | Separate invoices; line-level eligibility (FR-BIL-003, ADR-016) | AT-BIL-001, -005; UAT-CSH-004 | Finance lead |
-| R-03 | Cross-customer data leaked | Three-barrier tenancy, scoped cache/jobs/files, isolation suite | AT-ISO-*; T-FND-04 spike | Tech lead |
 | R-04 | Duplicate payment/OT/EMR posting | Idempotency, source references, inbox dedupe | AT-BIL-009..013, AT-JOB-* | Tech lead |
 | R-05 | Report opens as Pending after release | FPR-07; read endpoints side-effect-free | AT-LAB-001..005 | Lab manager |
 | R-06 | Two admissions allocated the same bed | Exclusion constraints | AT-IPD-007, E race C1 | Tech lead |

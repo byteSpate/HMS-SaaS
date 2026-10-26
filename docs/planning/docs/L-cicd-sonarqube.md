@@ -44,9 +44,9 @@ flowchart LR
 | Job | Contents | Blocks merge | Rationale |
 | --- | --- | --- | --- |
 | static | Prettier check; `turbo run lint typecheck --affected` (ESLint 10 + typescript-eslint + **eslint-plugin-sonarjs**); dependency-cruiser boundaries; i18n catalog check; contract drift (OpenAPI from Zod); **gitleaks CLI** secret scan of the PR range | Yes | Fast feedback. SonarJS rules give PRs Sonar-like code-smell checks, which Community Build cannot do on PRs (CX-013). |
-| test | PostgreSQL 18 + Redis service containers; all migrations from scratch; affected unit/integration/API tests with coverage; **isolation suite always** | Yes | Real DB for RLS/constraints (H §2) |
+| test | PostgreSQL 18 + Redis service containers; all migrations from scratch; affected unit/integration/API tests with coverage; **permission matrix always** | Yes | Real DB for constraints and grants (H §2) |
 | migrations | When `packages/database/**` changes: fresh apply, drift check, upgrade-with-data test | Yes | Protects production data and expand/contract (E §11) |
-| e2e | Build affected apps; seed synthetic tenants; Playwright (Chromium) affected journeys + axe | Yes | Staff journeys, keyboard flows, committed-state display |
+| e2e | Build affected apps; seed synthetic data; Playwright (Chromium) affected journeys + axe | Yes | Staff journeys, keyboard flows, committed-state display |
 | images | hadolint; build all images (no push); image vulnerability scan; fail on CRITICAL | Yes | Image hygiene before main |
 | dependencies | `pnpm audit --prod --audit-level high` or OSV-Scanner | Yes, for HIGH/CRITICAL in production dependencies (an exception process is documented) | NFR-SEC-004 |
 | ci-ok | Aggregates results | **Single required check** | Simple branch protection |
@@ -134,13 +134,13 @@ flowchart LR
    1. SSH as `deploy` with a forced command that runs `/opt/hms/bin/deploy.sh`.
    2. The script pulls by digest, runs the migrate container, then recreates api → worker → web.
    3. Health wait.
-   4. Smoke and E2E tests against staging run with synthetic tenants.
+   4. Smoke and E2E tests against staging run with synthetic data.
 3. **Production** (manual, `deploy-production.yml`):
    1. Input: the successful `main` run ID and a change-record ID.
    2. Guard: the actor must be in the maintainer allow-list, and the source run must be successful on `main`.
    3. Preflight on production: backup age, WAL archive lag, disk space, incident status.
    4. Deploy the same digests.
-   5. Production smoke test with a synthetic monitoring tenant (read-only checks).
+   5. Production smoke test with a synthetic monitoring account (read-only checks).
    6. Record the release.
    
    **Why not environment "required reviewers"?** They are unavailable for private repositories on Free/Pro/Team (CX-014). If the organization uses GitHub Enterprise, add required reviewers to the `production` environment as an additional control.
@@ -151,7 +151,7 @@ flowchart LR
 - Order within a deploy: **migrate → api → worker → web**.
 - Migrations are expand-compatible with the running version (J §9.2). The pipeline's `migrations` job runs the upgrade-with-data test (AT-DB-007) for every PR that changes migrations.
 - **Rollback** = redeploy the previous `release.env` digests through the same workflow, only if the migrations since then were expand-only. The deploy script refuses a rollback across a contract migration (it reads migration metadata labels; PROPOSED convention: a `-- contract` marker in the migration header) and points to the forward-fix process (RB-02).
-- **Smoke tests (production)**, read-only on a synthetic monitoring tenant:
+- **Smoke tests (production)**, read-only with a synthetic monitoring account:
   - health endpoints
   - login
   - patient search
@@ -173,7 +173,7 @@ They do **not** show any of the following:
 - that a deposit or discount rule is correct (those rules are OPEN)
 - that lab reports are clinically correct and print legibly on the hospital's printers
 - that Bangla terminology is right
-- that tenant isolation holds against attack paths nobody has written a test for
+- that permissions hold against attack paths nobody has written a test for
 
 That evidence comes from:
 - requirement-linked tests reviewed by domain reviewers (H)

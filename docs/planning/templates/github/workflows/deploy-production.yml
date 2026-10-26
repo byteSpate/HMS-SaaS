@@ -60,7 +60,7 @@ jobs:
           install -m 600 /dev/null key && printf '%s\n' "$SSH_KEY" > key
           printf '%s\n' "$KNOWN_HOSTS" > known_hosts
           ssh -i key -o UserKnownHostsFile=known_hosts deploy@"$HOST" < release.env
-      - name: Production smoke tests (synthetic monitoring tenant; read-only workflow)
+      - name: Production smoke tests (synthetic monitoring account; read-only workflow)
         run: echo "<<pnpm smoke:prod — login as synthetic monitor, open patient, open released report, check health>>"
       - name: Record release
         run: echo "Deployed $(grep GIT_SHA release.env) for change ${{ inputs.change_ticket }}"

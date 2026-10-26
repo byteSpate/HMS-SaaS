@@ -99,10 +99,9 @@ Non-secret values go in `.env` ([`env.example`](../templates/docker/env.example)
 | `NEXT_PUBLIC_API_URL` | web (**build argument**) | no | `https://healthcareapi.bytespate.com` | API origin the browser calls; compiled into the web bundle, so changing it needs a rebuild (ADR-021) |
 | `PUBLIC_WEB_ORIGIN` | api | no | `https://healthcare.bytespate.com` | Links in emails and notifications |
 | `DEFAULT_LOCALE` | web, api | no | `bn-BD` | Fallback language (C-025) |
-| `DEFAULT_FACILITY_TIMEZONE` | api, worker | no | `Asia/Dhaka` | Provisioning default (AS-002) |
+| `DEFAULT_FACILITY_TIMEZONE` | api, worker | no | `Asia/Dhaka` | Setup default (AS-002) |
 | `DB_HOST` / `DB_PORT` / `DB_NAME` | api, worker, migrate | no | Supabase pooler host / `6543` for api and worker (transaction pooler), `5432` for migrate (session pooler) / `postgres` | DB location (ADR-019). Use the pooler host, not the IPv6-only direct host. Tables are in schema `hms` |
 | `DB_USER` / `DB_PASSWORD_FILE` | api, worker | file | `hms_app` / `/run/secrets/db_app_password` | App role |
-| `DB_RELAY_USER` / `DB_RELAY_PASSWORD_FILE` | worker | file | `hms_relay` | Outbox relay role (creating a `BYPASSRLS` role on Supabase is still untested, ADR-019) |
 | `DB_MIGRATOR_USER` / `DB_MIGRATOR_PASSWORD_FILE` | migrate | file | `hms_migrator` | Migration role |
 | `DB_POOL_MAX` | api, worker | no | `10` | Pool size per process ([M §6](M-capacity-performance.md#6-api-worker-scaling-and-database-connection-budgeting)) |
 | `DB_STATEMENT_TIMEOUT_MS` / `DB_TX_TIMEOUT_MS` | api, worker | no | `15000` / `5000` | Guards against runaway queries/transactions |
@@ -111,7 +110,7 @@ Non-secret values go in `.env` ([`env.example`](../templates/docker/env.example)
 | `SESSION_SECRET_FILE` | api | file | — | Session token derivation/signing material |
 | `CSRF_SECRET` (`CSRF_SECRET_FILE` in production) | api | file/secret | at least 32 characters | Key for the CSRF token HMAC (T-ACC-01). Rotating it logs everyone's CSRF tokens out until they reload the session |
 | `FIELD_ENCRYPTION_KEY_FILE` | api, worker | file | — | NID field encryption (E §5.2) |
-| `SESSION_IDLE_TIMEOUT_MIN` / `SESSION_ABSOLUTE_TIMEOUT_H` | api | no | `60` / `12` (C-032) | Platform defaults; tenant config overrides (CP-12) |
+| `SESSION_IDLE_TIMEOUT_MIN` / `SESSION_ABSOLUTE_TIMEOUT_H` | api | no | `60` / `12` (C-032) | Platform defaults; hospital configuration overrides (CP-12) |
 | `LOGIN_LOCKOUT_THRESHOLD` / `LOGIN_LOCKOUT_MINUTES` | api | no | `5` / `15` (PROPOSED) | Defaults (CP-12) |
 | `COOKIE_DOMAIN` | api | no | **unset** | Leave unset: the session cookie is host-only on the API host. **Never** `bytespate.com`, which would send sessions to every subdomain, including the ecommerce site (ADR-021) |
 | `S3_ENDPOINT` / `S3_REGION` / `S3_BUCKET` / `S3_FORCE_PATH_STYLE` | api, worker | no | provider values | Object storage |
@@ -124,7 +123,7 @@ Non-secret values go in `.env` ([`env.example`](../templates/docker/env.example)
 | `API_INTERNAL_URL` | — | — | — | **Removed (ADR-021):** the Next.js server does not call the API with the user's session; the browser calls the API origin directly |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_SERVICE_NAMESPACE` | all | no | tools VPS endpoint | Telemetry |
 | `ERROR_TRACKING_DSN` | all | treat as secret if the provider requires | empty | Error tracking |
-| `FEATURE_DEPOSITS` / `FEATURE_DISCOUNTS` / `FEATURE_REFUNDS` / `FEATURE_PAYMENT_GATEWAY` | api, web | no | `false` | Platform-level kill switches for OPEN features. Tenant policy still governs once enabled. |
+| `FEATURE_DEPOSITS` / `FEATURE_DISCOUNTS` / `FEATURE_REFUNDS` / `FEATURE_PAYMENT_GATEWAY` | api, web | no | `false` | Platform-level kill switches for OPEN features. Hospital policy still governs once enabled. |
 | `POSTGRES_PASSWORD_FILE`, `POSTGRES_DB`, `POSTGRES_INITDB_ARGS` | postgres | file | `--data-checksums` | Self-hosted PostgreSQL only (not used with Supabase) |
 | pgBackRest repository credentials and cipher pass | postgres | file | — | Self-hosted PostgreSQL only (J §8) |
 | `TURBO_TEAM` / `TURBO_TOKEN` | CI build only | CI secret | — | Remote cache (never in runtime images) |
@@ -139,7 +138,7 @@ Non-secret values go in `.env` ([`env.example`](../templates/docker/env.example)
 - **Provenance:** build attestations and SBOM generation in CI (supported by Docker Buildx/GitHub; verify in L). The image scan runs before push and blocks critical vulnerabilities (L §5).
 - **Migration execution:**
   1. The deploy script runs `docker compose --profile migrate run --rm migrate` with the **new** migrate image digest, before recreating app containers.
-  2. `migrate.sh` applies Prisma migrations, which include the SQL for RLS/constraints/grants, then runs the RLS coverage check.
+  2. `migrate.sh` applies Prisma migrations, which include the SQL for constraints and grants.
   3. A non-zero exit aborts the deploy with app containers unchanged.
   4. Migrations must be backward compatible with the running version (expand/contract, J §9.2).
 - **Never** run migrations automatically at API container start. With multiple replicas, that causes races, and a failure leaves a half-started service.

@@ -21,7 +21,7 @@ This module's main risk is a generic payment rule blocking urgent care. Until Q-
 | ID | Requirement | Status | Verify | Source |
 | --- | --- | --- | --- | --- |
 | FR-EMG-001 | Emergency staff shall create an `EMERGENCY` visit for a known patient (fast search, FR-PAT-003) or a temporary identity (FR-PAT-004) with at most these required fields: sex (may be unknown), approximate age (may be unknown), arrival time. | CONFIRMED | T | Identity agreements, SRC-E01 |
-| FR-EMG-002 | Staff shall record a priority category from a tenant-configured list (CP-23). The system records who assigned it and when, and keeps the history of changes. The software never computes or suggests a priority (C-027). | CONFIRMED (who/when); categories OPEN (Q-025) | T | Identity agreements |
+| FR-EMG-002 | Staff shall record a priority category from a hospital-configured list (CP-23). The system records who assigned it and when, and keeps the history of changes. The software never computes or suggests a priority (C-027). | CONFIRMED (who/when); categories OPEN (Q-025) | T | Identity agreements |
 | FR-EMG-003 | Emergency orders and charges shall use the standard order and billing interfaces, with source `EMERGENCY`. | SOURCE-DERIVED | T | SRC-E01 |
 | FR-EMG-004 | Emergency payment exceptions (start before payment, authorizer, later settlement). | **OPEN (Q-005).** `billing.eligibility.override` is disabled. | — | C-011 |
 | FR-EMG-005 | Admission from emergency (C-013) and referral out shall preserve the emergency visit as the source. | CONFIRMED | T | C-013 |

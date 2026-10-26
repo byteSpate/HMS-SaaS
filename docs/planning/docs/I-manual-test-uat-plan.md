@@ -17,7 +17,7 @@ Automated tests prove the software does what the specification says. UAT proves 
 
 **Entry (UAT may start):**
 - The release-candidate build is deployed to the UAT environment, and the automated suites are green on that commit ([H §13](H-automated-test-plan.md#13-ci-execution-and-evidence)).
-- Synthetic UAT data is seeded: two tenants, role users, price lists, test catalogue for the pilot's tests, beds (RP-B). **No real patient data** unless the owner approves de-identified data (AS-009).
+- Synthetic UAT data is seeded: one hospital, role users, price lists, test catalogue for the pilot's tests, beds (RP-B). **No real patient data** unless the owner approves de-identified data (AS-009).
 - Pilot printers, label printers and scanners are installed at UAT workstations (Q-046). Browser versions are recorded.
 - Testers are trained for 30–60 minutes on the tested screens. The downtime paper forms are available.
 - Open Severity 1 defects from earlier rounds: none.
@@ -126,8 +126,6 @@ Amounts are synthetic BDT. Names are synthetic.
 | UAT-ADM-002 | P1 | Hospital admin | FR-ACC-010 | Revoke a logged-in user | Their next action is refused |
 | UAT-ADM-003 | P1 | Hospital admin | FR-CFG-002 | Publish a new price list effective tomorrow 00:00 | Today's invoices use the old prices; tomorrow's use the new |
 | UAT-ADM-004 | P1 | Hospital admin | FR-AUD-001, -005 | Search the audit for today's payments and the lab release | Who/when/what/version shown (BAC-11) |
-| UAT-ADM-005 | P2 | Hospital admin | FR-SUP-001 | Approve then revoke a vendor support grant | Access appears in the audit; ends on revoke |
-| UAT-ADM-006 | P1 | Facilitator with two tenants | NFR-ISO-001 | Log in as a Beta Clinic user and try URLs copied from the Alpha Hospital session | "Not found" everywhere; no Alpha data (BAC-08) |
 
 ## 5. Printing, labels, scanners and real devices
 
@@ -198,7 +196,7 @@ Run on the UAT/staging environment with the DevOps lead. Paper forms come from t
 
 | Severity | Definition (hospital-specific) | Examples | Release impact |
 | --- | --- | --- | --- |
-| **S1 Critical** | Wrong patient, wrong money, data exposure, data loss, or a core workflow impossible with no workaround | Payment applied to the wrong invoice; another tenant's patient visible; a released result changes value | Blocks the gate; fix + full regression |
+| **S1 Critical** | Wrong patient, wrong money, data exposure, data loss, or a core workflow impossible with no workaround | Payment applied to the wrong invoice; a patient record visible to a user without permission; a released result changes value | Blocks the gate; fix + full regression |
 | **S2 Major** | Core workflow possible only with an unsafe or burdensome workaround; incorrect printed clinical/financial document | Receipt omits the invoice type; label barcode unreadable; report flags wrong | Blocks the gate |
 | **S3 Minor** | Non-core function wrong, or a core function with a safe, reasonable workaround | Filter chip not persisted; slow export | Fix planned; owner may accept for the gate |
 | **S4 Cosmetic** | Text, alignment, translation polish without meaning change | Spacing in the bilingual header | Backlog |

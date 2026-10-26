@@ -35,7 +35,7 @@ Staging is one small DigitalOcean droplet (Singapore) that also hosts an unrelat
 | Process manager        | Docker Compose, four services: `migrate`, `api`, `web`, `valkey`                    |
 | Worker (`apps/worker`) | **Not deployed yet.** Planned; see section 5                                        |
 
-Database roles on staging follow ADR-019 and CLAUDE.md: the API connects as `hms_app` through the transaction pooler (port 6543, RLS enforced) and migrations run as `hms_migrator` through the session pooler (port 5432). The Supabase `postgres` and `service_role` users never reach the server.
+Database roles on staging follow ADR-019 and CLAUDE.md: the API connects as `hms_app` through the transaction pooler (port 6543) and migrations run as `hms_migrator` through the session pooler (port 5432). The Supabase `postgres` and `service_role` users never reach the server.
 
 ## 3. How `main` becomes a running staging
 

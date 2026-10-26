@@ -18,7 +18,7 @@ Patients in Bangladesh look up a hospital online before they visit: which doctor
 | ID     | Objective                                                                                                                                          | Status                     |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
 | BO-W01 | Show what a modern, bilingual hospital website built on HMS looks like, to win and onboard hospital customers.                                     | CONFIRMED (C-063, C-064)   |
-| BO-W06 | Give every hospital tenant its own public website as part of the HMS subscription.                                                                 | CONFIRMED (C-067)          |
+| BO-W06 | Give every customer hospital its own public website as part of its HMS installation.                                                               | CONFIRMED (C-067)          |
 | BO-W07 | Let hospital staff change everything on their website (text, images, sections, menus, footer) without a developer, safely: preview, publish, undo. | CONFIRMED (C-072)          |
 | BO-W02 | Let a visitor find the right doctor or department and see when that doctor sits, in two to three steps on a phone.                                 | PROPOSED                   |
 | BO-W03 | Publish services, packages and prices from one source, so the website and the cashier agree (WEB-B).                                               | PROPOSED, depends on Q-078 |
@@ -64,7 +64,7 @@ Not in WEB-A: patient login and portal (EP-27), real booking, payment (X6), tele
 
 ### WEB-B — website CMS and ERP data (later)
 
-Hospital owners edit every part of their site in HMS: hero to footer, text, images, menus, pages (C-072, EP-32, [C2](C2-cms-requirements.md)). Each hospital tenant gets its own site (C-067). Doctors, departments, schedules, branches, packages and service prices come from that tenant's ERP data through read APIs; content editing per Q-077; domains per Q-075. Depends on Q-075, Q-077, Q-078 and the ERP scheduling and billing catalogues.
+Hospital owners edit every part of their site in HMS: hero to footer, text, images, menus, pages (C-072, EP-32, [C2](C2-cms-requirements.md)). Each customer hospital gets its own site (C-067, C-089). Doctors, departments, schedules, branches, packages and service prices come from that installation's ERP data through read APIs; content editing per Q-077; domains per Q-075. Depends on Q-075, Q-077, Q-078 and the ERP scheduling and billing catalogues.
 
 ### WEB-C — transactional (later)
 

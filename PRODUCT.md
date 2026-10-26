@@ -20,7 +20,7 @@ Secondary, later: patients and relatives (appointment booking, report download).
 
 ## Product Purpose
 
-A multi-tenant hospital ERP sold as SaaS by Bytespate. The first release (RP-A) covers outpatient care and diagnostics: registration, appointments, doctor consultation, billing and payment, and laboratory. Success is a hospital desk that works without thinking: the right patient, the right invoice, the committed truth, in Bangla or English, with a keyboard.
+A hospital ERP by Bytespate. Each customer hospital gets its own installation on its own domain (C-089). The first release (RP-A) covers outpatient care and diagnostics: registration, appointments, doctor consultation, billing and payment, and laboratory. Success is a hospital desk that works without thinking: the right patient, the right invoice, the committed truth, in Bangla or English, with a keyboard.
 
 ## Positioning
 
@@ -37,7 +37,7 @@ What a neighboring hospital product cannot truthfully copy without redesign (fro
 - Printers: A4 laser (reports, prescriptions), 80 mm thermal (receipts, tokens), a label printer (specimens). Paper is monochrome.
 - Bangladesh conventions: Bangla and English, Bangla digits in the Bangla UI, taka with lakh and crore grouping, 11-digit mobile numbers, mobile payment providers such as bKash.
 - Connection loss and downtime are expected states with a visible procedure, not exceptions.
-- Each hospital is a separate tenant; data never crosses tenants.
+- One installation serves one hospital and its branches; its data stays in its own installation.
 
 ## Capabilities and Constraints
 
@@ -46,12 +46,12 @@ What a neighboring hospital product cannot truthfully copy without redesign (fro
 - No Server Actions for business data; all business reads and writes go through the API (ADR-002).
 - Money is never a float; whole-taka rounding with an explicit adjustment line (C-037, C-051).
 - Release scope, roles and unresolved questions live in `docs/planning/docs/A2-decision-register.md` and `A3-open-questions.md`.
-- Undecided: pilot hospital profile (Q-042), exact printer models, tenant color override, native-speaker approval of Bangla terminology (Q-050).
+- Undecided: pilot hospital profile (Q-042), exact printer models, hospital color override, native-speaker approval of Bangla terminology (Q-050).
 
 ## Brand Commitments
 
 - The product is shown to and sold to several hospitals. Each hospital's own logo and name appear in the shell and on every printout; a discreet "Powered by Bytespate" is the product brand.
-- Until a hospital exists, the Bytespate logo is the placeholder tenant logo. Its brand colors (pure red and green) must not sit beside status colors.
+- Until a hospital exists, the Bytespate logo is the placeholder hospital logo. Its brand colors (pure red and green) must not sit beside status colors.
 - Tone: plain, specific, calm. No marketing language, no humor, no filler verbs, in either language.
 
 ## Evidence on Hand

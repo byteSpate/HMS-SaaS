@@ -9,7 +9,6 @@
 - Staff need reliable login and re-login during long shifts (SRC-N02).
 - Lock reasons must be visible (SRC-N10).
 - Revocation must take effect immediately (FR-ACC-010).
-- Each request runs within one selected tenant membership (FR-ACC-002).
 - No customer has asked for single sign-on.
 
 ## Decision
@@ -19,10 +18,9 @@
   - opaque random session IDs in `httpOnly; Secure; SameSite=Lax` cookies
   - session rows in PostgreSQL (optional Redis lookup cache)
   - CSRF token header on state-changing requests, with an `Origin` check
-- Session ID rotation on login and tenant switch.
+- Session ID rotation on login.
 - TOTP second factor for roles marked privileged (CP-12).
-- Tenant-configurable lockout and timeouts.
-- The vendor control plane uses a separate audience and credentials.
+- Hospital-configurable lockout and timeouts.
 
 ## Alternatives
 

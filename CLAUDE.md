@@ -1,6 +1,6 @@
 # Project instructions
 
-Hospital ERP sold as SaaS. Read [README.md](README.md) for layout and commands, and [docs/planning/README.md](docs/planning/README.md) for requirements and design. Coding agents follow [G §5](docs/planning/docs/G-implementation-plan.md#5-context-packet-for-each-agent-task).
+Hospital ERP; each customer hospital gets its own installation (C-089, ADR-023). Read [README.md](README.md) for layout and commands, and [docs/planning/README.md](docs/planning/README.md) for requirements and design. Coding agents follow [G §5](docs/planning/docs/G-implementation-plan.md#5-context-packet-for-each-agent-task).
 
 ## Git workflow
 
@@ -62,7 +62,7 @@ User-facing text that must contain Bangla script or the taka sign (`৳`) lives 
 - Reuse before writing: check `packages/*` (contracts, domain-kernel, platform, authz, testkit) for an existing helper. Shared logic goes in a package, never copy-pasted between apps or modules.
 - Follow the package boundaries in D §5 (`pnpm boundaries:check` must pass) and the module layout `domain/ application/ infrastructure/ http/ jobs/`.
 - Descriptive names, no abbreviations except domain ones (MRN, OPD, IPD, LIS). No dead code, no commented-out code, no `any` without a comment explaining why.
-- Every tenant-data query goes through `withTenant()` (ADR-003). Money uses the domain-kernel money type (ADR-007), never floating point.
+- The code still carries tenant isolation from the earlier design (`withTenant()`, RLS migration). Its removal is a separate, not yet planned code task (ADR-023); until then keep using `withTenant()` where existing code does. Money uses the domain-kernel money type (ADR-007), never floating point.
 
 ### Comments
 
@@ -77,4 +77,4 @@ After completing each feature or task, add a log entry in `docs/log/` **in the s
 ## Secrets
 
 - Database URLs and passwords live only in `.env` (git-ignored). Never commit them or write them into docs.
-- Supabase: the app connects as `hms_app` (RLS enforced), migrations as `hms_migrator`. Never point the app at the Supabase `postgres` or `service_role` users; they bypass RLS (ADR-019).
+- Supabase: the app connects as `hms_app` (least privilege), migrations as `hms_migrator`. Never point the app at the Supabase `postgres` or `service_role` users; they have full rights (ADR-019).

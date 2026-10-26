@@ -16,7 +16,7 @@ Staff switch between Bangla and English per user, and printouts are bilingual (C
    - Server error messages are localized by `code`. The API returns the code plus English detail, and the UI renders the localized message.
 2. **Language choice:** per-user preference stored server-side. The `lang` attribute is set on `<html>`. Switching does not reload form state (FR-I18N-001).
 3. **Formatting:**
-   - `Intl` APIs with a tenant setting for digit style (`latn` or `beng` numbering system) and date pattern (CP-18)
+   - `Intl` APIs with a hospital setting for digit style (`latn` or `beng` numbering system) and date pattern (CP-18)
    - money always shows 2 decimals with the BDT symbol or code per template
    - stored values are locale-neutral
 4. **Data in two scripts:**

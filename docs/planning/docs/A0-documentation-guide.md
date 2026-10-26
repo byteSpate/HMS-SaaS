@@ -11,7 +11,7 @@
 
 ## 1. What this pack is
 
-This is the v0.4 documentation set for a **whole-hospital ERP sold as SaaS** to multiple independent hospitals, starting in Bangladesh. It turns the v0.3 planning kit into the documents a developer or AI coding agent needs:
+This is the v0.4 documentation set for a **whole-hospital ERP**, installed separately for each customer hospital (C-089, ADR-023), starting in Bangladesh. It turns the v0.3 planning kit into the documents a developer or AI coding agent needs:
 
 - business requirements
 - software requirements
@@ -68,7 +68,7 @@ Owner roles are responsible for review and approval. No individual is named unti
 | D | [System design](D-system-design.md) | Architecture, runtime, boundaries, tenancy, auth, contracts, transactions, jobs, cache, observability | Proposal | Technical architect | C, D1, ADRs |
 | D1 | [Stack assessment and versions](D1-stack-assessment-and-versions.md) | Tool suitability, alternatives, verified versions with review date | Proposal | Technical architect | D |
 | D2 | [ADRs](D2-adr/README.md) | 17 architecture decision records | Proposal | Technical architect | D |
-| E | [Database design](E-database-design.md) | ERD, data dictionary, PostgreSQL design, RLS, Prisma mapping, migrations, backups | Proposal | Architect + integrator | C, D |
+| E | [Database design](E-database-design.md) | ERD, data dictionary, PostgreSQL design, Prisma mapping, migrations, backups | Proposal | Architect + integrator | C, D |
 | F | [UI/UX design](F-ui-ux-design.md) | Navigation, screens, flows, states, accessibility, localization, print layouts | Proposal | UX lead + domain lead | C |
 | G | [Implementation plan](G-implementation-plan.md) | Phases, epics, tasks, DoR/DoD, context packets, coordination | Proposal | Tech lead | C, D, E |
 | H | [Automated test plan](H-automated-test-plan.md) | Test layers, cases, fixtures, CI evidence | Proposal | QA lead | C, D, E |

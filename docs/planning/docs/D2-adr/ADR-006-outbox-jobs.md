@@ -14,7 +14,7 @@
 
 1. Commands write `outbox_event` rows in their transaction. A worker relay publishes them to BullMQ with `jobId = eventId` and marks them published (`FOR UPDATE SKIP LOCKED` batches).
 2. Consumers record `(consumer, event_id)` in `inbox_event` in their own transaction for deduplication.
-3. State-changing API commands store `idempotency_record` rows in the same transaction, scoped to (tenant, actor, key) with a request hash.
+3. State-changing API commands store `idempotency_record` rows in the same transaction, scoped to (actor, key) with a request hash.
 4. BullMQ runs on a Redis-protocol server configured with `noeviction` and AOF. Workers handle SIGTERM gracefully. Processors are idempotent.
 5. If Redis loses data, unpublished or republished outbox events are re-enqueued safely.
 

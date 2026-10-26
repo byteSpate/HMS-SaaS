@@ -13,7 +13,7 @@ The staff application consists of authenticated, interactive workstation screens
 1. All business reads and writes go through the NestJS API. **No Server Actions or Route Handlers write business data.** Route Handlers are allowed only for health and readiness.
 2. Workstation screens are client components using TanStack Query against `/api/v1`. Server components render the shell and may prefetch with the user's cookie.
 3. `proxy.ts` may redirect unauthenticated users to login. It is never relied on for authorization.
-4. Authenticated routes are dynamic. Next.js caching is not used for tenant or patient data. Server-side fetches use `cache: 'no-store'`.
+4. Authenticated routes are dynamic. Next.js caching is not used for hospital or patient data. Server-side fetches use `cache: 'no-store'`.
 5. `output: 'standalone'` for Docker images. Keep Next.js patched within days of security releases.
 
 ## Alternatives

@@ -30,7 +30,7 @@ feat/T-ACC-01-login  o o o                one branch per task
 | `feat`     | A new feature or task from G        | `feat/T-ACC-01-login`                 |
 | `fix`      | A bug fix                           | `fix/T-BIL-04-receipt-total`          |
 | `refactor` | Code change with no behavior change | `refactor/T-PLT-01-idempotency-store` |
-| `test`     | Tests only                          | `test/T-DB-03-two-tenant-fixtures`    |
+| `test`     | Tests only                          | `test/T-DB-03-fixtures`               |
 | `docs`     | Documentation only                  | `docs/phase0-answers`                 |
 | `chore`    | Tooling, CI, dependencies           | `chore/ci-dev-branch`                 |
 | `hotfix`   | Urgent production fix from `main`   | `hotfix/login-500-on-expired-session` |

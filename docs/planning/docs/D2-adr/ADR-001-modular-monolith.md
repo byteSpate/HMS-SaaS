@@ -26,7 +26,6 @@ The product is hosted on VPS infrastructure (C-026) and built largely by AI codi
 | --- | --- | --- |
 | Microservices per domain | Turns payment gates and charge posting into distributed transactions; many deployables on a VPS | Independent teams with divergent scaling needs and proven module stability |
 | Unstructured monolith | Agents would cross-write tables; ownership erodes | Never |
-| Single-tenant install per hospital | N upgrades and N databases; contradicts C-001 | Premium dedicated customers (DEF-005) |
 
 ## Consequences
 

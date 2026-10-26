@@ -76,10 +76,10 @@ jobs:
       - uses: actions/setup-node@<<SHA>> # vX
         with: { node-version: "${{ env.NODE_VERSION }}", cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm db:migrate:ci                   # create roles, apply all migrations as hms_migrator, RLS coverage (AT-DB-001)
+      - run: pnpm db:migrate:ci                   # create roles, apply all migrations as hms_migrator
       - run: pnpm turbo run test:unit test:integration --affected -- --coverage --ci
-      - name: Isolation suite always runs (NFR-ISO-001)
-        run: pnpm --filter @hms/api test:isolation -- --ci
+      - name: Permission matrix always runs (H section 4)
+        run: pnpm --filter @hms/api test:permissions -- --ci
       - uses: actions/upload-artifact@<<SHA>> # vX
         if: always()
         with:
@@ -138,7 +138,7 @@ jobs:
         with: { node-version: "${{ env.NODE_VERSION }}", cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm db:migrate:ci && pnpm db:seed:e2e     # synthetic two-tenant seed
+      - run: pnpm db:migrate:ci && pnpm db:seed:e2e     # synthetic one-hospital seed
       - run: pnpm turbo run build --filter=@hms/web... --filter=@hms/api... --filter=@hms/worker...
       - run: pnpm e2e:affected                          # Playwright, Chromium, tags of affected journeys + axe checks
       - uses: actions/upload-artifact@<<SHA>> # vX

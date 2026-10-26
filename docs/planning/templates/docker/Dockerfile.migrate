@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 # =====================================================================================
 # TEMPLATE — UNTESTED. One-off migration image: applies Prisma migrations (which include the
-# hand-written SQL for RLS, exclusion constraints, grants — see docs/E-database-design.md §7)
-# and then runs the RLS coverage check. Runs as the hms_migrator database role.
+# hand-written SQL for exclusion constraints and grants — see docs/E-database-design.md §7).
+# Runs as the hms_migrator database role.
 #   docker compose -f compose.prod.yaml run --rm migrate
 # =====================================================================================
 ARG NODE_IMAGE=node:24-bookworm-slim@sha256:<<PIN_DIGEST>>
@@ -36,6 +36,5 @@ USER node
 # migrate.sh (in packages/database/scripts) is expected to:
 #   1. build DATABASE_URL from DB_HOST/DB_PORT/DB_NAME/DB_MIGRATOR_USER and the password in $DB_MIGRATOR_PASSWORD_FILE
 #   2. run `pnpm --filter @hms/database exec prisma migrate deploy`
-#   3. run the RLS coverage query (E §6.3) and exit non-zero if any table is uncovered
-#   4. print applied migration IDs for the release record
+#   3. print applied migration IDs for the release record
 CMD ["sh", "packages/database/scripts/migrate.sh"]

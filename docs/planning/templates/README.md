@@ -17,7 +17,7 @@ These files make the designs in K, L, E and M concrete. They are **templates**. 
 | `github/workflows/*.yml`, `github/dependabot.yml` | GitHub Actions pipelines and update policy | YAML parsed; `actionlint` 1.7.7 reported no findings. Shellcheck was not available, so `run:` scripts were not linted. **Not run on GitHub.** |
 | `sonar/sonar-project.properties` | SonarQube Community project configuration | — |
 | `sql/draft-core-schema.sql` | **Draft** PostgreSQL schema (not an approved migration) | **Executed on a scratch PostgreSQL 18.4** together with the probes |
-| `sql/draft-validation-probes.sql` | 24 single-session probes (isolation, constraints, grants) | All 24 printed PASS |
+| `sql/draft-validation-probes.sql` | 14 single-session probes (constraints, grants) | All 14 printed PASS (2026-10-26, PostgreSQL 17.11) |
 | `sql/draft-validation-output.txt` | Log of the probe run plus two two-session race probes | — |
 | `k6/front-desk-cashier.js` | Load-test skeleton for the reception and cashier journeys | Not run |
 

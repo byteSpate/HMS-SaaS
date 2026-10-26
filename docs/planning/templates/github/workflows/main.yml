@@ -46,7 +46,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:migrate:ci
       - run: pnpm turbo run lint typecheck test:unit test:integration -- --coverage --ci   # full, not --affected
-      - run: pnpm --filter @hms/api test:isolation -- --ci
       - name: SonarQube Community analysis (main branch only — C-023) and gate wait
         uses: SonarSource/sonarqube-scan-action@<<SHA>> # vX
         env:
@@ -118,4 +117,4 @@ jobs:
           # deploy.sh: pull digests → run migrate → recreate api, worker, web → health wait → print status
           ssh -i key -o UserKnownHostsFile=known_hosts deploy@"$HOST" < release.env
       - name: Staging smoke + E2E against the deployed build
-        run: echo "<<pnpm e2e:staging --base-url https://staging.example.invalid (synthetic tenant)>>"
+        run: echo "<<pnpm e2e:staging --base-url https://staging.example.invalid (synthetic data)>>"

@@ -11,7 +11,7 @@ Worklists (doctor queue, lab stages, cashier queue, bed board, pharmacy requests
 ## Decision
 
 - Worklists poll every 15–30 s (configurable per screen) while visible (`refetchIntervalInBackground: false`). They refetch on window focus and after the user's own mutations.
-- The API returns `ETag` per worklist query, derived from a cheap "last change" marker (e.g., max `updated_at` or a per-tenant, per-worklist change counter). It replies `304 Not Modified` when unchanged.
+- The API returns `ETag` per worklist query, derived from a cheap "last change" marker (e.g., max `updated_at` or a per-worklist change counter). It replies `304 Not Modified` when unchanged.
 - The polling budget is modeled in [M §4](../M-capacity-performance.md#4-load-model-peak-actions-polling-and-jobs).
 
 ## Alternatives

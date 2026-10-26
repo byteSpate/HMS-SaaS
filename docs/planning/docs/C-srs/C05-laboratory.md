@@ -56,7 +56,7 @@ The pathologist must confirm each line. Adoption here is PROPOSED.
 | FR-LAB-002 | Viewing, printing, previewing, exporting, pressing Back, opening "customize/print options", or reopening a report shall **never** change any result or report status. A status changes only through the explicit commands Enter, Verify, Release, Amend (and Reject/Receive for specimens). | SOURCE-DERIVED → fixed rule (FPR-07) | T | SRC-L12..L15 |
 | FR-LAB-003 | Each result version shall reference the test definition version, reference-range version, method, unit and template version used. Changing configuration later never changes a released version or its print output. | CONFIRMED (v0.3) | T | SRC-L08, SRC-L17 |
 | FR-LAB-004 | The collection worklist shall include only order lines that are payment-eligible (FR-BIL-003) or covered by an authorized exception (OPEN). Ineligible orders appear in a separate "awaiting payment" list with the amount due. | CONFIRMED (C-011) | T | C-011 |
-| FR-LAB-005 | Collecting a specimen shall generate a tenant-unique specimen ID (CP-09) and print a barcode label. Label content:<br>• patient name<br>• MRN<br>• age/sex<br>• specimen ID as Code 128 (PROPOSED symbology)<br>• specimen type<br>• collection date/time<br>• test short codes<br>• ward/bed for inpatients<br>Several tests may share one specimen when their definitions share specimen type and container. Reprints are marked and audited. | SOURCE-DERIVED; symbology and size OPEN (Q-046) | T, U | SRC-L16 |
+| FR-LAB-005 | Collecting a specimen shall generate a unique specimen ID (CP-09) and print a barcode label. Label content:<br>• patient name<br>• MRN<br>• age/sex<br>• specimen ID as Code 128 (PROPOSED symbology)<br>• specimen type<br>• collection date/time<br>• test short codes<br>• ward/bed for inpatients<br>Several tests may share one specimen when their definitions share specimen type and container. Reprints are marked and audited. | SOURCE-DERIVED; symbology and size OPEN (Q-046) | T, U | SRC-L16 |
 | FR-LAB-006 | Receiving a specimen shall either accept it (`RECEIVED`) or reject it (`REJECTED`) with a reason from a configured list plus free text. Rejection automatically creates a linked **recollection** request (`PENDING_COLLECTION`, `recollection_of` = rejected specimen). The rejected specimen is never deleted. | CONFIRMED (C-019) | T | C-019, SRC-L16 |
 | FR-LAB-007 | When collection happens away from the lab, dispatch and receipt shall be recorded as separate events, with a dispatch batch listing the specimens. Receipt by barcode scan marks each specimen. | SOURCE-DERIVED | T | SRC-L16 |
 | FR-LAB-008 | Result entry shall support:<br>• numeric (with unit and configured decimal places)<br>• text<br>• option lists (e.g., positive/negative)<br>• configured default values<br>Abnormal flags (H/L/critical) are computed by comparing against the configured range version. The product supplies **no** clinical ranges. | CONFIRMED capability; ranges by lab (CP-14) | T | SRC-L17 |
@@ -92,7 +92,7 @@ The pathologist must confirm each line. Adoption here is PROPOSED.
   5. Attach the labels to the tubes.
 - **Denied paths:**
   - D1: test not eligible → `PAYMENT_NOT_ELIGIBLE` with the amount due.
-  - D2: another tenant's order → SP-05.
+  - D2: an order outside the user's facility scope → SP-05.
 - **Recovery:**
   - R1: printer jam → reprint from the specimen (no new specimen, FR-PRN-004).
   - R2: duplicate submit → SP-01.

@@ -1,6 +1,6 @@
-# Hospital ERP (SaaS)
+# Hospital ERP
 
-Whole-hospital ERP sold as SaaS, starting in Bangladesh. The planning pack is in [`docs/planning`](docs/planning/README.md). Start with its README, then [G — Implementation plan](docs/planning/docs/G-implementation-plan.md).
+Whole-hospital ERP, starting in Bangladesh. Each customer hospital gets its own installation and domain (C-089). The planning pack is in [`docs/planning`](docs/planning/README.md). Start with its README, then [G — Implementation plan](docs/planning/docs/G-implementation-plan.md).
 
 ## Layout
 

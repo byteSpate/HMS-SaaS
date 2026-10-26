@@ -151,13 +151,13 @@ One family, bundled locally, accessed only through the `Icon` component so a fam
 
 ### 11. Numbers and dates
 
-Lakh and crore digit grouping in both languages, on screen and on print: `10,00,000.00`. Digits follow the UI language (C-036). The tenant setting from ADR-017 stays so another hospital can differ.
+Lakh and crore digit grouping in both languages, on screen and on print: `10,00,000.00`. Digits follow the UI language (C-036). The hospital setting from ADR-017 stays so another installation can differ.
 
 ### 12. Branding for a product sold to hospitals
 
-Two logo slots, not one. The **tenant logo** (the hospital's) appears in the shell and in every print header (F section 10). The **product brand** is a discreet "Powered by Bytespate". Until a hospital exists, the Bytespate logo fills the tenant slot as a placeholder; it must not sit beside status badges because its brand colors (pure red and green) read as status colors.
+Two logo slots, not one. The **hospital logo** appears in the shell and in every print header (F section 10). The **product brand** is a discreet "Powered by Bytespate". Until a hospital exists, the Bytespate logo fills the hospital slot as a placeholder; it must not sit beside status badges because its brand colors (pure red and green) read as status colors.
 
-Tenant color override is **not** in RP-A. Tokens are built so a tenant could later supply one hue and have the primary scale generated automatically, refused if white text on the fill falls below 4.5:1. Status colors, danger and neutrals are never overridden. This needs a configuration screen (SCR-23) and its own decision when scheduled.
+Hospital color override is **not** in RP-A. Tokens are built so a hospital could later supply one hue and have the primary scale generated automatically, refused if white text on the fill falls below 4.5:1. Status colors, danger and neutrals are never overridden. This needs a configuration screen (SCR-23) and its own decision when scheduled.
 
 ### 13. Motion
 

@@ -35,7 +35,7 @@ flowchart LR
 | Phase | Purpose | Entry criteria | Exit evidence (gate) |
 | --- | --- | --- | --- |
 | **0 Planning closure** | Answer P1 questions; approve foundation ADRs; choose a release option | This pack reviewed | RG-0 ([N §5](N-traceability-readiness.md#5-release-gates)) |
-| **1 Foundation** | Monorepo, toolchain pins, CI, tenancy/RLS, auth, audit, idempotency, outbox/jobs, i18n shell, design-system spike, print spike, staging deploy, backup/restore | RG-0 | RG-1: two-tenant isolation suite passes; restore drill on staging done; pipeline enforced |
+| **1 Foundation** | Monorepo, toolchain pins, CI, database roles, auth, audit, idempotency, outbox/jobs, i18n shell, design-system spike, print spike, staging deploy, backup/restore | RG-0 | RG-1: permission-denial suite passes; restore drill on staging done; pipeline enforced |
 | **2 Front desk + cashier** | Registration, practitioners, scheduling, check-in/walk-in, doctor-fee invoice, cashier payment, receipts, cashier session | RG-1; Q-003 (front desk + cashier part), Q-020, Q-022, Q-024, Q-034, Q-035, Q-037, Q-038, Q-039, Q-046 (receipt printer), Q-050, Q-051 | RG-2 for the slice |
 | **3 OPD + diagnostics** | Consultation, prescription print, orders, service invoice and gate, LIS manual entry to release, report delivery, collection reports | Phase 2; Q-009, Q-017 (or interim accepted), Q-066, Q-067, Q-011 (templates/ranges for pilot tests) | RG-2 → RG-3 → RG-4 for **RP-A** |
 | **4 Inpatient** | Admission/beds/transfer/cleaning, running account/deposits/final bill, nursing worklist/indent/returns, pharmacy dispensing minimum, stock ledger | Phase 3 (or Phase 2 + LIS for RP-B ordering); Q-004, Q-006, Q-007 (or manual charges), Q-008, Q-014, Q-015, Q-016, Q-018, Q-040, Q-063, Q-069 | RG-2 per slice; RG-4 for **RP-B** |
@@ -63,11 +63,10 @@ Each task lists requirement IDs, dependencies, blocking questions and its key ac
 | **T-FND-01** Stack spike and pins | Workspace with pinned versions builds web/api/worker; Jest ESM test runs; Playwright test runs; `prisma migrate dev` against PG 18; `turbo prune` + Docker build per app | D1 §6, P-021, ADR-013 | RG-0 | Q-054 | Commands and outputs recorded; `docs/STACK_VERSIONS.md` committed; deviations raised as ADR amendments |
 | **T-FND-02** Monorepo skeleton and boundaries | `apps/*`, `packages/*` per D §5; dependency-cruiser + ESLint import rules; one sample module | NFR-MAINT-001, ADR-001 | T-FND-01 | — | A deliberate cross-module internal import fails CI |
 | **T-FND-03** CI baseline | GitHub Actions PR and main workflows per [L](L-cicd-sonarqube.md); Sonar on main; branch protection | ADR-012 | T-FND-02 | Q-055, Q-056 | A red check blocks merge; the Sonar gate result is visible on main |
-| **T-FND-04** Tenant context and RLS spike | `withTenant()` with Prisma 7 + adapter-pg; RLS migration; app/migrator roles | ADR-003, NFR-ISO-001 | T-FND-01 | — | The ADR-003 evidence list passes under concurrency, including after errors (see §8 example) |
+| **T-FND-04** Database roles and transactions | Prisma 7 + adapter-pg interactive transactions; app/migrator roles; first migration | ADR-019, ADR-023 | T-FND-01 | — | `hms_app` has the E §6 grants only; a failed transaction leaves no state on the pooled connection |
 | **T-FND-05** Docker dev/prod images | Multi-stage images (web, api, worker, migrate); compose for dev | [K](K-docker-design.md) | T-FND-02 | — | Images run as non-root; health checks pass; image scan in CI |
-| **T-DB-01** First migrations | Identity, tenancy, platform tables (`audit_event`, `outbox_event`, `idempotency_record`, `number_sequence`, `policy_version`) | E §6–§9 | T-FND-04 | — | Migration applies on a fresh DB; RLS coverage check passes |
-| **T-DB-02** RLS coverage check | CI query (E §6.3) | NFR-ISO-001 | T-DB-01 | — | A table without a policy fails CI |
-| **T-DB-03** Testkit | Two-tenant synthetic fixtures (overlapping MRNs), DB test harness, factories | AS-009, H §8 | T-DB-01 | — | Used by at least one integration test |
+| **T-DB-01** First migrations | Identity and platform tables (`audit_event`, `outbox_event`, `idempotency_record`, `number_sequence`, `policy_version`) | E §6–§9 | T-FND-04 | — | Migration applies on a fresh DB |
+| **T-DB-03** Testkit | Synthetic fixtures for one hospital, DB test harness, factories | AS-009, H §8 | T-DB-01 | — | Used by at least one integration test |
 | **T-ACC-01** Login, session, CSRF | UC-ACC-01 | FR-ACC-001, -002, -005, -009 | T-DB-01 | Q-051 (defaults) | AT-ACC-001..005 pass |
 | **T-ACC-02** Roles, permissions, guards | Permission catalogue in contracts; `@RequirePermission` decorator and global `PermissionGuard` with default deny per [D §7.2](D-system-design.md#72-authorization); role templates seeding | FR-ACC-008, -009, -011 | T-ACC-01 | Q-003 (synthetic templates only) | Denial tests per permission; audit of denials; a route with no permission marker is refused, and a test fails if any route lacks a marker |
 | **T-ACC-03** Lockout and diagnostics | UC-ACC-02 | FR-ACC-004, FR-SUP-003 | T-ACC-01 | Q-051 | AT-ACC-006..008 |
@@ -76,8 +75,8 @@ Each task lists requirement IDs, dependencies, blocking questions and its key ac
 | **T-PLT-01** Idempotency | Interceptor + `idempotency_record` + `GET /operations/{key}` | FPR-08, SP-01/02/08 | T-DB-01 | — | AT-PLT-001..004 |
 | **T-PLT-02** Audit writer and search | Same-transaction audit; denied-attempt audit; SCR-24 | FR-AUD-001..006 | T-DB-01 | Q-053 (retention excluded) | AT-AUD-001..006 |
 | **T-PLT-03** Outbox, relay, inbox, BullMQ | D §9.4, §10 | NFR-REL-001/002, ADR-006 | T-DB-01, T-FND-05 | — | AT-JOB-001..006 |
-| **T-PLT-04** Number sequences | Tenant-scoped sequences with CP-09 patterns | FR-CFG-003 | T-DB-01 | Q-034 (synthetic pattern) | Concurrency test: 1,000 parallel allocations, no duplicates |
-| **T-PLT-05** Policy versions | Publish/preview/effective-dating; cache invalidation | FR-SAA-005, FR-CFG-002 | T-PLT-03 | — | AT-CFG-001..003 |
+| **T-PLT-04** Number sequences | Business number sequences with CP-09 patterns | FR-CFG-003 | T-DB-01 | Q-034 (synthetic pattern) | Concurrency test: 1,000 parallel allocations, no duplicates |
+| **T-PLT-05** Policy versions | Publish/preview/effective-dating; cache invalidation | FR-CFG-004, FR-CFG-002 | T-PLT-03 | — | AT-CFG-001..003 |
 | **T-PLT-06** Observability baseline | pino redaction, correlation IDs, metrics endpoint, OTel wiring | NFR-OBS-001, FR-AUD-006 | T-FND-02 | — | A log redaction test proves the NID and cookie are absent |
 | **T-PLT-07** API request pipeline middleware | NestJS middleware and layer order per [D §8.6](D-system-design.md#86-api-request-pipeline-nestjs): request ID, `AsyncLocalStorage` request context, security headers, body size limit, request logging; per-session API rate-limit guard (second PR, once the Valkey client from T-PLT-03 exists) | NFR-OBS-001, NFR-SEC-005, FR-AUD-006, ADR-021 | T-ACC-01 | — | The response echoes `X-Request-Id` and the same ID is in the log line and the problem body; a malformed incoming ID is replaced; an oversize body returns a 413 `PAYLOAD_TOO_LARGE` problem; a session over its limit gets a 429 `RATE_LIMITED` problem; a test asserts the layer order |
 | **T-PLT-08** Response envelope interceptor | Global `ResponseEnvelopeInterceptor` per [D §8.2](D-system-design.md#82-rest-conventions-proposed) and §8.6: contract check of the result (ADR-005), then `{ data, meta }`; existing auth endpoints and the web `apiRequest` client moved to the envelope | ADR-005, NFR-OBS-001 | T-PLT-07, T-UI-02 | — | Every JSON success matches `{ data, meta.correlationId }`; a list carries `meta.nextCursor`; a result with an undeclared field gives `500 INTERNAL_ERROR` and nothing leaks; errors stay RFC 9457; `204` has no body; the web client unwraps `data` in one place |
@@ -163,7 +162,7 @@ Each task lists requirement IDs, dependencies, blocking questions and its key ac
 **Definition of Ready (task may move to "ready"):**
 - [ ] Task ID, title, owner/reviewer named. Requirement and decision IDs listed.
 - [ ] Outcome stated as observable behavior, with at least one Given/When/Then positive case.
-- [ ] Denial (wrong role, wrong tenant), duplicate/retry and stale/concurrent cases listed where relevant.
+- [ ] Denial (wrong role, wrong facility scope), duplicate/retry and stale/concurrent cases listed where relevant.
 - [ ] All OPEN questions affecting the behavior are **answered or explicitly excluded**, with the interim behavior stated (e.g., "deposits excluded — FEATURE_NOT_AVAILABLE").
 - [ ] Contract drafted (request/response/error codes) or marked "contract task first".
 - [ ] Data changes identified. Shared-file reservations requested from the integrator (§6).
@@ -173,7 +172,7 @@ Each task lists requirement IDs, dependencies, blocking questions and its key ac
 
 **Definition of Done:**
 - [ ] Behavior implemented in all listed layers. No business writes from Next.js.
-- [ ] Tests added and **actually run**: unit, PostgreSQL integration, API (permission denial, cross-tenant, idempotency), E2E where UI changed, plus accessibility checks for new screens.
+- [ ] Tests added and **actually run**: unit, PostgreSQL integration, API (permission denial, idempotency), E2E where UI changed, plus accessibility checks for new screens.
 - [ ] Audit events for sensitive actions; logs free of patient content.
 - [ ] Both language catalogs updated; print templates updated if relevant.
 - [ ] Contracts regenerated (OpenAPI committed, no drift). Migrations reviewed by the integrator. Expand/contract plan if needed.
@@ -193,7 +192,7 @@ CONTEXT PACKET — <Task ID> <title>
 3. Requirements: the FR-*/NFR-* rows (copied from C-srs with IDs)
 4. Use case(s): UC-* text from the module file
 5. Contracts: the Zod schemas (existing) or the draft contract for this task
-6. Data: the tables/columns involved (from E or the real Prisma schema), constraints, RLS notes
+6. Data: the tables/columns involved (from E or the real Prisma schema), constraints, grants
 7. Permissions: codes from C00 §8 and the default templates used in tests
 8. Errors: codes from C00 §9 and HTTP mapping (D §8.3)
 9. UI: screen ID and wireframe (F), states (F §8), copy keys (A1)
@@ -241,7 +240,7 @@ CONTEXT PACKET — <Task ID> <title>
 | Verifier | A different agent or a human, not the implementer | Runs the tests; tries denial, retry and concurrency; compares with requirements |
 | Integrator | Designated role | Shared files, migrations, contracts, merge order |
 | Domain reviewer | Finance / lab / nursing / front desk lead | Clinical and financial behavior matches decisions; no invented rules |
-| Security reviewer (for auth, tenancy, export, files) | Tech lead or security-minded reviewer | Isolation, permission and audit coverage |
+| Security reviewer (for auth, export, files) | Tech lead or security-minded reviewer | Permission and audit coverage |
 
 **Handoff template (attach to the PR):**
 
@@ -264,20 +263,7 @@ Questions raised:
 
 ## 8. Example implementation tasks
 
-### Example 1 — T-FND-04 Tenant context and RLS spike (ready once T-FND-01 is done)
-
-- **Outcome:** a reusable `withTenant(ctx, fn)` in `packages/database`, the first RLS migration, the `hms_app`/`hms_migrator` roles, and evidence that isolation holds through Prisma 7 + `@prisma/adapter-pg`.
-- **Requirements:** NFR-ISO-001, FR-SAA-001; ADR-003.
-- **Allowed files:** `packages/database/**`, `packages/testkit/**`, `docker/compose.dev.yaml` (DB init only).
-- **Acceptance (Given/When/Then):**
-  - Given tenants Alpha and Beta with identical MRNs, when 200 concurrent requests alternate tenants through `withTenant`, then each returns only its own tenant's rows (AT-ISO-001).
-  - Given a transaction that throws inside `withTenant`, when the next request reuses the pooled connection without a context, then a `SELECT` returns zero rows and an `INSERT` fails (AT-ISO-002).
-  - Given `hms_app`, when it attempts `UPDATE` on `payment`, then permission is denied (AT-DB-002).
-  - Given a tenant-A child referencing a tenant-B parent, when inserted, then a FK violation occurs (AT-DB-005).
-- **Excluded:** PgBouncer (separate task if adopted).
-- **Evidence:** test output; a short note comparing the interactive-transaction approach with alternatives.
-
-### Example 2 — T-PAT-01 Register patient
+### Example 1 — T-PAT-01 Register patient
 
 - **Outcome:** a receptionist registers a new patient after reviewing duplicate candidates. The MRN is server-generated, NID is optional, and the operation is idempotent.
 - **Requirements:** FR-PAT-001, -002, -005, -006, -009, -011; FR-AUD-001; FR-I18N-003.
@@ -292,7 +278,7 @@ Questions raised:
   - Given age only, then `birth_date` is null and `birth_date_precision = YEAR_ESTIMATED` with the reported age stored (AT-PAT-006).
 - **Excluded:** merge (Q-036); final MRN format (Q-034, synthetic pattern used); extra required fields (Q-035).
 
-### Example 3 — T-BIL-04 Record payment
+### Example 2 — T-BIL-04 Record payment
 
 - **Outcome:** UC-BIL-01 and UC-BIL-02 complete through API and UI, with receipt print.
 - **Acceptance** (synthetic amounts; tests in H §5):
@@ -306,7 +292,7 @@ Questions raised:
   - MOBILE/bKash appears as MOBILE in the session totals (AT-BIL-008).
 - **Excluded:** Q-004, Q-019, Q-021, Q-022 (rejects overpayment), Q-024, Q-045.
 
-### Example 4 — T-LAB-06 Release and no-regression
+### Example 3 — T-LAB-06 Release and no-regression
 
 - **Outcome:** a lab authority releases a verified result. No read, print or navigation path changes status.
 - **Acceptance:** UC-LAB-05 scenario plus the source regression set (AT-LAB-001..005); separation rule CP-13 (AT-LAB-015); an entry-only user is denied (AT-LAB-014); the `LabResultReleased` outbox event triggers a PDF render job (AT-JOB-004).
@@ -318,7 +304,7 @@ The application repository gets an `AGENTS.md` (with a `CLAUDE.md` pointer, as i
 1. the source-of-authority order (decisions → specs → proposals)
 2. the "never invent policy" rule with the A3 link
 3. module boundaries (D §5)
-4. the `withTenant` and permission patterns, with examples
+4. the transaction and permission patterns, with examples
 5. idempotency and outbox usage
 6. money/time helpers
 7. i18n rules

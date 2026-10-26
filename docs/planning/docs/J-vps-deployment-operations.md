@@ -27,7 +27,7 @@
 | CI | Automated tests | Fresh synthetic | GitHub-hosted runners with service containers | GitHub |
 | **Staging** | Release verification, UAT rehearsal, load tests, restore drills | Synthetic, including volume seeds | The existing DigitalOcean droplet in SGP1 (2 vCPU / 4 GB / 120 GB), shared with the ecommerce app: web, api, Valkey (and worker) in Docker Compose behind host nginx; database on Supabase (ADR-019, ADR-020). Web on `healthcare.bytespate.com`, API on `healthcareapi.bytespate.com` (ADR-021) | Team; pilot testers via named accounts |
 | **UAT** (may be the same as staging during the pilot) | Department acceptance | Synthetic; de-identified only by owner approval | As staging | Pilot staff |
-| **Production** | Live hospital use | Real | T0 single VPS (start) → expansion (§13) | Hospital staff; vendor operators via the control plane; DevOps via SSH bastion |
+| **Production** | Live hospital use | Real | T0 single VPS (start) → expansion (§13) | Hospital staff; DevOps via SSH bastion |
 | **Tools** | SonarQube Community, Prometheus/Grafana/Loki, error tracking, (optional) self-hosted GitHub runner | No patient data | One small VPS, separate from production | Team |
 
 Each environment has separate credentials, secrets, buckets and DNS names. Production secrets are never used elsewhere.
@@ -42,7 +42,6 @@ Each environment has separate credentials, secrets, buckets and DNS names. Produ
 | T1 App + DB split | VPS-A: nginx, web, api, worker, renderer, Valkey. VPS-B: PostgreSQL (private network). | Isolates DB I/O; independent sizing; still single points of failure | When the DB competes with app CPU/RAM, or at the M §8 triggers |
 | T2 T1 + streaming replica | Hot standby on VPS-C (async streaming replication); used for reporting reads and manual failover | Faster recovery (promote the standby: minutes, plus DNS/config switch) | When RTO < restore time, or reporting load grows |
 | T3 Multiple app nodes | 2+ app VPSs behind a load balancer (provider LB or nginx/HAProxy pair); Valkey separate; PostgreSQL primary + standby | Survives an app node loss; zero-downtime deploys | Higher availability needs; more concurrent users |
-| T4 Dedicated placements | Large customers get their own database or stack (DEF-005) | Per-customer isolation and scaling | Contractual or capacity need |
 
 ```mermaid
 flowchart TB
@@ -166,10 +165,8 @@ These are **starting points for load testing**, derived from typical memory need
 3. Start PostgreSQL. Run the reconciliation queries (D §9.5) and `prisma migrate status`.
 4. Deploy the matching app images. Point a temporary DNS name at the host.
 5. Sync object storage, or point at the bucket.
-6. Smoke-test: log in, open patients, print a released report, verify invoice totals against a pre-drill snapshot of counts and totals per tenant.
+6. Smoke-test: log in, open patients, print a released report, verify invoice totals against a pre-drill snapshot of counts and totals.
 7. Record timings (RTO measured) and data loss (RPO measured), problems found and fixes. Store the record as gate evidence.
-
-**Per-tenant recovery:** see [E §11](E-database-design.md#11-migration-backfill-synthetic-seeds-export-backup-and-recovery). Never roll back the shared database for one tenant.
 
 ## 9. Releases, migrations, rollback limits and forward fixes
 
@@ -194,7 +191,7 @@ These are **starting points for load testing**, derived from typical memory need
    2. run the one-off `migrate` container (`prisma migrate deploy` + SQL migrations) as `hms_migrator`
    3. if it fails, stop: no app change, and follow RB-02
    4. recreate `api` (with two replicas, nginx `proxy_next_upstream` retries on the other one; with a single replica, as on staging, expect a few seconds of 502), then `worker` (graceful SIGTERM), then `web`
-5. **Verify:** health checks green, smoke tests (log in as the synthetic monitor tenant, read a patient, issue and void nothing), dashboards normal for 30 minutes.
+5. **Verify:** health checks green, smoke tests (log in as the synthetic monitor account, read a patient, issue and void nothing), dashboards normal for 30 minutes.
 6. **Record:** release digest, migration IDs, time, operator. Update the status page or hospital notice.
 
 ### 9.2 Migration ordering
@@ -212,11 +209,11 @@ These are **starting points for load testing**, derived from typical memory need
 | Bad migration that failed midway | The transactional migration rolled back; fix and re-run | Partial non-transactional steps (e.g., concurrent index) may need manual cleanup |
 | Contract migration already applied | **Forward fix only** (new release) | Re-adding dropped data without a restore |
 | New version posted wrong money or stock | Stop the faulty command (feature flag or hotfix). Identify affected records via audit/outbox. Correct through **correction records** (reversal, adjustment, amendment). Reconcile. | Deleting or editing posted facts (C-029) |
-| Data corruption discovered late | Restore to staging at a point in time, compare, and apply reviewed corrections in production | Rolling the shared production database back for one tenant |
+| Data corruption discovered late | Restore to staging at a point in time, compare, and apply reviewed corrections in production | Rolling the whole production database back |
 
 ### 9.4 Reconciliation after incidents
 
-After any incident touching money, stock or results, run the reconciliation jobs (D §9.5) for the affected period and tenants. Compare paper downtime records with system entries. Finance and the department leads sign off the reconciliation report.
+After any incident touching money, stock or results, run the reconciliation jobs (D §9.5) for the affected period. Compare paper downtime records with system entries. Finance and the department leads sign off the reconciliation report.
 
 ## 10. Health checks, monitoring, logging and alerting
 
@@ -251,7 +248,7 @@ Docker health checks use these endpoints. nginx marks a failing api upstream wit
 | Reconciliation mismatch | Any nightly check fails | Page (business hours) | RB-14 |
 
 **Logging:**
-- JSON logs with `correlationId` and `tenantId`. Patient content is redacted (FR-AUD-006).
+- JSON logs with `correlationId`. Patient content is redacted (FR-AUD-006).
 - Log retention is separate from audit retention.
 - Dashboards: request rates/latency by route, DB, queues/outbox, business KPIs (payments/hour, released reports/hour) for anomaly spotting.
 
@@ -301,12 +298,11 @@ Each runbook has: trigger, impact, first actions (≤ 5 minutes), diagnosis, res
 Triggers are defined in [M §8](M-capacity-performance.md#8-bottleneck-detection-and-expansion-triggers). Suggested order:
 
 1. **Vertical scaling** of the T0 VPS (more vCPU/RAM, faster disk). Quickest. Requires a reboot window.
-2. **T1:** move PostgreSQL to its own VPS on a private network. Tune `max_connections`. Add PgBouncer (transaction mode) if connection counts grow (compatible with transaction-local tenant context; D §6.2).
-3. **T2:** streaming replica for reporting reads (`hms_readonly` with RLS) and as a promotable standby. A documented failover runbook (promote, repoint `DATABASE_URL`, fence the old primary).
+2. **T1:** move PostgreSQL to its own VPS on a private network. Tune `max_connections`. Add PgBouncer (transaction mode), if connection counts grow.
+3. **T2:** streaming replica for reporting reads (`hms_readonly`) and as a promotable standby. A documented failover runbook (promote, repoint `DATABASE_URL`, fence the old primary).
 4. **T3:** two or more app VPSs behind a load balancer. Workers scale separately. Redis on its own small VPS. Shared object storage already in place.
 5. **Partitioning and archival** of large tables (audit, outbox, print events, later stock movements).
-6. **Tenant placement:** move the largest tenants to dedicated databases or stacks (DEF-005). This is a data copy thanks to `tenant_id` everywhere (D §6.3).
-7. Orchestrator (Swarm/Nomad/Kubernetes) only when the number of hosts makes Compose management error-prone.
+6. Orchestrator (Swarm/Nomad/Kubernetes) only when the number of hosts makes Compose management error-prone.
 
 ## 14. Host security and maintenance checklist
 

@@ -32,7 +32,6 @@ Payroll and tax have statutory dimensions, which are deferred (DEF-001). Inventi
 | FR-FIN-003 | Finance users shall search transactions (payments, refunds when enabled, corrections) by date, method, cashier, patient, invoice and reference. They shall view a patient's or client's bill and payment history. | SOURCE-DERIVED | T | SRC-B07 |
 | FR-FIN-004 | General ledger posting in-product, **or** export of billing summaries to an external accounting system. | OPEN (Q-029). **GAP.** | — | v0.3 FINANCE_HR |
 | FR-FIN-005 | Period close and locking. | OPEN (Q-029). **GAP.** | — | v0.3 FINANCE_HR |
-| FR-FIN-006 | Patient accounting (billing) remains separate from SaaS subscription revenue (DEF-006). | CONFIRMED | I | v0.3 FINANCIAL_RULES |
 | FR-HR-001 | Employee master: personal details, job title, department, employment dates, contact; optional link to a user and a practitioner record. | SOURCE-DERIVED | T | SRC-H01 |
 | FR-HR-002 | Employee data access (`hr.employee.view` / `.manage`) shall be separate from clinical privileges. An HR officer does not gain patient access, and a doctor does not gain HR access. | CONFIRMED principle (v0.3) | T | v0.3 FINANCE_HR |
 | FR-HR-003 | Attendance capture (devices, manual entry, rosters). | OPEN (Q-030). **GAP.** | — | SRC-H01 |

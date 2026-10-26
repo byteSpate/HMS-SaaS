@@ -33,7 +33,6 @@ Staging mirrors production on a smaller VPS with synthetic data.
 2. Add a streaming replica (standby + read reports).
 3. Run the app on two VPSs behind a load balancer.
 4. Separate Redis.
-5. Database-per-tenant or dedicated deployments for large customers (DEF-005).
 
 ## Alternatives
 

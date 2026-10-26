@@ -79,7 +79,7 @@ Admission desk (receptionist), doctor, ward nurse / ward in-charge, housekeeping
   3. Optionally allocate a bed immediately (UC-IPD-02).
   4. Print the admission form.
 - **Alternative paths:** A1: no bed is available → the admission stays `AWAITING_BED` and appears on the "Awaiting bed" list with waiting time.
-- **Denied paths:** D1: the patient already has an active admission in the tenant → `INVALID_TRANSITION` (one active admission per patient; PROPOSED fixed rule).
+- **Denied paths:** D1: the patient already has an active admission → `INVALID_TRANSITION` (one active admission per patient; PROPOSED fixed rule).
 - **Requirements:** FR-IPD-001, FR-IPD-004.
 
 ### UC-IPD-02 Allocate a bed
@@ -152,7 +152,7 @@ sequenceDiagram
   participant API as NestJS IPD module
   participant DB as PostgreSQL
   N->>API: TransferBed(admission A, to bed B2, expectedVersion, key)
-  API->>DB: BEGIN, then set tenant context
+  API->>DB: BEGIN
   API->>DB: UPDATE bed_occupancy SET period = [start, t) WHERE admission=A AND active
   API->>DB: INSERT bed_occupancy(A, B2, [t, ∞))  -- exclusion constraint checks B2 free
   API->>DB: UPDATE bed B1 → NEEDS_CLEANING, then bed B2 → OCCUPIED

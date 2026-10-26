@@ -13,9 +13,9 @@
 
 ## Decision
 
-`bed_occupancy(tenant_id, id, admission_id, bed_id, kind PRIMARY|EXTRA, period tstzrange '[)')` with:
-- `EXCLUDE USING gist (tenant_id WITH =, bed_id WITH =, period WITH &&)`: no overlapping occupancy of a bed
-- `EXCLUDE USING gist (tenant_id WITH =, admission_id WITH =, period WITH &&) WHERE (kind = 'PRIMARY')`: one primary bed per admission at a time
+`bed_occupancy(id, admission_id, bed_id, kind PRIMARY|EXTRA, period tstzrange '[)')` with:
+- `EXCLUDE USING gist (bed_id WITH =, period WITH &&)`: no overlapping occupancy of a bed
+- `EXCLUDE USING gist (admission_id WITH =, period WITH &&) WHERE (kind = 'PRIMARY')`: one primary bed per admission at a time
 - an open-ended upper bound for current occupancy (`[start,)`)
 - transfer = close + open at the same instant in one transaction
 

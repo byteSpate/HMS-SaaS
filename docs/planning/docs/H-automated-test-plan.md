@@ -11,13 +11,12 @@
 
 ## 1. Principles
 
-1. **Test behavior the hospital cares about**: money totals, permissions, states, isolation. Tests do not restate implementation.
-2. **Real PostgreSQL 18** for anything involving constraints, RLS, transactions or concurrency. No in-memory substitutes for the database.
-3. **Synthetic data only.** Every multi-record test uses at least two tenants with overlapping identifiers (v0.3 AGENTS).
-4. **Every state-changing command has five kinds of tests:**
+1. **Test behavior the hospital cares about**: money totals, permissions, states. Tests do not restate implementation.
+2. **Real PostgreSQL 17** (ADR-019) for anything involving constraints, grants, transactions or concurrency. No in-memory substitutes for the database.
+3. **Synthetic data only.** Fixtures describe one fictional hospital (v0.3 AGENTS).
+4. **Every state-changing command has four kinds of tests:**
    - positive
    - permission-denied
-   - cross-tenant
    - duplicate/idempotent
    - stale/concurrent (where relevant)
 5. **Determinism**: fixed clock per test (facility timezone Asia/Dhaka), seeded IDs where readability helps, and no dependence on test order.
@@ -29,8 +28,8 @@
 | --- | --- | --- | --- | --- | --- |
 | Static | Format, lint (incl. SonarJS rules), typecheck, boundaries, i18n catalog check, OpenAPI drift | Prettier, ESLint 10 + eslint-plugin-sonarjs, `tsc`, dependency-cruiser, custom scripts | Every PR | Fast feedback; compensates for Sonar main-only (ADR-012) | Biome (no SonarJS plugin) |
 | Unit | Pure domain rules: money, allocation validation, eligibility evaluation, state machines, phone normalization, duplicate scoring, formatters | **Jest 30** (supplied; ADR-013) | Every PR (affected) | Supplied foundation | Vitest by decision (Q-054) |
-| PostgreSQL integration | Repositories, constraints, RLS, roles, migrations, transactions, concurrency | Jest + real PostgreSQL 18 (GitHub Actions service container in CI; Compose locally). Testcontainers optional. | Every PR touching `packages/database` or `mod-*` infrastructure | Proves the database invariants (E §13 probes become automated tests) | — |
-| API | HTTP contract, auth, CSRF, permission denial, tenant isolation, idempotency, error mapping | Jest + **Supertest** against the Nest app with a real DB | Every PR (affected) | Exercises guards, pipes, interceptors end-to-end | — |
+| PostgreSQL integration | Repositories, constraints, roles, migrations, transactions, concurrency | Jest + real PostgreSQL 18 (GitHub Actions service container in CI; Compose locally). Testcontainers optional. | Every PR touching `packages/database` or `mod-*` infrastructure | Proves the database invariants (E §13 probes become automated tests) | — |
+| API | HTTP contract, auth, CSRF, permission denial, idempotency, error mapping | Jest + **Supertest** against the Nest app with a real DB | Every PR (affected) | Exercises guards, pipes, interceptors end-to-end | — |
 | Contract | Zod ↔ OpenAPI drift; response validation; event schema compatibility | Custom scripts + schema diff | Every PR | Parallel UI/API agents depend on frozen contracts (ADR-005) | Pact (heavier; unnecessary within one monorepo) |
 | Browser E2E | Staff journeys, keyboard-only flows, language switch, committed-state display, uncertain outcomes | **Playwright** (PROPOSED) + `@axe-core/playwright` | PR (affected journeys, Chromium); nightly (Chromium + Firefox, full) | Multi-browser, trace viewer for agent debugging, axe integration | Cypress |
 | Visual / print views | Print-view HTML snapshots for receipts, reports and labels in bn/en | Playwright screenshots with a threshold (fonts self-hosted) | Nightly + on template changes | Catches layout/shaping regressions early. **Does not replace printer UAT.** | — |
@@ -57,15 +56,13 @@
 - Object storage: a bucket prefix per run, cleaned after.
 - **Clock:** an injected `Clock` (domain-kernel) fixed per test. Facility timezone tests cover midnight Asia/Dhaka boundaries (AT-TIME-*).
 
-## 4. Permission denial and cross-tenant isolation
+## 4. Permission denial
 
 **Approach:** a generated **permission matrix test**.
 - For every command endpoint in the contracts catalogue, call it as a user **lacking** the required permission and expect `403 PERMISSION_DENIED`, an audit event for sensitive actions, and no state change.
-- Call it with a user who **has** the permission but belongs to tenant B, targeting tenant A's record, and expect `404 NOT_FOUND` and no change.
+- Where a record carries `facility_id`, call it with a user whose membership excludes that facility and expect `404 NOT_FOUND` and no change.
 
 This catches new endpoints that lack guards.
-
-**Isolation suite (AT-ISO-*)** runs with two tenants seeded with identical MRNs, invoice numbers, names and specimen numbers.
 
 ## 5. Financial calculations and payment allocation
 
@@ -100,13 +97,13 @@ The two-session database probes in E §13 (races C1, C2) are the seed for these 
 
 | Fixture | Content |
 | --- | --- |
-| `twoTenants()` | Alpha Hospital and Beta Clinic, one facility each; identical MRN `MRN-000123` in both; overlapping invoice and specimen numbers |
-| `roles()` | All proposed role templates (C01 §5) with one user each per tenant, plus a multi-tenant user |
+| `hospital()` | Alpha Hospital with one facility |
+| `roles()` | All proposed role templates (C01 §5) with one user each |
 | `opdVisit()` | Checked-in visit with D and S as in §5 |
 | `labCase()` | CBC order, collected specimen, entered result with range version RV-3 |
 | `ipdCase()` | Admission, beds W3-07/W4-02, running account |
 | `stockCase()` | Store, item, batch with 5 units, expired batch |
-| `volume(seed, sizes)` | Deterministic generator for load tests (e.g., 1M patients, 5M visits per large tenant) |
+| `volume(seed, sizes)` | Deterministic generator for load tests (e.g., 1M patients, 5M visits for a large hospital) |
 
 Names, phones and NIDs are clearly synthetic (e.g., phone prefix `01700000…`). No real records ever appear in fixtures, prompts or logs.
 
@@ -114,7 +111,6 @@ Names, phones and NIDs are clearly synthetic (e.g., phone prefix `01700000…`).
 
 | Test | What |
 | --- | --- |
-| AT-DB-001 | RLS coverage query (E §6.3) returns no rows after all migrations |
 | AT-DB-006 (migration) | Apply all migrations to an empty DB; `prisma migrate diff` between the schema and the DB shows no drift |
 | AT-DB-007 (migration) | **Upgrade with data:** restore the previous release's seeded snapshot, apply the new migrations, and run the smoke API tests from both the old and the new app version against it (expand/contract compatibility) |
 | AT-DB-008 (migration) | Backfill jobs are resumable: kill mid-run, restart, verify no duplicates and complete coverage |
@@ -138,11 +134,11 @@ Names, phones and NIDs are clearly synthetic (e.g., phone prefix `01700000…`).
 ## 11. Security tests (selected)
 
 - CSRF: a state-changing request without or with a wrong `X-CSRF-Token` → 403.
-- Session fixation: the session ID rotates at login and tenant switch.
+- Session fixation: the session ID rotates at login.
 - Cookie flags: `HttpOnly`, `Secure`, `SameSite`.
 - Brute force: lockout and rate limit (AT-ACC-006/007).
 - Injection: free-text fields with SQL/HTML payloads are stored verbatim and rendered escaped.
-- Export/file access: presigned URL expiry; another tenant's object key → 404.
+- Export/file access: presigned URL expiry; an object key the user may not read → 404.
 - Log redaction: NID, cookie and password are absent from logs (T-PLT-06).
 - Next.js: no Server Actions in `apps/web` outside the allow-list (lint).
 
@@ -155,7 +151,7 @@ AT-LAB-001..005 encode the source complaints SRC-L12..L15 as permanent regressio
 | Pipeline stage | Tests | Evidence stored |
 | --- | --- | --- |
 | PR: static | Lint, typecheck, boundaries, i18n, contract drift | Logs |
-| PR: unit + integration + API (affected packages via `turbo --affected`) | AT-* for touched modules + **always** AT-ISO-001..012, AT-DB-001 | JUnit XML, LCOV, test DB logs |
+| PR: unit + integration + API (affected packages via `turbo --affected`) | AT-* for touched modules + **always** the permission matrix (§4) | JUnit XML, LCOV, test DB logs |
 | PR: E2E (affected journeys, Chromium) | AT-E2E-*, AT-I18N-* | Playwright HTML report, traces on failure |
 | PR: migration | AT-DB-006, -007 when migrations change | Logs |
 | main | Full unit/integration/API + Sonar analysis | Sonar dashboard link, coverage |
@@ -179,23 +175,8 @@ Layer key:
 
 | ID | Req. | Layer | Scenario → expected |
 | --- | --- | --- | --- |
-| AT-ISO-001 | NFR-ISO-001, FR-SAA-001 | I,C | 200 concurrent `withTenant` calls alternating Alpha/Beta → each sees only its own rows |
-| AT-ISO-002 | NFR-ISO-001 | I | Error inside a transaction, then a context-less query on the reused connection → 0 rows; insert fails |
-| AT-ISO-003 | NFR-ISO-001 | A | Beta user GETs Alpha patient ID → 404, no existence hint |
-| AT-ISO-004 | NFR-ISO-001 | A | Beta user POSTs a payment to an Alpha invoice → 404, no change |
-| AT-ISO-005 | NFR-ISO-001 | A | Search MRN-000123 as Alpha and as Beta → one different result each |
-| AT-ISO-006 | NFR-ISO-001 | J | Job payload with Alpha tenant processes only Alpha data; tampered tenant ID → no rows / failure |
-| AT-ISO-007 | NFR-ISO-001 | I | Cache keys include tenant; Alpha cache entry never served to Beta |
-| AT-ISO-008 | FR-REP-004 | A | Alpha export file contains only Alpha rows; Beta presigned URL request for Alpha object → 404 |
-| AT-ISO-009 | NFR-ISO-001 | A | Permission matrix generator: every command denies wrong tenant (§4) |
-| AT-ISO-010 | NFR-ISO-001 | I | `hms_relay`/`hms_control` cannot read business tables (E probes P23/P24 automated) |
-| AT-ISO-011 | FR-ACC-002 | E | Switch tenant in UI → client caches cleared, no Alpha data visible in Beta session |
-| AT-ISO-012 | NFR-ISO-001 | I | Logs/audit queries scoped; audit search as Beta never returns Alpha events |
-| AT-SAA-001 | FR-SAA-002 | A | Provisioning retried with the same key → one tenant; a failed step resumes |
-| AT-SAA-002 | FR-SAA-004 | A | Entitled module but missing permission → 403; permission but no entitlement → 403 `ENTITLEMENT_MISSING` |
 | AT-ACC-001 | FR-ACC-001 | A | Valid login → session cookie (HttpOnly, Secure, SameSite), audit `auth.login.succeeded` |
 | AT-ACC-002 | FR-ACC-001 | A | Wrong password → generic error, counter +1, audit failed |
-| AT-ACC-003 | FR-ACC-002 | A | Multi-tenant user must select a membership; requests before selection → 403 |
 | AT-ACC-004 | FR-ACC-009 | S | State-changing request without the CSRF token → 403 |
 | AT-ACC-005 | FR-ACC-005 | A,E | Expired session → 401; re-login succeeds without admin; form data retained (E) |
 | AT-ACC-006 | FR-ACC-004 | A | N failures → `ACCOUNT_LOCKED` with unlock time; reason visible to admin API |
@@ -208,14 +189,11 @@ Layer key:
 | AT-AUD-002 | FR-AUD-002 | A | Denied sensitive attempt audited with code |
 | AT-AUD-003 | FR-AUD-003 | A | NID reveal and export audited |
 | AT-AUD-004 | FR-AUD-004 | I | `hms_app` UPDATE/DELETE on `audit_event` → denied |
-| AT-AUD-005 | FR-AUD-005 | A | Audit search filters work; paginated; tenant-scoped |
+| AT-AUD-005 | FR-AUD-005 | A | Audit search filters work; paginated |
 | AT-AUD-006 | FR-AUD-006 | S | Log capture during registration/payment contains no NID, name+clinical text, cookie or password |
 | AT-CFG-001 | FR-CFG-002 | A | Publish a future-effective price list → old price used until the effective time, new after (fixed clock) |
-| AT-CFG-002 | FR-SAA-005 | I | Charge keeps `price_list_version_id`; republishing does not change existing charges |
+| AT-CFG-002 | FR-CFG-004 | I | Charge keeps `price_list_version_id`; republishing does not change existing charges |
 | AT-CFG-003 | FR-CFG-002 | A | Publishing with a past effective time → 422; audit of the successful publish |
-| AT-SUP-001 | FR-SUP-001 | A | Vendor without a grant → cannot read patient |
-| AT-SUP-002 | FR-SUP-001 | A | Approved grant → read-only access, every read audited with grant ID; writes denied |
-| AT-SUP-003 | FR-SUP-001 | A | Revoked/expired grant → access ends at the next request |
 | AT-I18N-001 | FR-I18N-001 | E | Switch language mid-form → labels change, input preserved, preference persisted |
 | AT-I18N-002 | FR-I18N-002 | U | Catalog check fails on a missing `bn-BD` key |
 | AT-I18N-003 | FR-I18N-003 | I | Bangla name search matches NFC/NFD variants of the same text |
@@ -234,11 +212,9 @@ Layer key:
 | AT-JOB-004 | FR-PRN-006 | J | `LabResultReleased` → PDF rendered once, stored with hash; retry after renderer failure succeeds |
 | AT-JOB-005 | ADR-006 | J | Poison job → `UnrecoverableError`, kept in the failed set, alert metric incremented |
 | AT-JOB-006 | NFR-REL-002 | J | SIGTERM during a job → completes or retries; no duplicate side effect |
-| AT-DB-001 | NFR-ISO-001 | I | RLS coverage query returns no tables |
 | AT-DB-002 | ADR-009 | I | `hms_app` UPDATE on payment/charge/result_version/stock_movement → denied |
 | AT-DB-003 | FR-IPD-007 | I,C | Exclusion constraint race on the same bed (E race C1) |
 | AT-DB-004 | FR-INV-003 | I,C | Concurrent decrement below zero rejected (`stock_balance_non_negative`) |
-| AT-DB-005 | NFR-ISO-001 | I | Composite FK prevents a cross-tenant parent reference |
 
 ### 14.2 Patients, scheduling, visits
 
@@ -388,7 +364,7 @@ Layer key:
 | AT-REP-002 | FR-REP-002 | A | Method breakdown incl. provider label; corrections in a separate section |
 | AT-REP-003 | FR-REP-003 | A | Invoice register reconciles with collections for the period |
 | AT-REP-004 | FR-REP-009 | A | Reports from read models show the "as of" timestamp |
-| AT-REP-005 | FR-REP-004 | A | Export requires `report.export`; audited; tenant-scoped file |
+| AT-REP-005 | FR-REP-004 | A | Export requires `report.export`; audited |
 | AT-REP-006 | FR-REP-005 | J | Large report runs as a job; notification and download link |
 | AT-PRN-001 | FR-PRN-001 | E | Preview HTML equals the print HTML for the same record/template version |
 | AT-PRN-002 | FR-PRN-002 | A | Print/preview creates a print event and changes no status |

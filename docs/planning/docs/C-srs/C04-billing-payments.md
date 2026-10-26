@@ -25,7 +25,6 @@ Other modules **request** charges through billing's interface. They never write 
 
 **Out of scope:**
 - the hospital general ledger (C12, Q-029)
-- SaaS subscription invoices (DEF-006)
 - tax (AS-014)
 
 ## 2. Actors
@@ -49,8 +48,8 @@ Cashier, receptionist (invoice issue if Q-039 allows), billing supervisor, finan
 | FR-BIL-003 | A service shall start only when its invoice line is **eligible** under the policy version in force: fully paid (`FULL_PAYMENT`), or a permitted deposit rule satisfied (`DEPOSIT`, OPEN), or an authorized exception (`EXCEPTION`, OPEN). Eligibility is evaluated on the server at the moment of `StartService`. | CONFIRMED (deposit and exception values OPEN: Q-004, Q-005) | T | C-011 |
 | FR-BIL-004 | Each payment shall store the actual method (`CASH`, `CARD`, `MOBILE`, `BANK_TRANSFER`), an optional provider label (e.g., "bKash"), an optional external reference, and the amount. Reports always show the stored method. | CONFIRMED | T | C-010, SRC-B04 |
 | FR-BIL-005 | Discounts, refunds and corrections shall be authorized, audited, linked to the original records and reconcile in all reports. | CONFIRMED principle (SRC); each feature OPEN | T | SRC-O03, SRC-B02 |
-| FR-BIL-006 | A charge shall carry a unique source posting reference `(tenant, source_module, source_type, source_id, source_event)`. A repeated posting of the same reference shall return the existing charge and create nothing new. | SOURCE-DERIVED (adopted as fixed rule FPR-09) | T | SRC-B06 |
-| FR-BIL-007 | Issuing an invoice or adding a line requires `billing.invoice.issue`, or happens automatically through the charge interface. The **price comes from the server** (price list version in force at the charge's service time). Client-supplied prices are ignored. | CONFIRMED (GP-8); who issues OPEN (Q-039) | T | v0.3 API_CONTRACTS |
+| FR-BIL-006 | A charge shall carry a unique source posting reference `(source_module, source_type, source_id, source_event)`. A repeated posting of the same reference shall return the existing charge and create nothing new. | SOURCE-DERIVED (adopted as fixed rule FPR-09) | T | SRC-B06 |
+| FR-BIL-007 | Issuing an invoice or adding a line requires `billing.invoice.issue`, or happens automatically through the charge interface. The **price comes from the server** (price list version in force at the charge's service time). Client-supplied prices are ignored. | CONFIRMED (GP-6); who issues OPEN (Q-039) | T | v0.3 API_CONTRACTS |
 | FR-BIL-008 | Invoice status shall be derived from its lines and allocations:<br>• `ISSUED` (balance = total > 0)<br>• `PARTIALLY_PAID`<br>• `PAID` (balance = 0, total > 0)<br>• `CANCELLED` (all lines cancelled before any allocation)<br>A `PAID` service invoice returns to `PARTIALLY_PAID` when a new line is added. | PROPOSED | T | — |
 | FR-BIL-009 | New orders on the same OPD visit shall add lines to that visit's existing service invoice. If none exists, it is created. Previously eligible lines stay eligible. | CONFIRMED consequence of C-008 | T | C-008 |
 | FR-BIL-010 | For an `OPD_CONSULTATION` visit, the doctor-fee invoice shall be issued automatically at visit creation/check-in from the practitioner's fee in the price list (`DOCTOR_FEE` item). If no fee is configured, the visit is created and the missing fee is reported (`POLICY_NOT_CONFIGURED`). | PROPOSED timing; fee rules OPEN (Q-038) | T | C-008, Q-038 |
@@ -86,7 +85,7 @@ Cashier, receptionist (invoice issue if Q-039 allows), billing supervisor, finan
 ### UC-BIL-01 Record payment for the doctor-fee invoice (cashier)
 
 - **Actor / permission:** cashier (`billing.payment.record`) with an open cashier session.
-- **Preconditions:** invoice D is `ISSUED` or `PARTIALLY_PAID` in the tenant; the cashier session is `OPEN`.
+- **Preconditions:** invoice D is `ISSUED` or `PARTIALLY_PAID`; the cashier session is `OPEN`.
 - **Inputs:**
   - invoice ID and expected invoice version
   - method, amount, provider label/reference (optional)
@@ -184,7 +183,7 @@ Cashier, receptionist (invoice issue if Q-039 allows), billing supervisor, finan
 
 ## 7. Fixed rules versus configurable policy
 
-| Fixed (product) | Configurable (tenant) |
+| Fixed (product) | Configurable (hospital) |
 | --- | --- |
 | D and S separate; independent balances (FPR-03) | Price lists and doctor fees (CP-05) |
 | Server-side pricing and eligibility | Eligibility rule per service (CP-02) |
@@ -235,7 +234,7 @@ Scenario: Method is kept in reports (FR-BIL-004)
   Then the payment appears under MOBILE (bKash) and not under CASH
 
 Scenario: Retried charge posting creates one line (FR-BIL-006)
-  Given OT posts charge sourceRef (tenant, OT, procedure, P-77, COMPLETED)
+  Given OT posts charge sourceRef (OT, procedure, P-77, COMPLETED)
   When the same posting is delivered again by the worker
   Then the running account has one line for P-77
 

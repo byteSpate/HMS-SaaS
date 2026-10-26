@@ -34,29 +34,26 @@
 | Context packet | The bounded set of documents and facts given to a coding agent for one task ([G §5](G-implementation-plan.md#5-context-packet-for-each-agent-task)). |
 | Integrator | The single role that owns shared files: Prisma schema, migrations, lockfile, `packages/contracts`, permission catalogue. |
 
-## 3. SaaS and organization terms
+## 3. Organization terms
 
 | Term | Code name | Meaning | Proposed Bangla label |
 | --- | --- | --- | --- |
-| Tenant / customer organization | `tenant` | The hospital organization that subscribes to the product. All its data is isolated from other tenants. | প্রতিষ্ঠান |
-| Facility | `facility` | A physical care location under a tenant. Initially exactly one per tenant (C-024). | হাসপাতাল শাখা / ফ্যাসিলিটি |
+| Hospital | `hospital` | The customer hospital that owns this installation. One installation serves one hospital (C-089, ADR-023). | হাসপাতাল |
+| Facility / branch | `facility` | A physical care location of the hospital. Initially one; more branches come later (DEF-002). | হাসপাতাল শাখা / ফ্যাসিলিটি |
 | Department | `department` | An operational unit, e.g. laboratory, emergency, cardiology OPD. | বিভাগ |
 | Legal entity | `legal_entity` | An accounting entity. Not modeled until the finance scope is defined (Q-029). | — |
 | User | `user` | A login identity for a person. A staff person has one user account (AS-016). | ব্যবহারকারী |
-| Membership | `membership` | A user's validated link to a tenant, with facility scope and roles. A request runs within exactly one membership. | সদস্যপদ |
-| Role | `role` | A named bundle of permissions, e.g. Cashier. Tenants may copy and adjust role templates. | ভূমিকা |
+| Membership | `membership` | A user's validated link to the hospital, with facility scope and roles. | সদস্যপদ |
+| Role | `role` | A named bundle of permissions, e.g. Cashier. The hospital may copy and adjust role templates. | ভূমিকা |
 | Permission | `permission` | An atomic right named `module.resource.action`, e.g. `billing.payment.record`. | অনুমতি |
-| Entitlement | `entitlement` | A module the tenant has purchased, e.g. LIS. It never grants a user anything (FR-SAA-004). | — (vendor-side term) |
 | Policy version | `policy_version` | An effective-dated configuration value (price list, payment eligibility, lab range). Records keep the version they used. | — |
-| Vendor operator | `vendor_operator` | A staff member of the SaaS vendor using the control plane. Has no routine patient-data access. | — |
-| Support grant | `support_grant` | A time-limited, customer-approved, audited permission for a vendor operator to view specific tenant data. | সাপোর্ট অনুমতি |
 
 ## 4. Patient, scheduling and clinical terms
 
 | Term | Code name | Meaning | Proposed Bangla label |
 | --- | --- | --- | --- |
-| Patient | `patient` | A person's identity within one tenant, retained across visits. | রোগী |
-| MRN | `mrn` | Medical record number issued by the tenant. Unique within the tenant. Format OPEN (Q-034). | এমআরএন / রোগী নম্বর |
+| Patient | `patient` | A person's identity within the hospital, retained across visits. | রোগী |
+| MRN | `mrn` | Medical record number issued by the hospital. Unique within the installation. Format OPEN (Q-034). | এমআরএন / রোগী নম্বর |
 | NID | `nid` | National ID number. Optional, restricted view (FR-PAT-007). | জাতীয় পরিচয়পত্র নম্বর |
 | Temporary identity | `patient.identity_status = TEMPORARY` | A placeholder identity for an unknown emergency patient, reconciled later. | অস্থায়ী পরিচয় |
 | Practitioner | `practitioner` | A clinician's professional identity (degree, specialty). Not the same as an employee or payroll record. | চিকিৎসক |
@@ -124,7 +121,7 @@
 | Discount | `discount` | An authorized reduction with reason and approver. Rules OPEN (Q-019). | ছাড় |
 | Refund | `refund` | Money returned to the patient. Rules OPEN (Q-021). | ফেরত |
 | Cashier session / day close | `cashier_session` | A cashier's shift from opening to closing count. Totals reconcile by method. | ক্যাশ সেশন / দিন শেষ |
-| Source posting reference | `charge.source_ref` | Unique key `(tenant, source_module, source_type, source_id, source_event)` that prevents duplicate charges. | — |
+| Source posting reference | `charge.source_ref` | Unique key `(source_module, source_type, source_id, source_event)` that prevents duplicate charges. | — |
 
 ## 7. Technical terms
 
@@ -132,8 +129,6 @@
 | --- | --- |
 | Modular monolith | One deployable API application composed of strictly bounded modules (ADR-001). |
 | Worker | A separate process running background jobs from the same codebase. |
-| RLS | PostgreSQL row-level security; a database-enforced second barrier for tenant isolation (ADR-003). |
-| Tenant context | The `app.tenant_id` (and related) settings applied transaction-locally on the database connection. |
 | Idempotency key | A client-generated unique key per user action, so retries return the original outcome instead of repeating it. |
 | Outbox | A table written in the same transaction as a business change. A relay publishes its rows to queues afterwards (ADR-006). |
 | Inbox | A table recording processed event IDs per consumer, used to discard duplicates. |
@@ -151,5 +146,3 @@
 | "Delete" (for results or bills) | "Cancel", "Reverse", "Amend" | Evidence is never deleted (C-029). |
 | "Discharged" alone | "Medically discharged", "Financially cleared", "Departed" | These are three separate events (Q-006). |
 | "Finalized" (lab) | "Released" | Until Q-009 confirms the mapping (CX-003). |
-| "Customer" for a patient | "Patient" | "Customer" means the tenant. |
-| "Admin" alone | "Hospital administrator" or "Vendor operator" | These have different powers. |

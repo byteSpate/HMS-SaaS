@@ -104,11 +104,11 @@ export interface SiteContent {
 
 Needed `packages/ui` additions (P-031): about 36 icons for departments and contact, and `buttonClassName(variant, size)` so links can look like buttons. Possible later candidates if `apps/web` needs them too: a `Container` layout and a `Card` pattern.
 
-## 8. Customer installations (C-089, supersedes shared SaaS website routing)
+## 8. Customer installations (C-089)
 
 Each purchasing hospital receives its own ERP installation and public website on its own domain. WEB-A continues to use the CareSpate demo content. Customer identity and branding remain configuration and CMS data, never hard-coded into page components.
 
-WEB-B reads the published website snapshot for the hospital configured for that installation. Shared platform subdomains and host-based selection between multiple customer hospitals are no longer required. Deployment-specific host validation and configuration will be designed during implementation; this decision changes no staging hosts or runtime code. Existing tenant identifiers, `withTenant()` and RLS safeguards stay in place until any removal is separately designed and reviewed.
+WEB-B reads the published website snapshot for the hospital configured for that installation. Each installation serves one hospital on its own domain, so the site needs no host-based hospital selection. Deployment-specific host validation and configuration will be designed during implementation; this decision changes no staging hosts or runtime code.
 
 ## 9. Security
 
@@ -137,7 +137,7 @@ flowchart LR
   ED[Hospital editor] --> WEB[apps/site CMS<br/>Website area: pages, sections,<br/>collections, media, theme, publish]
   WEB -->|admin API, session + permissions| API[apps/api]
   API --> MOD[mod-website<br/>drafts, versions, audit]
-  MOD --> DB[(PostgreSQL<br/>tenant RLS)]
+  MOD --> DB[(PostgreSQL)]
   MOD --> OBJ[(Object storage<br/>media, ADR-014)]
   API -->|on publish: revalidate paths| SITE[apps/site]
   V[Visitor] --> SITE
@@ -149,7 +149,7 @@ flowchart LR
 - **Section registry:** `apps/site` keeps a map from section type to a React component; `apps/site/src/cms` owns section editing (C-091). Adding a section type means adding a schema, a renderer and an editor form together (one task).
 - **Publish flow:** the same authorized editor changes drafts and publishes without second-person approval (C-086); "Publish" validates the whole site, writes an immutable `website_version` snapshot, records an audit event and calls the site's revalidation endpoint for the changed paths (P-037, P-041).
 - **Public read API:** `GET /api/v1/public/site` and per-collection endpoints return only the published snapshot for the installation hospital (C-089); no session, no draft data, rate limited and cacheable.
-- **Production preview (future):** the CMS in `apps/site` opens a preview with a short-lived signed token that lets it read the draft for that tenant only.
+- **Production preview (future):** the CMS in `apps/site` opens a preview with a short-lived signed token that lets it read the draft only.
 - **Doctor and price data:** read from ERP modules and merged with CMS public fields at publish time (P-042); the site never writes to the ERP.
 - **WEB-A to WEB-B switch:** only the content adapter changes from "read JSON files" to "read published snapshot" (P-026, P-040).
 

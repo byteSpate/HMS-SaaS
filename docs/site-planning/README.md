@@ -4,11 +4,11 @@
 
 This pack plans the **public, patient-facing website** that sits beside the Hospital ERP (`apps/web`). It follows the conventions of the ERP pack in [`../planning`](../planning/README.md): every statement carries a status label, IDs are stable, missing rules are not invented, and each rule has one authoritative location.
 
-The first release (**WEB-A**) is a **frontend-only site with mock data**, laid out like continental.health but built with HMS fonts, colors and components. Each customer gets its own ERP installation and website on its own domain (C-089, superseding the earlier shared SaaS direction), and hospital owners edit everything on it through a built-in CMS (C-072, WEB-B). Later releases add ERP data and transactions (booking, reports, portal).
+The first release (**WEB-A**) is a **frontend-only site with mock data**, laid out like continental.health but built with HMS fonts, colors and components. Each customer gets its own ERP installation and website on its own domain (C-089), and hospital owners edit everything on it through a built-in CMS (C-072, WEB-B). Later releases add ERP data and transactions (booking, reports, portal).
 
 **Routing:** the public website remains at the root of the site host; ERP stays under `/staff`. The CMS interface now belongs in `apps/site` and the fictional demo opens at `/cms` (`/cms/bn`, `/cms/en`), superseding the earlier `/staff/website` editor location (C-091, C-092). Production API authentication and storage are future work.
 
-Confirmed CMS decisions dated 2026-10-25 are recorded in [A, C-086..C-090](A-decisions-and-questions.md): the same person edits and publishes, ready-made sections, editable branding with selectable themes and curated fonts, ERP prices controlled by finance, and no subscription plan restrictions. The browser-only demo is implemented as T-CMS-DEMO-01; production CMS integration has not started.
+Confirmed CMS decisions dated 2026-10-25 are recorded in [A, C-086..C-090](A-decisions-and-questions.md): the same person edits and publishes, ready-made sections, editable branding with selectable themes and curated fonts, ERP prices controlled by finance, and no plan-based restrictions. The browser-only demo is implemented as T-CMS-DEMO-01; production CMS integration has not started.
 
 ## Start here
 

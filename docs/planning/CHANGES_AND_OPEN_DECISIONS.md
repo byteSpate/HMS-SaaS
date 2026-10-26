@@ -13,6 +13,7 @@ The product owner made these decisions while the repository was scaffolded. They
 | [ADR-020](docs/D2-adr/ADR-020-valkey-nginx-droplet.md) | **Valkey 9** for queues and cache; **host nginx + certbot** instead of Caddy; staging on the **existing DigitalOcean droplet (SGP1)**, shared with the ecommerce app | Redis vs Valkey choice (CX-015); Caddy | D §4, J §2–§5, K §2/§4 |
 | [ADR-021](docs/D2-adr/ADR-021-separate-web-api-origins.md) | **Separate web and API hostnames**: `healthcare.bytespate.com` (web) and `healthcareapi.bytespate.com` (API), behind Cloudflare. CORS allow-list on the API, host-only session cookie, CSRF mandatory | Single domain with `/api/*` routed by the proxy | D §4/§6.1/§7.1, J §5, K §7 |
 | [ADR-022](docs/D2-adr/ADR-022-ui-foundation.md) | **UI foundation**: visual system, in-house components, reuse rules (C-052..C-060) | The shadcn / React Aria choice of T-UI-01; ADR-017 items 3 and 5 | F section 2.3, 7.4, 12; G T-UI-01 |
+| [ADR-023](docs/D2-adr/ADR-023-single-hospital-installation.md) | **One installation per customer hospital** (2026-10-26, from site pack C-089): own deployment, database and domain; no tenant key or row-level security | ADR-003 (shared-schema tenancy) | A1, A2, B, C00, C01, D, E, G, H, I, J, M, N; tenancy and SaaS platform planning removed |
 
 **Questions answered:**
 - **Q-054** (test runner): Vitest (ADR-018).
@@ -20,8 +21,7 @@ The product owner made these decisions while the repository was scaffolded. They
 - **CX-015** (Redis vs Valkey licence): Valkey (ADR-020).
 
 **Verified in the repository** (details in [`docs/STACK_VERSIONS.md`](../STACK_VERSIONS.md) and the ADRs):
-- tenant isolation with RLS + `withTenant()` passed ADR-003 evidence items 1–4 on local PostgreSQL 17 and on Supabase's transaction pooler (T-FND-04);
-- the RLS coverage check (T-DB-02) runs in CI.
+- the first migration applies on local PostgreSQL 17 and on Supabase's transaction pooler (T-FND-04).
 
 **Phase 0 answers (2026-10-14):** the product owner answered the first-slice questions, approved ADR-001..006 and ADR-012, and ratified C-022..C-025. They are recorded as **C-031..C-051** in [A2 §2.4](docs/A2-decision-register.md#24-phase-0-answers-by-the-product-owner-2026-10-14); A3 marks each question answered. In short:
 - release **RP-A**;
@@ -46,7 +46,6 @@ Still open in RG-0: naming owners for the integrator, QA, DevOps and domain-revi
 | --- | --- | --- |
 | Make the three GitHub repositories private (C-047) | Product owner | Now |
 | Supabase plan above free (C-049) | Product owner | Any real hospital data |
-| Test whether `BYPASSRLS` roles (`hms_relay`, `hms_control`) can be created on Supabase | Integrator | T-PLT-03 |
 | Restore drill (RB-07) against Supabase backups | DevOps | RG-1 |
 | Give HMS its own registrable domain (ADR-021) | Product owner | Production (deferred: local only, C-050) |
 | Staging deployment (T-FND-05, T-OPS-01) | Deployment owner (a team member) | Deferred (C-050) |
@@ -58,7 +57,7 @@ Still open in RG-0: naming owners for the integrator, QA, DevOps and domain-revi
 - fonts TikTok Sans + Geist (English) and Noto Sans Bengali + Tiro Bangla (Bangla);
 - lakh and crore digit grouping in both languages;
 - all components built in-house behind a quality gate, with reuse enforced by layers and lint rules;
-- the Bytespate logo is the placeholder tenant logo; tenant color override comes later.
+- the Bytespate logo is the placeholder hospital logo; hospital color override comes later.
 
 **Open items from these decisions:**
 
@@ -67,7 +66,7 @@ Still open in RG-0: naming owners for the integrator, QA, DevOps and domain-revi
 | Spike checks still open: Tiro Bangla on low-resolution 1366x768 monitors, Bengali digit alignment, Geist tabular figures (border value resolved: mist-500 `#67787c`; components and keyboard contracts built, see the T-UI-01 log) | UI lead | T-UI-01 done |
 | Confirm icon family (Phosphor default, Tabler alternative) | Product owner | T-UI-01 start |
 | Vector (SVG) master of the Bytespate logo | Product owner | Print templates |
-| Tenant color override (guarded) | Product owner | When scheduled (needs SCR-23) |
+| Hospital color override (guarded) | Product owner | When scheduled (needs SCR-23) |
 | Native-speaker review of Bangla status labels (Q-050) | Native reviewer | RG-3 |
 | Permission codes in the session so the shell can filter navigation (T-ACC-02) | Integrator | First role-based screen |
 | Global handling of a 401 from any API call (expired flow) | UI lead | First data screen (T-UI-03) |
@@ -125,7 +124,7 @@ If the requester is not the product owner, the owner should ratify C-022..C-025.
 - **MinIO Community Edition** is no longer distributed as binaries/images and its repository is archived. Do not adopt it; use provider storage, SeaweedFS or Garage (ADR-014). (Secondary source; re-confirm.)
 - **Trivy GitHub Actions** were compromised in March 2026. All actions are SHA-pinned, and `pull_request_target` is avoided.
 - **Promtail** reached end of life on 2026-03-02. Use Grafana Alloy.
-- **PostgreSQL 18** has built-in `uuidv7()`. RLS, exclusion constraints, composite tenant foreign keys and append-only grants were demonstrated on a scratch 18.4 instance (24/24 probes passed, plus two concurrency races).
+- **PostgreSQL 18** has built-in `uuidv7()`. Exclusion constraints and append-only grants were demonstrated on a scratch 18.4 instance (24/24 probes passed, plus two concurrency races).
 
 ### 2.4 Contradictions found and how they are handled
 
@@ -140,7 +139,7 @@ See [A4 §2](docs/A4-assumptions-and-contradictions.md#2-contradictions-and-inco
 ## 3. Decisions needed next (priority order)
 
 1. **Q-001 release option.** Plan for RP-A (outpatient + diagnostics) unless the pilot needs inpatient on day one (RP-B). Also answer **Q-042 (pilot hospital profile)**.
-2. **RG-0 approvals:** ADR-001 (modular monolith), ADR-002 (Next.js usage), ADR-003 (tenancy/RLS), ADR-004 (auth), ADR-005 (contracts), ADR-006 (outbox/jobs, plus Redis 8 vs Valkey licence choice), ADR-012 (CI gates), ADR-013 (Jest), P-021 (version pins).
+2. **RG-0 approvals:** ADR-001 (modular monolith), ADR-002 (Next.js usage), ADR-004 (auth), ADR-005 (contracts), ADR-006 (outbox/jobs, plus Redis 8 vs Valkey licence choice), ADR-012 (CI gates), ADR-013 (Jest), P-021 (version pins).
 3. **First-slice business answers (front desk + cashier):**
    - Q-003 (roles)
    - Q-020 (rounding)
@@ -167,7 +166,7 @@ See [A4 §2](docs/A4-assumptions-and-contradictions.md#2-contradictions-and-inco
 
 | Group | Open questions |
 | --- | --- |
-| Scope and customers | Q-001 release, Q-042 pilot profile, Q-052 subscription lifecycle |
+| Scope and customers | Q-001 release, Q-042 pilot profile |
 | Roles and access | Q-003, Q-039, Q-051 |
 | Identity and scheduling | Q-034, Q-035, Q-036, Q-037, Q-038 |
 | Billing and finance | Q-004, Q-005, Q-006, Q-019, Q-020, Q-021, Q-022, Q-023, Q-024, Q-029, Q-040, Q-045, Q-061, Q-068 |
@@ -175,7 +174,7 @@ See [A4 §2](docs/A4-assumptions-and-contradictions.md#2-contradictions-and-inco
 | Inpatient, nursing, pharmacy, stock | Q-007, Q-008, Q-014, Q-015, Q-016, Q-018, Q-058, Q-060, Q-063, Q-069, Q-070 |
 | Other modules | Q-025, Q-026, Q-027, Q-028, Q-030, Q-031, Q-032, Q-033, Q-064, Q-065 |
 | Technology and operations | Q-041, Q-043, Q-044, Q-046, Q-047, Q-048, Q-049, Q-050, Q-053, Q-054, Q-055, Q-056 |
-| Deferred (not open questions) | DEF-001 government/statutory, DEF-002 multi-facility groups, DEF-003 offline mode, DEF-004 PACS, DEF-005 dedicated placements, DEF-006 subscription billing |
+| Deferred (not open questions) | DEF-001 government/statutory, DEF-002 multi-facility groups, DEF-003 offline mode, DEF-004 PACS |
 | Proposals awaiting approval | P-001..P-022 (A2 §3) |
 
 ## 5. Consistency checks run on this pack

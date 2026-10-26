@@ -27,7 +27,7 @@ jobs:
         with: { node-version: "24", cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
-      - run: echo "<<start services + seed synthetic tenants as in ci.yml e2e job>>"
+      - run: echo "<<start services + seed synthetic data as in ci.yml e2e job>>"
       - run: pnpm e2e:full -- --project=${{ matrix.browser }}
       - run: pnpm e2e:print-snapshots -- --project=${{ matrix.browser }}   # bn/en receipts, reports, labels
 

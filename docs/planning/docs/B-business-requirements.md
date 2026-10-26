@@ -41,7 +41,7 @@ Hospitals in the initial market run day-to-day work across reception, cashier de
    - Analyzer results go missing (SRC-L07).
    - Report formats drift (SRC-L02, SRC-L05).
 
-Beyond this hospital, the vendor wants **one maintained product** that many independent hospitals can subscribe to (C-001). Each hospital gets its own configuration and is strictly isolated from the others (C-029), instead of separate customized installations.
+Beyond this hospital, Bytespate wants **one maintained product** that each customer hospital receives as its own installation on its own domain (C-001, C-089). Each installation has its own configuration; there are no customer-specific code branches.
 
 ## 3. Product objectives
 
@@ -52,7 +52,7 @@ Beyond this hospital, the vendor wants **one maintained product** that many inde
 | BO-03 | **Departmental states that persist exactly as committed.** Covers lab statuses, discharge steps, bed occupancy and medicine returns. | States that do not persist. | C-014..C-016, C-019, C-029 |
 | BO-04 | **Fast, keyboard-efficient front-line work** at reception, the cashier desk, sample collection and order entry. | Slow pages, poor keyboard flow. | — (targets PROPOSED in §10) |
 | BO-05 | **Traceability and safe correction.** Every sensitive action is attributable; corrections never destroy evidence. | Lost work, disputes. | C-029 |
-| BO-06 | **Multi-hospital SaaS operation.** Onboard independent hospitals on one product with per-hospital configuration, without cross-hospital data exposure. | Vendor business model. | C-001, C-024, C-029 |
+| BO-06 | **One product, one installation per hospital.** Install and configure the same product for each customer hospital, with per-hospital configuration and no customer-specific code. | Bytespate business model. | C-001, C-024, ADR-023 |
 | BO-07 | **Operable and recoverable on VPS hosting.** Monitored, backed up, restorable and supportable. | Hospital continuity. | C-026 |
 | BO-08 | **Bilingual (Bangla/English) operation and correct printing** on the hospital's real A4/A5 and label printers. | Printing and label errors. | C-025 |
 | BO-09 | **Whole-hospital coverage over time**, delivered in dependency order without advertising incomplete modules as complete. | Breadth of hospital operations. | C-001, P-005 |
@@ -63,10 +63,10 @@ Beyond this hospital, the vendor wants **one maintained product** that many inde
 
 | Stakeholder | Interest | Notes |
 | --- | --- | --- |
-| Customer hospital (tenant) management | Revenue integrity, operational control, reports, staff accountability | Buys the subscription. Approves the hospital's configuration and policies. |
+| Customer hospital management | Revenue integrity, operational control, reports, staff accountability | Buys the product. Approves the hospital's configuration and policies. |
 | Patients and their proxies | Correct care, correct bills, timely reports, privacy | Portal access is a later, separately designed surface (Q-033). |
 | Referring doctors and B2B diagnostic clients | Report delivery, statements | Source-derived (SRC-C01). Policies OPEN (Q-031, Q-032). |
-| SaaS vendor | One maintainable product, onboarding efficiency, reliable operations | Operates the platform (AS-010). Vendor operators have no routine patient-data access. |
+| Bytespate (product owner) | One maintainable product, efficient installation, reliable operations | Runs each installation (AS-010). Bytespate staff have no routine patient-data access. |
 | Device and payment partners | Analyzer, printer, payment provider integration | Discovery OPEN (Q-045..Q-047). |
 
 ### 4.2 Hospital staff roles (users)
@@ -90,7 +90,6 @@ Role names are proposed default templates. Each hospital confirms who does what 
 | HR officer | Employee records (payroll later, Q-030). |
 | Hospital administrator | Users, roles, configuration, price lists, templates. |
 | Management viewer | Dashboards and reports, read-only. |
-| Vendor operator (not hospital staff) | Tenant provisioning, entitlement flags, service health. Patient data only through a customer-approved support grant. |
 
 ## 5. Scope
 
@@ -103,7 +102,7 @@ Status of each capability's *specification* (not its existence in the product):
 
 | Capability area | Specification status | SRS file |
 | --- | --- | --- |
-| SaaS tenancy, users, roles, audit, configuration, localization | SPECIFIED (policy values OPEN) | [C01](C-srs/C01-platform-access-audit.md) |
+| Users, roles, audit, configuration, localization | SPECIFIED (policy values OPEN) | [C01](C-srs/C01-platform-access-audit.md) |
 | Patient registration, practitioners, scheduling, check-in, visits | SPECIFIED (MRN format, required fields OPEN) | [C02](C-srs/C02-patients-scheduling.md) |
 | OPD consultation, orders, prescriptions | PARTIAL (clinical form content OPEN) | [C03](C-srs/C03-opd-clinical-orders.md) |
 | Patient billing and cashier payments | PARTIAL (deposits, discounts, refunds, rounding OPEN) | [C04](C-srs/C04-billing-payments.md) |
@@ -129,14 +128,13 @@ Status of each capability's *specification* (not its existence in the product):
 | Full PACS | DEFERRED (DEF-004) | Partner-dependent. |
 | Blood bank/transfusion, dialysis, dietary/kitchen, ambulance, asset management, insurance claims | **Not in scope until decided** | v0.3 MODULES "scope limits". They must not be advertised. |
 | Tax/VAT on patient invoices | Not modeled (AS-014) | Tax rules are deferred with government topics. |
-| SaaS subscription billing automation | DEFERRED (DEF-006) | Commercial decisions OPEN. |
 
-## 6. SaaS customer and facility model
+## 6. Customer and facility model
 
-**CONFIRMED (C-001, C-024); mechanisms PROPOSED (P-002..P-004).**
+**CONFIRMED (C-001, C-024, C-089); mechanisms PROPOSED (P-002, P-004, ADR-023).**
 
-- A **tenant** is one customer hospital organization. It initially has exactly **one facility** (C-024). The model keeps the facility level so groups can be enabled later (DEF-002).
-- Each tenant has its own:
+- Each customer hospital gets its **own installation** on its own domain. It initially has exactly **one facility** (C-024). The model keeps the facility level so groups can be enabled later (DEF-002).
+- Each installation has its own:
   - users and memberships
   - roles (copied from templates)
   - price lists
@@ -146,12 +144,8 @@ Status of each capability's *specification* (not its existence in the product):
   - lab configuration
   - language defaults
 - **One product, many configurations.** No customer-specific code branches (P-004). A hospital-specific behavior is either a configurable policy, listed in [C00 §6](C-srs/C00-srs-overview.md#6-fixed-product-rules-versus-configurable-hospital-policies), or a product change that applies to everyone.
-- **Patient identity belongs to the tenant.** The same person at two hospitals is two unrelated patients. The same MRN may exist in two tenants without any link.
-- **Entitlements versus permissions.** Purchasing the LIS module (entitlement) does not let anyone release a result. Users still need a permission (FR-SAA-004).
-- **Vendor operations are separate.** Vendor operators provision tenants and view service health. They access patient data only through a time-limited, customer-approved, audited support grant (FR-SUP-001).
-- **Commercial lifecycle** (trial, active, suspended, terminated) is OPEN (Q-052). Its rules must protect active patient care (FR-SAA-007).
 
-**Onboarding outcome (BW-14).** A new hospital is provisioned, configured and verified without vendor database edits. A retried provisioning step does not create a duplicate tenant.
+**Setup outcome (BW-14).** A new installation is configured and verified without manual database edits.
 
 ## 7. Current operational pain points (from supplied sources)
 
@@ -192,7 +186,7 @@ Detailed actors, states and paths are in the SRS. The table states the **busines
 | BW-11 | **OT booking to clearance** | OT stages and charges post once to the patient account. | SOURCE-DERIVED (Q-027) | C11 |
 | BW-12 | **Procurement and stock**: requisition → PO → approval → GRN → stock → transfer/issue | Stock quantities follow movements only; receipts are never double counted. | SOURCE-DERIVED (Q-063, Q-064) | C09 |
 | BW-13 | **Cashier session and day close** | Each cashier's collections by method reconcile with receipts and with the collection report. | SOURCE-DERIVED (SRC-B07); details in C04 | C04, C13 |
-| BW-14 | **Hospital onboarding**: provision tenant → facility → admin → entitlements → masters/prices/templates → verify → activate | A hospital can go live without vendor database edits; isolation verified. | CONFIRMED direction (C-001) | C01 |
+| BW-14 | **Hospital setup**: facility → admin → masters/prices/templates → verify → go live | A new installation can go live without manual database edits. | CONFIRMED direction (C-001) | C01 |
 | BW-15 | **Finance reconciliation and HR/payroll** | To be defined. | **GAP** (Q-029, Q-030) | C12 |
 | BW-16 | **Reports, portal and B2B delivery** | Authorized, reconciled reporting; delivery only of released reports. | PARTIAL | C13 |
 
@@ -246,7 +240,6 @@ Targets marked **PROPOSED** are suggestions to make measurement concrete. They a
 
 | ID | Measure | How measured | Target | Status |
 | --- | --- | --- | --- | --- |
-| SM-01 | Cross-tenant data exposure | Automated isolation suite on every release; incident log | Zero exposures; suite 100% pass | Requirement CONFIRMED (C-029); measurement PROPOSED |
 | SM-02 | Daily collection reconciliation | Cashier session totals by method = sum of receipts = collection report, per day | 100% of days reconcile without database edits | PROPOSED |
 | SM-03 | Duplicate financial postings from retries or repeated events | Duplicate-detection query on `charge.source_ref` and payment idempotency keys | Zero | PROPOSED |
 | SM-04 | Front-desk task time | Timed observation: returning patient search → check-in → doctor invoice issued | Median below the measured legacy baseline; numeric target set after baseline | PROPOSED |
@@ -284,7 +277,6 @@ These criteria apply to whichever release option is approved. "Accepted" means t
 | BAC-05 | A released lab report stays released through view, print and back navigation. Corrections create a visible amendment. | UAT-LAB-008..010 | Pathologist |
 | BAC-06 | A rejected sample keeps its reason, and the recollected sample is linked to it. | UAT-LAB-005 | Lab manager |
 | BAC-07 | Printed receipts, reports and labels are legible and correctly laid out in Bangla and English on the pilot's printers. | UAT-PRN-* | Pilot IT + department leads |
-| BAC-08 | A staff member from one tenant can never see or change another tenant's data through any screen, report, export or file. | AT-ISO suite + UAT-ADM-006 | Product owner |
 | BAC-09 | A restore drill on staging returns to a consistent state, and staff can continue the core workflow. | Restore record ([J RB-07](J-vps-deployment-operations.md#12-runbooks)) | Product owner + DevOps |
 | BAC-10 | *(RP-B only)* An admission can wait for a bed. Transfers keep history. A discharged bed cannot be allocated before cleaning. The final bill counts deposits exactly once. | UAT-IPD-* | IPD manager + finance |
 | BAC-11 | Every sensitive action shown in the audit view identifies who, when, what record and why (where a reason is required). | UAT-ADM-004 | Hospital administrator |
@@ -296,7 +288,6 @@ The v0.3 risk register (R-01..R-11) is carried into [N §6](N-traceability-readi
 
 - a wrong patient being selected (R-01)
 - a doctor-fee payment unlocking unpaid tests (R-02)
-- cross-tenant exposure (R-03)
 - duplicate postings (R-04)
 - an AI agent inventing unresolved policy (R-10)
 - the release scope being chosen without the pilot profile (new R-12)

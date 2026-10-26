@@ -1,33 +1,25 @@
 DRAFT VALIDATION LOG — scratch PostgreSQL instance, synthetic data
-Date: 2026-10-12   Server: PostgreSQL 18.4 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0, 64-bit
+Date: 2026-10-26   Server: PostgreSQL 17.11 (Debian 17.11-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+Setup: test-only shim CREATE FUNCTION public.uuidv7() RETURNS uuid AS 'SELECT gen_random_uuid()' (PostgreSQL 17 has no built-in uuidv7)
 Files: draft-core-schema.sql (exit 0), draft-validation-probes.sql (exit 0)
 Scope: syntax + the behaviours listed below. NOT a performance, completeness or security review.
+One database = one hospital installation (ADR-023). Probes were renumbered P01..P14 on 2026-10-26.
 
-== Single-session probes (run as SET ROLE hms_app / hms_relay / hms_control)
-NOTICE:  PASS P01 tenant A sees only its own MRN-000123
-NOTICE:  PASS P02 no tenant context -> zero rows (fail-closed)
-NOTICE:  PASS P03 insert without context rejected (new row violates row-level security policy for table "patient")
-NOTICE:  PASS P04 writing another tenant's row rejected by WITH CHECK
-NOTICE:  PASS P05 composite FK blocks cross-tenant parent reference
-NOTICE:  PASS P06 MRN unique within tenant
-NOTICE:  PASS P07 double allocation of a bed rejected (exclusion constraint)
-NOTICE:  PASS P08 transfer at the same instant is accepted (half-open intervals) and history kept
-NOTICE:  PASS P09 one primary bed per admission at a time
-NOTICE:  PASS P10 duplicate source posting reference rejected (FPR-09)
-NOTICE:  PASS P11 over-allocation of a line rejected
-NOTICE:  PASS P12 payment is append-only for hms_app
-NOTICE:  PASS P13 posted line amount cannot be edited (column grant)
-NOTICE:  PASS P14 session capacity enforced (CAPACITY_FULL)
-NOTICE:  PASS P15 transaction-local context cleared after COMMIT (setting now '', rows 0)
-NOTICE:  PASS P16 row_security=off cannot bypass RLS for hms_app (query would be affected by row-level security policy for table "patient")
-NOTICE:  PASS P17 one combined SERVICE invoice per visit (C-008)
-NOTICE:  PASS P18 user sees own memberships in both tenants before choosing one
-NOTICE:  PASS P19 one price per item per version (UNIQUE NULLS NOT DISTINCT)
-NOTICE:  PASS P20 audit_event is append-only for hms_app
-NOTICE:  PASS P21 stock cannot go negative (INSUFFICIENT_STOCK)
-NOTICE:  PASS P22 retried dispense line creates one stock movement
-NOTICE:  PASS P23 relay reads outbox across tenants but has no access to patient data
-NOTICE:  PASS P24 control plane lists tenants but cannot read patients
+== Single-session probes (run as SET ROLE hms_app)
+NOTICE:  PASS P01 MRN unique
+NOTICE:  PASS P02 double allocation of a bed rejected (exclusion constraint)
+NOTICE:  PASS P03 transfer at the same instant is accepted (half-open intervals) and history kept
+NOTICE:  PASS P04 one primary bed per admission at a time
+NOTICE:  PASS P05 duplicate source posting reference rejected (FPR-09)
+NOTICE:  PASS P06 over-allocation of a line rejected
+NOTICE:  PASS P07 payment is append-only for hms_app
+NOTICE:  PASS P08 posted line amount cannot be edited (column grant)
+NOTICE:  PASS P09 session capacity enforced (CAPACITY_FULL)
+NOTICE:  PASS P10 one combined SERVICE invoice per visit (C-008)
+NOTICE:  PASS P11 one price per item per version (UNIQUE NULLS NOT DISTINCT)
+NOTICE:  PASS P12 audit_event is append-only for hms_app
+NOTICE:  PASS P13 stock cannot go negative (INSUFFICIENT_STOCK)
+NOTICE:  PASS P14 retried dispense line creates one stock movement
 all probes finished
 
 == Two-session concurrency probes (session 2 starts while session 1 holds an open transaction)
@@ -39,6 +31,7 @@ ERROR:  conflicting key value violates exclusion constraint "bed_single_occupanc
 cashier A committed
 cashier B allocating the same 300 (should wait, then fail the check)
 ERROR:  new row for relation "invoice_line" violates check constraint "invoice_line_allocation_within_net"
+After both races: one occupancy row on W4-03, allocated_amount 300.00.
 
 Interpretation: in both races the second transaction waited for the first and then failed on the
 database constraint, so exactly one allocation succeeded. The API maps these constraint names to

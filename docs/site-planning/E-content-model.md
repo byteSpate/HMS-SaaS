@@ -144,11 +144,11 @@ Sections for admission, discharge, visiting hours, what to bring, ward and cabin
 | Department                                                | ERP department / service point master (C02, C03) | public fields only                   |
 | Doctor, schedule                                          | ERP practitioner + scheduling (C02, FR-SCH-*)    | the booking slots rule is FR-SCH-003 |
 | Test price, package                                       | ERP service catalogue and tariff (C04)           | publication rules Q-078              |
-| Branch                                                    | ERP facility (tenant facilities)                 |                                      |
+| Branch                                                    | ERP facility (the hospital's facilities)         |                                      |
 | Article, notice, guide, job                               | HMS website CMS (`mod-website`, C-072)           |                                      |
 | Site settings, theme, navigation, footer, pages, sections | HMS website CMS, published snapshot              | P-037, P-040                         |
 | Doctor public profile fields (photo, bio, interests)      | HMS website CMS, keyed by ERP practitioner ID    | P-042                                |
 
 ## 4. CMS storage (WEB-B, indicative)
 
-Tables in `mod-website`, all tenant-scoped with RLS (ADR-003): `website_site` (settings, theme, navigation as JSONB validated by the shared schemas), `website_page` (path, sections JSONB), `website_collection_item` (type, slug, data JSONB, order, archived), `website_media` (object key, mime, size, alt), `website_version` (immutable published snapshot, publisher, time), `website_form_submission`. Exact design belongs in the ERP [E](../planning/docs/E-database-design.md) when EP-32 is scheduled.
+Tables in `mod-website` (one installation, ADR-023): `website_site` (settings, theme, navigation as JSONB validated by the shared schemas), `website_page` (path, sections JSONB), `website_collection_item` (type, slug, data JSONB, order, archived), `website_media` (object key, mime, size, alt), `website_version` (immutable published snapshot, publisher, time), `website_form_submission`. Exact design belongs in the ERP [E](../planning/docs/E-database-design.md) when EP-32 is scheduled.

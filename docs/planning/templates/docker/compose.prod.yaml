@@ -74,12 +74,10 @@ services:
     <<: *app-defaults
     image: ghcr.io/<<ORG>>/hms-worker@${WORKER_DIGEST:?set by deploy}
     networks: [backend, render, egress]         # egress: object storage (and later partner APIs)
-    secrets: [db_app_password, db_relay_password, field_encryption_key, s3_access_key, s3_secret_key]
+    secrets: [db_app_password, field_encryption_key, s3_access_key, s3_secret_key]
     environment:
       DB_USER: hms_app
       DB_PASSWORD_FILE: /run/secrets/db_app_password
-      DB_RELAY_USER: hms_relay
-      DB_RELAY_PASSWORD_FILE: /run/secrets/db_relay_password
       FIELD_ENCRYPTION_KEY_FILE: /run/secrets/field_encryption_key
       S3_ACCESS_KEY_FILE: /run/secrets/s3_access_key
       S3_SECRET_KEY_FILE: /run/secrets/s3_secret_key
@@ -109,7 +107,7 @@ services:
     restart: unless-stopped
     shm_size: 1g
     networks: [backend]
-    secrets: [db_superuser_password, db_app_password, db_migrator_password, db_relay_password, db_readonly_password, pgbackrest_cipher_pass, pgbackrest_s3_key, pgbackrest_s3_secret]
+    secrets: [db_superuser_password, db_app_password, db_migrator_password, db_readonly_password, pgbackrest_cipher_pass, pgbackrest_s3_key, pgbackrest_s3_secret]
     environment:
       POSTGRES_PASSWORD_FILE: /run/secrets/db_superuser_password
       POSTGRES_DB: hms
@@ -182,7 +180,6 @@ secrets:                    # files created by ops under /opt/hms/secrets (0400,
   db_superuser_password:  { file: ./secrets/db_superuser_password }
   db_app_password:        { file: ./secrets/db_app_password }
   db_migrator_password:   { file: ./secrets/db_migrator_password }
-  db_relay_password:      { file: ./secrets/db_relay_password }
   db_readonly_password:   { file: ./secrets/db_readonly_password }
   session_secret:         { file: ./secrets/session_secret }
   csrf_secret:            { file: ./secrets/csrf_secret }

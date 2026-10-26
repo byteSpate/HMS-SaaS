@@ -1,6 +1,6 @@
 # CMS demo surface
 
-Mode: Operate. Hospital staff explore an editor with fictional content; no real account or hospital information is involved. Existing PRODUCT.md and DESIGN.md describe the visual system; C-089 and C-092 supersede their historical shared SaaS and real-data assumptions for this surface.
+Mode: Operate. Hospital staff explore an editor with fictional content; no real account or hospital information is involved. Existing PRODUCT.md and DESIGN.md describe the visual system; C-089 and C-092 supersede their earlier real-data assumptions for this surface.
 
 ## Direction contract
 

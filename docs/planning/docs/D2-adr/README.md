@@ -4,13 +4,13 @@
 | --- | --- |
 | Status | All ADRs are **PROPOSED** unless marked otherwise. Approval is recorded here and in [A2](../A2-decision-register.md). |
 | Owner role | Technical architect (proposes); tech lead / product owner (approves as named) |
-| Updated | 2026-10-14 |
+| Updated | 2026-10-26 |
 
 | ADR | Title | Decision ID | Status | Approver |
 | --- | --- | --- | --- | --- |
 | [ADR-001](ADR-001-modular-monolith.md) | Modular monolith with separate worker; package boundaries | P-001, P-004 | ACCEPTED 2026-10-14 | Tech lead |
 | [ADR-002](ADR-002-nextjs-usage.md) | How Next.js is used (no business writes in Next.js) | P-007 | ACCEPTED 2026-10-14 | Tech lead |
-| [ADR-003](ADR-003-tenancy-rls.md) | Shared-schema tenancy with composite tenant keys and RLS | P-002, P-003 | ACCEPTED 2026-10-14 | Tech lead + product owner |
+| [ADR-003](ADR-003-tenancy-rls.md) | Shared-schema tenancy with RLS | P-002, P-003 | SUPERSEDED by ADR-023 | Tech lead + product owner |
 | [ADR-004](ADR-004-authentication.md) | First-party session authentication in NestJS | P-008 | ACCEPTED 2026-10-14 | Product owner (MFA scope) + tech lead |
 | [ADR-005](ADR-005-contracts.md) | Zod-first canonical contracts; generated OpenAPI | P-009 | ACCEPTED 2026-10-14 | Tech lead |
 | [ADR-006](ADR-006-outbox-jobs.md) | Transactional outbox/inbox, idempotency, BullMQ delivery | P-010 | ACCEPTED 2026-10-14 | Tech lead; product owner for Redis/Valkey licence |
@@ -30,6 +30,7 @@
 | [ADR-020](ADR-020-valkey-nginx-droplet.md) | Valkey for queues; nginx on the existing droplet | — | ACCEPTED 2026-10-13 | Product owner |
 | [ADR-021](ADR-021-separate-web-api-origins.md) | Separate web and API origins (amends D §4, ADR-002, ADR-004) | — | ACCEPTED 2026-10-14 | Product owner |
 | [ADR-022](ADR-022-ui-foundation.md) | UI foundation: visual system, in-house components, reuse rules (amends ADR-017 items 3 and 5) | - | ACCEPTED 2026-10-15 | Product owner |
+| [ADR-023](ADR-023-single-hospital-installation.md) | One installation per customer hospital (supersedes ADR-003) | C-089 | ACCEPTED 2026-10-26 | Product owner |
 
 **ADR template:**
 - Status

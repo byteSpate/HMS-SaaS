@@ -11,8 +11,8 @@
 ## 1. Principles (PROPOSED, ADR-006)
 
 1. Adapters translate external messages into internal commands. Domain modules do not parse device protocols.
-2. Every inbound message is stored first (inbox), with source ID, tenant routing, raw payload (encrypted at rest when it contains patient data) and processing state.
-3. Processing is idempotent by `(tenant, source_system, external_message_id)`.
+2. Every inbound message is stored first (inbox), with source ID, raw payload (encrypted at rest when it contains patient data) and processing state.
+3. Processing is idempotent by `(source_system, external_message_id)`.
 4. Unmatched or invalid messages go to a **quarantine** queue for an authorized user to resolve. The system never attaches data to a guessed patient or sample.
 5. Outbound effects (gateway requests, SMS) are sent from the outbox by the worker, never inside a database transaction.
 6. Standards (HL7 v2, ASTM, FHIR, DICOM) are chosen per partner. None is assumed.
@@ -21,7 +21,7 @@
 
 | ID | Requirement | Status | Verify | Source |
 | --- | --- | --- | --- | --- |
-| FR-INT-001 | Integrations shall be implemented as versioned adapters with configuration per tenant (endpoint, credentials in the secret store, mapping version), recorded provenance, and replay tools for authorized operators. | PROPOSED | I, T | v0.3 INTEGRATIONS |
+| FR-INT-001 | Integrations shall be implemented as versioned adapters with configuration per installation (endpoint, credentials in the secret store, mapping version), recorded provenance, and replay tools for authorized operators. | PROPOSED | I, T | v0.3 INTEGRATIONS |
 | FR-INT-002 | Analyzer result import (EXL-200 Blood Urea first, then others), creating `ENTERED` result versions (never auto-released, FR-LAB-024). | SOURCE-DERIVED; protocol OPEN (Q-047) | T (simulator) | SRC-L07 |
 | FR-INT-003 | A duplicate analyzer message shall produce one result, and the duplicate shall be visible in the inbox log. | PROPOSED | T | v0.3 INTEGRATIONS |
 | FR-INT-004 | A message whose sample ID or test code does not match shall be quarantined with the reason. An authorized user can map it to the correct specimen or discard it with a reason. | PROPOSED | T | v0.3 INTEGRATIONS |
@@ -57,7 +57,7 @@ Scenario: Duplicate analyzer message (FR-INT-003)
   And the inbox shows the second message as DUPLICATE
 
 Scenario: Unknown sample is quarantined (FR-INT-004)
-  When a message arrives for sample ID "S-9999" that does not exist in the tenant
+  When a message arrives for sample ID "S-9999" that does not exist
   Then no result is created
   And the message appears in the quarantine list with reason "Unknown specimen"
 ```

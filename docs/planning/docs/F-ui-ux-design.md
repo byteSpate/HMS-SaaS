@@ -34,7 +34,7 @@
 | Pharmacy | **Pharmacy requests** | Requests · Dispense · Returns · Stock (view) |
 | Billing supervisor | **Corrections queue** | Method corrections · Final bills · Sessions |
 | Finance | **Collections** | Collection report · Sessions review · Transaction search · Exports |
-| Hospital admin | **Administration** | Users & roles · Masters · Price lists · Policies · Print templates · Audit · Support grants |
+| Hospital admin | **Administration** | Users & roles · Masters · Price lists · Policies · Print templates · Audit |
 | Management | **Dashboard** | Dashboard · Reports |
 
 A top bar shows:
@@ -74,7 +74,6 @@ The release column refers to the proposed options ([B §9](B-business-requiremen
 | SCR-22 | Administration: users, roles, memberships | ADM | FR-ACC-008 | A B C |
 | SCR-23 | Administration: masters, price list publish, policies | ADM | FR-CFG-001, -002 | A B C |
 | SCR-24 | Audit search | ADM | FR-AUD-005 | A B C |
-| SCR-25 | Support grant approvals | ADM | FR-SUP-001 | A B C |
 | SCR-26 | Management dashboard | MGT | FR-REP-007 | A B C |
 | SCR-27 | Print preview (shared) | All printing roles | FR-PRN-001..005 | A B C |
 
@@ -234,7 +233,7 @@ The Bangla labels are **PROPOSED** and need native review (Q-050). Final labels 
 - Language switch in the top bar. Applies immediately, without losing form input (FR-I18N-001).
 - `lang="bn"` / `lang="en"` set on `<html>` for correct font and screen-reader behavior.
 - Fonts (ADR-022 section 5): English heading TikTok Sans, body Geist; Bangla heading and UI text Noto Sans Bengali, Bangla body Tiro Bangla (reading text only, one weight). Self-hosted, no CDN. Body 16 px, line height >= 1.6 for Bangla.
-- Digits follow the UI language (C-036). Grouping is lakh and crore in both languages (C-057), for example 10,00,000.00, on screen and on print. Date pattern follows the tenant setting (Q-050). Stored data is unaffected.
+- Digits follow the UI language (C-036). Grouping is lakh and crore in both languages (C-057), for example 10,00,000.00, on screen and on print. Date pattern follows the hospital setting (Q-050). Stored data is unaffected.
 - Bilingual fields (names, service names) use paired inputs labeled "নাম (বাংলা)" and "Name (English)". At least one is required where the SRS says so.
 - Layouts tolerate roughly 30% longer strings. Buttons don't truncate critical words; tables wrap headers.
 
@@ -246,7 +245,7 @@ The Bangla labels are **PROPOSED** and need native review (Q-050). Final labels 
 | Loading (slow > 5 s) | Inline message with Cancel and Retry; the page stays usable | "Still loading… Retry" / "এখনও লোড হচ্ছে… আবার চেষ্টা করুন" |
 | Empty | Explain why, and the next action | "No patients waiting. New check-ins appear here automatically." / "কোনো রোগী অপেক্ষায় নেই।" |
 | Denied (permission) | Inline panel; no data shown; the request is still audited | "You don't have permission to release results. Ask a lab authority." / "ফলাফল রিলিজ করার অনুমতি আপনার নেই।" |
-| Not found / other tenant | Same as not found; no hint of existence | "Record not found." / "রেকর্ড পাওয়া যায়নি।" |
+| Not found / outside facility scope | Same as not found; no hint of existence | "Record not found." / "রেকর্ড পাওয়া যায়নি।" |
 | Validation error | Field messages + summary | see §7.1 |
 | Conflict (STALE_RECORD) | Dialog: "This record changed since you opened it", with what changed; Reload keeps the user's unsaved input in a side panel | "Someone else updated this invoice. Review the changes." |
 | Business rule (e.g., PAYMENT_NOT_ELIGIBLE) | Inline explanation with the amount due and a link to the cashier queue | "Payment required: CBC 300.00 due" / "পরিশোধ প্রয়োজন: CBC ৩০০.০০ বাকি" |

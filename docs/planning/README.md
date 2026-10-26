@@ -1,8 +1,8 @@
-# Hospital ERP SaaS — documentation set v0.4
+# Hospital ERP — documentation set v0.4
 
 **Version 0.4.0-draft · prepared 2026-10-12 · status: for review**
 
-This pack turns the v0.3 planning kit into a full documentation set for building a **whole-hospital ERP sold as SaaS** to multiple hospitals, starting in Bangladesh. AI coding agents will do most of the implementation. The product itself has no autonomous clinical AI (C-027).
+This pack turns the v0.3 planning kit into a full documentation set for building a **whole-hospital ERP**, installed separately for each customer hospital (C-089, ADR-023), starting in Bangladesh. AI coding agents will do most of the implementation. The product itself has no autonomous clinical AI (C-027).
 
 It contains documents A–N:
 - business requirements
@@ -44,7 +44,7 @@ docs/
   D-system-design.md              architecture and cross-cutting design
   D1-stack-assessment-and-versions.md
   D2-adr/                         17 architecture decision records
-  E-database-design.md            data model, PostgreSQL design, RLS, Prisma mapping
+  E-database-design.md            data model, PostgreSQL design, Prisma mapping
   F-ui-ux-design.md               navigation, flows, states, print layouts, wireframes
   G-implementation-plan.md        phases, tasks, DoR/DoD, agent workflow
   H-automated-test-plan.md        test layers and catalogue

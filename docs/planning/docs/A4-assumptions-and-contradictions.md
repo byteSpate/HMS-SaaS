@@ -18,12 +18,12 @@ An **assumption** is something this pack takes as true so drafting can continue.
 | AS-002 | Facility timezone is `Asia/Dhaka` (UTC+06:00, no daylight saving). Business dates (cash day, bed day) use the facility timezone. | v0.3 DATA/BANGLADESH notes. | E time rules; C06; tests | RG-1. A facility timezone setting exists for later markets. |
 | AS-003 | Staff work on desktop or laptop computers with current Chromium-based browsers (Chrome/Edge) or Firefox, at 1366×768 or larger. Nurses may also use tablets. | Typical hospital workstation estate. Not confirmed. | F layouts; I device tests | RG-3 (pilot device survey, Q-042/Q-046). |
 | AS-004 | Hospitals reach the cloud VPS over the internet. No offline mode (DEF-003). Outages use a paper downtime procedure. | v0.3 OPERATIONS; C-026. | J runbooks; I downtime drills | RG-3. |
-| AS-005 | One facility per tenant initially (C-024), so "MRN unique per tenant" is enough. | C-024. | E constraints | Before DEF-002 is opened. |
+| AS-005 | One facility per installation initially (C-024), so "MRN unique per installation" is enough. | C-024. | E constraints | Before DEF-002 is opened. |
 | AS-006 | The pilot hospital resembles the source hospital (Sondhany Medical): OPD, diagnostics/lab, IPD, nursing, pharmacy. | S1–S7. Not confirmed as the pilot. | B release options; M scenarios | Q-042. |
 | AS-007 | Payments in the first release are recorded manually (method + reference). No online gateway. | C-010 records methods only; Q-045 open. | C04; D gateway section designed but marked future | Q-045. |
 | AS-008 | Lab results are entered manually in the first release. Analyzer interfaces come later. | v0.3 ROADMAP note; Q-047 open. | C05; C14 | Q-047. |
 | AS-009 | Non-production environments contain **only synthetic data**. Real patient data appears only in production, or in a separately approved migration rehearsal environment. | v0.3 AGENTS. | H fixtures; J environments | Always. |
-| AS-010 | The SaaS vendor (the company operating the product) runs the VPS environments and the vendor console. Hospital IT does not have server access. | SaaS model (C-001). | J access model; C01 vendor support | RG-4 (contracts). |
+| AS-010 | Bytespate runs the server environment of each installation. Hospital IT does not have server access. | C-001, ADR-023. | J access model | RG-4 (contracts). |
 | AS-011 | Staff counts, visit volumes and growth figures in [M](M-capacity-performance.md) and the examples are **synthetic planning inputs**, not measurements. | No pilot profile yet. | M; H load tests | Q-042. |
 | AS-012 | Code, identifiers, database names and API fields are in English. Bangla appears in message catalogs, configuration data (service names, report templates) and user-entered data. | C-025 and common practice. | D, E, F | RG-1. |
 | AS-013 | The GitHub repository is private and owned by an organization account. | C-022; plan unknown. | L (gitleaks licence, environment rules) | Q-055. |
@@ -36,7 +36,7 @@ An **assumption** is something this pack takes as true so drafting can continue.
 | ID | What disagrees | Where | Resolution used in this pack | Needs confirmation by |
 | --- | --- | --- | --- | --- |
 | CX-001 | The hospital name is spelled **"Sondhany"** (S6, S7, v0.3 CONTEXT) and **"Sodhani"** (S4, S5 file names). | SOURCES | Use "Sondhany Medical" as in v0.3 CONTEXT. Source codes S4/S5 keep their original file names. | Product owner |
-| CX-002 | v0.3 MODULES.md links `modules/SAAS_ACCESS.md`, which is not in the pack. | baseline MODULES.md | SaaS/access content is consolidated in [C01](C-srs/C01-platform-access-audit.md). The baseline file is not edited. | — (resolved) |
+| CX-002 | v0.3 MODULES.md links `modules/SAAS_ACCESS.md`, which is not in the pack. | baseline MODULES.md | Access content is consolidated in [C01](C-srs/C01-platform-access-audit.md). The baseline file is not edited. | — (resolved) |
 | CX-003 | The lab vocabulary differs:<br>• sources: "prepared / verified / finalized / release"<br>• C-019: "review / release" | S4–S7, C-019, LAB spec | C-019 takes precedence (C-020). The pack models Entered → Verified → Released, with "finalized" treated as a synonym of Released **pending Q-009**. | Pathologist |
 | CX-004 | Status label "SOURCE" (v0.3) vs "SOURCE-DERIVED" (2026-10-12 brief). | v0.3 docs | Same meaning. This pack writes SOURCE-DERIVED. | — (resolved) |
 | CX-005 | Bed rent conventions conflict: noon-to-noon day vs 6 p.m. posting, plus transfer and extra-bed boundary rules. | SRC-I07 | No formula implemented. Manual bed charges in the interim (Q-007). | Finance + IPD |

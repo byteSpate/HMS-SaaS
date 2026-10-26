@@ -11,11 +11,11 @@
 
 ## 1. Why this plan is parameter-driven
 
-"100,000 users" can mean 100k accounts, 100k people using the system each day, or 100k people active at the same moment. These differ in load by roughly two orders of magnitude.
+Each customer hospital has its own installation (ADR-023), so capacity is planned **per hospital**. "100,000 users" means total registered patient records over time (C-046), which is a data-volume figure, not a load figure.
 
 Hospital load is also shaped by **staff work patterns**: morning OPD peaks, cashier queues, overnight wards. It is not shaped by anonymous web traffic. This plan therefore:
 1. defines the parameters
-2. computes worked examples for the three interpretations and for a realistic pilot
+2. computes a worked example for a medium hospital (the pilot)
 3. defines how to measure
 4. defines when to expand
 
@@ -25,7 +25,7 @@ Replace the parameters with pilot measurements (Q-042) as soon as they exist.
 
 | Symbol | Meaning | Pilot assumption | Basis |
 | --- | --- | --- | --- |
-| `H` | Number of customer hospitals | 1 (pilot) | C-024 |
+| `H` | Hospitals per installation | 1 (always) | C-024, ADR-023 |
 | `S` | Staff accounts per hospital | 300 (medium) | AS-011 synthetic |
 | `d` | Daily-active share of staff accounts | 0.65 | Shift-based work |
 | `c` | Peak concurrent share of daily-active staff | 0.35 | Morning OPD overlap with ward shifts |
@@ -50,16 +50,10 @@ db_write_tps    = H × V × w × p_h / 3600
 | Scenario | Interpretation | Inputs (assumed) | Peak concurrent staff | Peak API rps | Peak write tx/s | Indicative topology |
 | --- | --- | --- | --- | --- | --- | --- |
 | **P — Pilot** | One medium hospital | H=1, S=300 | 300×0.65×0.35 ≈ **68** | 68×6/60 ≈ **7** (bursts ×3 ≈ 20) | 800×15×0.2/3600 ≈ **0.7** | T0 single VPS (J §3) with large headroom |
-| **G — Growth** | 20 hospitals of mixed size | H=20, S avg 250 | 20×250×0.65×0.35 ≈ **1,140** | ≈ **114** | 20×600×15×0.2/3600 ≈ **10** | T1/T2 (DB on its own VPS, replica for reports) |
-| **A — "100k registered accounts"** | 20,000 staff accounts (≈ 70 hospitals × 285) + 80,000 portal accounts | staff d=0.65, c=0.35; portal DAU 2%, 10% concurrent at 1 req/min | staff ≈ **4,550**; portal ≈ 160 | staff ≈ 455 + portal ≈ 3 → **≈ 460** | 70×700×15×0.2/3600 ≈ **41** | T3: several app nodes, PostgreSQL primary + standby with tuned I/O; PgBouncer; possibly tenant placement for the largest hospitals |
-| **B — "100k daily active users"** | 100,000 staff active per day (≈ 330 hospitals × 300 DAU) | c=0.35 | ≈ **35,000** | ≈ **3,500** | 330×800×15×0.2/3600 ≈ **220** | Multiple app clusters; **database partitioning by tenant across several PostgreSQL clusters** (DEF-005); push (SSE) instead of polling; dedicated reporting stores |
-| **C — "100k concurrent users"** | 100,000 staff active at the same moment (≈ 285,000 DAU; ≈ 950 hospitals of 300 DAU) | — | **100,000** | ≈ **10,000** (polling alone ≈ 5,000) | ≈ **600+** | Far beyond VPS-scale planning. Requires a different architecture review: sharded tenants across many clusters, regional deployments, event-driven worklists. **Not a planning target until Q-041 says so.** |
 
 **Interpretation of the table:**
-- The architecture (modular monolith, shared PostgreSQL, tenant IDs everywhere) is suitable for **P** and **G** on VPS infrastructure, subject to load-test evidence.
-- **A** is plausible with an expanded topology and careful tuning, **but must be proven by measurement**.
-- **B** and **C** need tenant sharding across multiple database clusters. The `tenant_id` design makes that a data-placement exercise, not a rewrite (D §6.3). It is still major work.
-- Polling cost matters. At scenario B it is about half the API load, which is the trigger for SSE (ADR-015).
+- The architecture (modular monolith, one PostgreSQL database per installation) is suitable for scenario **P** on VPS infrastructure, subject to load-test evidence.
+- A larger hospital is sized the same way with its own `S`, `V` and `w`; recompute this table before installing for it.
 
 ## 4. Load model: peak actions, polling and jobs
 
@@ -88,8 +82,6 @@ From [E §10.2](E-database-design.md#102-expected-growth-synthetic-planning-inpu
 | Scenario | DB growth / year | Backup repository (≈ 4 fulls retained + WAL) | Object storage (if all reports archived) |
 | --- | --- | --- | --- |
 | P (1 hospital) | ~8 GB | ~40–60 GB | ~85 GB |
-| G (20 hospitals, mixed) | ~120 GB | ~0.6–1 TB | ~1.3 TB |
-| A (~70 hospitals) | ~450 GB | ~2–3 TB | ~4.5 TB |
 
 **Controls:**
 - monthly partitions for `audit_event` (archive old partitions to object storage after the retention decision, Q-053)
@@ -112,7 +104,7 @@ From [E §10.2](E-database-design.md#102-expected-growth-synthetic-planning-inpu
 | T3 example | 6 api processes × 10 = 60; 3 workers × 8 = 24; reporting 4; others 10 | ≈ 98 → raise `max_connections` modestly **or** add PgBouncer (transaction mode) with server pool ≈ 40–60 |
 
 **Why the interactive transaction size matters:**
-- `withTenant` holds a connection for the whole command. Keep commands short (5 s timeout, no external I/O).
+- An interactive transaction holds a connection for the whole command. Keep commands short (5 s timeout, no external I/O).
 - Long-running reports use a **separate small pool** (or replica) with `statement_timeout`, so they cannot starve the desk transactions (NFR-PERF-003).
 
 **Query optimization practices:**
@@ -134,8 +126,7 @@ From [E §10.2](E-database-design.md#102-expected-growth-synthetic-planning-inpu
 **Environment:**
 - staging VPS **sized like production** (or production before go-live)
 - same images, same configuration
-- volume seeds: at least 2 years of the scenario's data per tenant (e.g., pilot: 600k patients, 580k visits, 15M audit events)
-- two or more tenants to exercise RLS paths
+- volume seeds: at least 2 years of the scenario's data (e.g., pilot: 600k patients, 580k visits, 15M audit events)
 - monitoring on
 
 **Scenarios:**
@@ -190,7 +181,6 @@ From [E §10.2](E-database-design.md#102-expected-growth-synthetic-planning-inpu
 | Outbox lag > 60 s at peak | Relay/worker throughput | Raise relay batch and concurrency; separate queues; add a worker process |
 | Disk usage growth > 2% per week or < 30% free | Storage | Archive partitions; enlarge disk; review PDF archival |
 | Restore time approaching the agreed RTO | Recovery | Standby replica (T2); faster storage; split the database |
-| One tenant > 30% of DB load | Noisy neighbour | Per-tenant rate limits; consider dedicated placement (DEF-005) |
 | Availability objective missed due to single-host events | Topology | T2/T3 per J §13 |
 
 ## 9. Next steps
@@ -198,4 +188,4 @@ From [E §10.2](E-database-design.md#102-expected-growth-synthetic-planning-inpu
 1. Answer Q-041 (meaning of 100k) and Q-042 (pilot profile). Recompute §3.
 2. Implement the k6 journeys with T-FND-03 scripts available. Run smoke on staging at RG-1.
 3. Run the peak/stress/soak suite before RG-3 on production-equivalent sizing. Update J §4 sizing with measured numbers.
-4. Revisit this plan when any §8 trigger appears, or before onboarding a customer that would move the platform from one scenario to the next.
+4. Revisit this plan when any §8 trigger appears, or before installing for a hospital larger than scenario P.
