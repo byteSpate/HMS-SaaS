@@ -21,6 +21,7 @@
         "DATABASE_MIGRATOR_URL",
         "VALKEY_URL",
         "CSRF_SECRET",
+        "MFA_ENCRYPTION_KEY",
         "CORS_ORIGINS"
       ]
     },
