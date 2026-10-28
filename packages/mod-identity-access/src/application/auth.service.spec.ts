@@ -17,6 +17,7 @@ const config: AuthConfig = {
   lockout: { maxFailedAttempts: 5, lockMinutes: 15 },
   // Every test logs in from the same address; the IP limit is not under test here.
   loginRateLimits: { ...DEFAULT_LOGIN_RATE_LIMITS, perIp: { limit: 10_000, windowMs: 60_000 } },
+  mfa: { encryptionKey: Buffer.alloc(32, 7), issuer: 'HMS test' },
 };
 const meta = { ipAddress: '127.0.0.1' };
 const PASSWORD = 'correct horse battery';

@@ -23,6 +23,9 @@ export interface MockWorld {
   /** Seconds the idle timeout has left when a session is issued or read. */
   idleSeconds: number;
   online: boolean;
+  /** T-ACC-04: the chosen hospital's roles need a second factor. */
+  mfaRequired: boolean;
+  mfaEnrolled: boolean;
 }
 
 export interface RecordedRequest {
@@ -41,6 +44,12 @@ export const HOSPITAL_ONE: MockMembership = {
   tenantNameBn: 'Sondhani Medical BN',
 };
 
+export const MOCK_TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+export const MOCK_TOTP_CODE = '123456';
+export const MOCK_RECOVERY_CODES = Array.from({ length: 10 }, (_, index) =>
+  `abcd${index}-efgh${index}`.replace(/[01]/g, 'z'),
+);
+
 export const HOSPITAL_TWO: MockMembership = {
   id: ID(12),
   tenantId: ID(22),
@@ -57,6 +66,8 @@ export function newWorld(overrides: Partial<MockWorld> = {}): MockWorld {
     memberships: [HOSPITAL_ONE],
     idleSeconds: 3600,
     online: true,
+    mfaRequired: false,
+    mfaEnrolled: false,
     ...overrides,
   };
 }
@@ -74,6 +85,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
   let signedIn = false;
   let csrf = 'csrf-token-1';
   let issued = 0;
+  let mfaVerified = false;
 
   function session(): SessionResponse {
     const now = Date.now();
@@ -84,6 +96,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
       csrfToken: csrf,
       idleExpiresAt: new Date(now + world.idleSeconds * 1000).toISOString(),
       absoluteExpiresAt: new Date(now + 12 * 3600 * 1000).toISOString(),
+      mfa: { required: world.mfaRequired, enrolled: world.mfaEnrolled, verified: mfaVerified },
     });
   }
 
@@ -140,10 +153,34 @@ export async function installMockApi(page: Page, world: MockWorld) {
     if (path === '/auth/logout') {
       signedIn = false;
       activeMembershipId = null;
+      mfaVerified = false;
       return reply(route, 204);
     }
+    if (path.startsWith('/auth/mfa/')) return answerMfa(route, path, body);
     return reply(route, 404, PROBLEM(404, 'NOT_FOUND'));
   });
+
+  // T-ACC-04: the authenticator app "shows" MOCK_TOTP_CODE; recovery codes are MOCK_RECOVERY_CODES.
+  function answerMfa(route: Route, path: string, body: { code?: string; recoveryCode?: string }) {
+    if (path === '/auth/mfa/enrolment') {
+      return reply(route, 200, {
+        secret: MOCK_TOTP_SECRET,
+        otpauthUri: `otpauth://totp/HMS:${world.username}?secret=${MOCK_TOTP_SECRET}&issuer=HMS`,
+      });
+    }
+    const verifying = path === '/auth/mfa/verify';
+    const accepted =
+      body.code === MOCK_TOTP_CODE ||
+      (verifying && MOCK_RECOVERY_CODES.includes(body.recoveryCode ?? ''));
+    if (!accepted) return reply(route, 401, PROBLEM(401, 'MFA_CODE_INVALID'));
+    world.mfaEnrolled = true;
+    mfaVerified = true;
+    issued += 1;
+    csrf = `csrf-token-${issued}`;
+    return verifying
+      ? reply(route, 200, session())
+      : reply(route, 200, { session: session(), recoveryCodes: MOCK_RECOVERY_CODES });
+  }
 
   return { requests };
 }

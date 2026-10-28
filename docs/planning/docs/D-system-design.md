@@ -248,7 +248,7 @@ sequenceDiagram
   - The session row in PostgreSQL holds user, membership, created/last-seen, expiry and MFA status. An optional Valkey lookup cache invalidates on revoke.
 - Idle and absolute timeouts per CP-12. Rotate the session ID at login and at privilege change (MFA step-up).
 - **CSRF:** every state-changing request must carry an `X-CSRF-Token` equal to the session's token, and its `Origin` must be an allow-listed web origin. This is mandatory, not defence in depth: every `*.bytespate.com` site is "same-site", so `SameSite=Lax` alone does not block requests from them (ADR-021).
-- **MFA:** TOTP (RFC 6238) for privileged roles (CP-12). Recovery codes are stored hashed.
+- **MFA:** TOTP (RFC 6238) for privileged roles (CP-12). Recovery codes are stored hashed. Built in T-ACC-04: a membership is privileged when one of its roles comes from the ADM or FIN template (C-032) or grants any `admin.*` permission; the TOTP secret is encrypted with AES-256-GCM (`MFA_ENCRYPTION_KEY`); a used time step is refused again; a wrong code counts towards the account lock; `PermissionGuard` answers `MFA_REQUIRED` until the session has passed the factor, and passing it rotates the session ID.
 - Lockout and rate limiting per account and IP (FR-ACC-004, NFR-SEC-005).
 - **Alternatives considered:**
   - Keycloak (self-hosted IdP): full-featured SSO and MFA, but another JVM service and admin surface to operate on a VPS. Preferable if customers demand SSO or federation.
@@ -345,6 +345,8 @@ Errors use RFC 9457 `application/problem+json` with the stable `code` from [C00 
 | `FEATURE_NOT_AVAILABLE`, `POLICY_NOT_CONFIGURED` | 409 (with explanatory detail) |
 | missing `If-Match` | 428 |
 | `ACCOUNT_LOCKED` | 423 |
+| `MFA_REQUIRED` (T-ACC-04) | 403 |
+| `MFA_CODE_INVALID` (T-ACC-04) | 401 |
 | `PAYLOAD_TOO_LARGE` (proposed, T-PLT-07) | 413 |
 | `RATE_LIMITED` (login: T-ACC-03; per session: T-PLT-07) | 429, with `Retry-After` |
 | `INTERNAL_ERROR` | 500 |

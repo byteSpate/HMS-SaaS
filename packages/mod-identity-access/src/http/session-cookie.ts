@@ -2,7 +2,7 @@
 // host and is never sent to other *.bytespate.com sites. The __Host- prefix makes browsers
 // refuse a lookalike cookie set from a sibling subdomain (cookie tossing); it requires Secure,
 // Path=/ and no Domain, which is exactly what is set here.
-import type { CookieOptions } from 'express';
+import type { CookieOptions, Response } from 'express';
 
 export const SESSION_COOKIE = '__Host-hms_session';
 
@@ -13,3 +13,13 @@ export function sessionCookieOptions(absoluteExpiresAt: Date, now: Date): Cookie
 }
 
 export const clearSessionCookieOptions: CookieOptions = BASE_OPTIONS;
+
+/** Sets the cookie of a newly issued session (login, hospital switch, second factor). */
+export function setSessionCookie(
+  response: Response,
+  issued: { token: string; session: { absoluteExpiresAt: string } },
+  now = new Date(),
+): void {
+  const absolute = new Date(issued.session.absoluteExpiresAt);
+  response.cookie(SESSION_COOKIE, issued.token, sessionCookieOptions(absolute, now));
+}

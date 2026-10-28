@@ -97,6 +97,7 @@ describe('identity repository', () => {
       userId,
       tenantId: null,
       membershipId: null,
+      mfaVerifiedAt: null,
       createdAt: now,
       idleExpiresAt: new Date(now.getTime() + 60_000),
       absoluteExpiresAt: new Date(now.getTime() + 120_000),

@@ -19,6 +19,16 @@ export const membershipSummarySchema = z.object({
 });
 export type MembershipSummary = z.infer<typeof membershipSummarySchema>;
 
+// T-ACC-04 (FR-ACC-006): whether the chosen hospital's roles need a second factor, whether the
+// user has one, and whether this session has passed it. The UI uses it to route to the MFA
+// screen; the API enforces it on every permission-guarded route (MFA_REQUIRED).
+export const mfaStatusSchema = z.object({
+  required: z.boolean(),
+  enrolled: z.boolean(),
+  verified: z.boolean(),
+});
+export type MfaStatus = z.infer<typeof mfaStatusSchema>;
+
 export const sessionResponseSchema = z.object({
   user: z.object({
     id: z.uuid(),
@@ -30,8 +40,38 @@ export const sessionResponseSchema = z.object({
   csrfToken: z.string().min(1),
   idleExpiresAt: z.iso.datetime(),
   absoluteExpiresAt: z.iso.datetime(),
+  mfa: mfaStatusSchema,
 });
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
+
+/** Start of enrolment: the secret to add to an authenticator app, as text and as a key URI. */
+export const mfaEnrolmentResponseSchema = z.object({
+  secret: z.string().min(16),
+  otpauthUri: z.string().startsWith('otpauth://totp/'),
+});
+export type MfaEnrolmentResponse = z.infer<typeof mfaEnrolmentResponseSchema>;
+
+export const mfaCodeRequestSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/),
+});
+export type MfaCodeRequest = z.infer<typeof mfaCodeRequestSchema>;
+
+/** Either a code from the app, or one recovery code when the phone is lost. */
+export const mfaVerifyRequestSchema = z.union([
+  mfaCodeRequestSchema,
+  z.object({ recoveryCode: z.string().trim().min(10).max(20) }),
+]);
+export type MfaVerifyRequest = z.infer<typeof mfaVerifyRequestSchema>;
+
+/** Confirmed enrolment: the new session and the recovery codes, shown to the user only once. */
+export const mfaConfirmResponseSchema = z.object({
+  session: sessionResponseSchema,
+  recoveryCodes: z.array(z.string()).length(10),
+});
+export type MfaConfirmResponse = z.infer<typeof mfaConfirmResponseSchema>;
 
 // FR-I18N-001: the interface language is a per-user preference stored on the server.
 export const updatePreferencesRequestSchema = z.object({

@@ -6,8 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { type SessionData, useSession } from './use-session';
 
-/** anonymous: login screen. account: signed in, hospital not required. hospital: the shell. */
-export type AccessLevel = 'anonymous' | 'account' | 'hospital';
+/**
+ * anonymous: login screen. account: signed in, hospital not required. second-factor: the MFA
+ * screen, for a session that still needs it (T-ACC-04). hospital: the shell.
+ */
+export type AccessLevel = 'anonymous' | 'account' | 'second-factor' | 'hospital';
 
 export type AccessStatus = 'loading' | 'ready' | 'redirecting' | 'unreachable';
 
@@ -20,9 +23,14 @@ export interface Access {
 
 export function redirectTarget(required: AccessLevel, session: SessionData): string | null {
   if (session === null) return required === 'anonymous' ? null : '/login';
-  if (required === 'anonymous') return session.activeMembershipId ? '/' : '/choose-hospital';
-  if (required === 'hospital' && session.activeMembershipId === null) return '/choose-hospital';
-  return null;
+  // FR-ACC-006: a privileged role needs the second factor before the shell (the API refuses
+  // every guarded route with MFA_REQUIRED until then).
+  const needsSecondFactor = session.mfa.required && !session.mfa.verified;
+  if (required === 'account') return null;
+  if (session.activeMembershipId === null) return '/choose-hospital';
+  if (required === 'second-factor') return needsSecondFactor ? null : '/';
+  if (needsSecondFactor) return '/mfa';
+  return required === 'anonymous' ? '/' : null;
 }
 
 export function useAccess(required: AccessLevel): Access {

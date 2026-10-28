@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   loginRequestSchema,
+  mfaVerifyRequestSchema,
   sessionResponseSchema,
   updatePreferencesRequestSchema,
 } from './auth.js';
@@ -31,6 +32,7 @@ describe('sessionResponseSchema', () => {
       csrfToken: 'token',
       idleExpiresAt: '2026-10-14T10:00:00.000Z',
       absoluteExpiresAt: '2026-10-14T21:00:00.000Z',
+      mfa: { required: false, enrolled: false, verified: false },
     });
     expect(parsed.activeMembershipId).toBeNull();
   });
@@ -47,5 +49,16 @@ describe('updatePreferencesRequestSchema', () => {
   it('rejects any other language', () => {
     expect(updatePreferencesRequestSchema.safeParse({ preferredLang: 'fr' }).success).toBe(false);
     expect(updatePreferencesRequestSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe('mfa schemas (T-ACC-04)', () => {
+  it('accepts a 6-digit code or a recovery code, and nothing else', () => {
+    expect(mfaVerifyRequestSchema.parse({ code: ' 123456 ' })).toEqual({ code: '123456' });
+    expect(mfaVerifyRequestSchema.parse({ recoveryCode: 'abcde-fghij' })).toEqual({
+      recoveryCode: 'abcde-fghij',
+    });
+    expect(mfaVerifyRequestSchema.safeParse({ code: '12345' }).success).toBe(false);
+    expect(mfaVerifyRequestSchema.safeParse({}).success).toBe(false);
   });
 });

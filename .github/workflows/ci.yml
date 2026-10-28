@@ -41,6 +41,7 @@ jobs:
       DATABASE_URL: postgresql://hms_app:dev_app@localhost:5432/hms?schema=hms
       VALKEY_URL: redis://localhost:6379/0
       CSRF_SECRET: ci-only-csrf-secret-0123456789abcdef
+      MFA_ENCRYPTION_KEY: Y2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2M= # CI only: 32 bytes of 'c'
       CORS_ORIGINS: http://localhost:3100
       TZ: UTC
     steps:

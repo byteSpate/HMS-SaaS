@@ -2,10 +2,13 @@
 // ADR-004). Pre-hospital events go to auth_event; once a hospital is bound, the hospital's own
 // audit trail also records the login (decision 1 of the T-ACC-01 plan). T-ACC-03 adds the login
 // rate limit and the lock after repeated wrong passwords (FR-ACC-004, NFR-SEC-005, C-032).
+// T-ACC-04 adds the second factor state of the session and its rotation (FR-ACC-006).
 import { Inject, Injectable } from '@nestjs/common';
+import { requiresSecondFactor } from '@hms/authz';
 import type {
   LoginRequest,
   MembershipSummary,
+  MfaStatus,
   SessionResponse,
   UpdatePreferencesRequest,
 } from '@hms/contracts';
@@ -24,6 +27,7 @@ import {
   shouldTouch,
   slideIdleExpiry,
 } from '../domain/session-policy.js';
+import { loadMembershipAccess } from '../infrastructure/access.repository.js';
 import { csrfTokenFor } from '../infrastructure/csrf-token.js';
 import { stateAfterFailedLogin } from '../domain/lockout-policy.js';
 import {
@@ -43,6 +47,7 @@ import {
   type MembershipRecord,
   type UserRecord,
 } from '../infrastructure/identity.repository.js';
+import { findMfa } from '../infrastructure/mfa.repository.js';
 import { verifyAgainstDummy, verifyPassword } from '../infrastructure/password-hasher.js';
 import { hashSessionToken, newSessionToken } from '../infrastructure/session-token.js';
 import { AUTH_CONFIG, CLOCK, type AuthConfig } from './auth.config.js';
@@ -54,6 +59,8 @@ export interface AuthContext {
   membershipId: string | null;
   tokenHash: Uint8Array<ArrayBuffer>;
   absoluteExpiresAt: Date;
+  /** When this session passed the second factor (T-ACC-04); null if it has not. */
+  mfaVerifiedAt: Date | null;
 }
 
 export interface RequestMeta {
@@ -96,23 +103,9 @@ export class AuthService {
     // The password is checked first, so lock and disabled states are only revealed to someone
     // who knows the password (otherwise status would leak to anyone who guesses a username).
     if (!(await verifyPassword(user.passwordHash, input.password))) {
-      const now = this.clock.now();
-      const next = await applyFailedLogin(this.prisma, user.id, (current) =>
-        stateAfterFailedLogin(current, now, this.config.lockout),
-      );
-      await this.authEvent('auth.login.failed', 'FAILED', meta, {
-        userId: user.id,
-        reason: 'BAD_PASSWORD',
-      });
-      // FR-ACC-004: the lock itself is an event, so support can see when and from where the
-      // last failure came. The caller still gets INVALID_CREDENTIALS (status only after a
-      // correct password, see above).
-      if (next?.status === 'LOCKED_TEMPORARY') {
-        await this.authEvent('auth.account.locked', 'SUCCEEDED', meta, {
-          userId: user.id,
-          reason: 'FAILED_LOGINS',
-        });
-      }
+      // The caller still gets INVALID_CREDENTIALS, also on the failure that locks: the status
+      // is only told after a correct password (see above).
+      await this.recordFailedAttempt(user.id, meta, 'auth.login.failed', 'BAD_PASSWORD');
       throw new DomainError('INVALID_CREDENTIALS', INVALID);
     }
 
@@ -156,10 +149,54 @@ export class AuthService {
     // session created in one transaction, so a concurrent logout or switch cannot leave two
     // valid sessions or revive a logged-out one. The new session keeps the old absolute expiry
     // (FR-ACC-003, C-032).
+    // A second factor passed in this login stays passed: it proves the user, not the hospital.
     return this.startSession(user, memberships, chosen, meta, {
       absoluteLimit: ctx.absoluteExpiresAt,
       replacing: ctx.tokenHash,
+      mfaVerifiedAt: ctx.mfaVerifiedAt,
     });
+  }
+
+  /**
+   * Replaces the session after the second factor (T-ACC-04): D section 7.1 rotates the session
+   * ID at a privilege change, so a token seen before the step-up cannot use the stronger
+   * session. Keeps the hospital and the absolute expiry.
+   */
+  async rotateAfterSecondFactor(ctx: AuthContext, meta: RequestMeta): Promise<IssuedSession> {
+    const user = await this.requireUser(ctx.userId);
+    const memberships = await this.activeMemberships(user.id);
+    const bound = memberships.find((m) => m.id === ctx.membershipId) ?? null;
+    return this.startSession(user, memberships, bound, meta, {
+      absoluteLimit: ctx.absoluteExpiresAt,
+      replacing: ctx.tokenHash,
+      mfaVerifiedAt: this.clock.now(),
+      auditLogin: false,
+    });
+  }
+
+  /**
+   * A wrong password or a wrong second-factor code (T-ACC-03, T-ACC-04): both count towards the
+   * same lock (FR-ACC-004), so the 6-digit code cannot be guessed after the password.
+   */
+  async recordFailedAttempt(
+    userId: string,
+    meta: RequestMeta,
+    action: 'auth.login.failed' | 'auth.mfa.failed',
+    reason: string,
+  ): Promise<void> {
+    const now = this.clock.now();
+    const next = await applyFailedLogin(this.prisma, userId, (current) =>
+      stateAfterFailedLogin(current, now, this.config.lockout),
+    );
+    await this.authEvent(action, 'FAILED', meta, { userId, reason });
+    // FR-ACC-004: the lock itself is an event, so support can see when and from where the
+    // last failure came.
+    if (next?.status === 'LOCKED_TEMPORARY') {
+      await this.authEvent('auth.account.locked', 'SUCCEEDED', meta, {
+        userId,
+        reason: 'FAILED_LOGINS',
+      });
+    }
   }
 
   async resolveSession(token: string): Promise<AuthContext | null> {
@@ -194,6 +231,7 @@ export class AuthService {
       membershipId: session.membershipId,
       tokenHash,
       absoluteExpiresAt: session.absoluteExpiresAt,
+      mfaVerifiedAt: session.mfaVerifiedAt,
     };
   }
 
@@ -202,7 +240,8 @@ export class AuthService {
     const session = await findSessionByTokenHash(this.prisma, ctx.tokenHash);
     if (!session) throw new DomainError('UNAUTHENTICATED', 'Session ended');
     const memberships = await this.activeMemberships(user.id);
-    return this.toResponse(user, memberships, ctx.membershipId, token, session);
+    const bound = memberships.find((m) => m.id === ctx.membershipId) ?? null;
+    return this.toResponse(user, memberships, bound, token, session);
   }
 
   async updatePreferences(
@@ -227,9 +266,15 @@ export class AuthService {
     memberships: MembershipRecord[],
     bound: MembershipRecord | null,
     meta: RequestMeta,
-    options: { absoluteLimit?: Date; replacing?: Uint8Array<ArrayBuffer> } = {},
+    options: {
+      absoluteLimit?: Date;
+      replacing?: Uint8Array<ArrayBuffer>;
+      mfaVerifiedAt?: Date | null;
+      /** False for a rotation inside the same login (second factor), which is not a new login. */
+      auditLogin?: boolean;
+    } = {},
   ): Promise<IssuedSession> {
-    const { absoluteLimit, replacing } = options;
+    const { absoluteLimit, replacing, mfaVerifiedAt = null, auditLogin = true } = options;
     const token = newSessionToken();
     const now = this.clock.now();
     const fresh = newSessionTimes(now, this.config.timeouts);
@@ -245,6 +290,7 @@ export class AuthService {
       tenantId: bound?.tenantId ?? null,
       membershipId: bound?.id ?? null,
       createdAt: now,
+      mfaVerifiedAt,
       ...times,
     };
     if (replacing) {
@@ -254,20 +300,23 @@ export class AuthService {
     } else {
       await insertSession(this.prisma, row);
     }
-    if (bound) {
+    if (bound && auditLogin) {
       await this.tenantAudit(bound.tenantId, user.id, bound.id, 'auth.login.succeeded', meta);
     }
-    const session = this.toResponse(user, memberships, bound?.id ?? null, token, times);
+    const session = await this.toResponse(user, memberships, bound, token, {
+      ...times,
+      mfaVerifiedAt,
+    });
     return { token, session };
   }
 
-  private toResponse(
+  private async toResponse(
     user: UserRecord,
     memberships: MembershipRecord[],
-    activeMembershipId: string | null,
+    bound: MembershipRecord | null,
     token: string,
-    times: { idleExpiresAt: Date; absoluteExpiresAt: Date },
-  ): SessionResponse {
+    times: { idleExpiresAt: Date; absoluteExpiresAt: Date; mfaVerifiedAt: Date | null },
+  ): Promise<SessionResponse> {
     return {
       user: {
         id: user.id,
@@ -275,11 +324,32 @@ export class AuthService {
         preferredLang: user.preferredLang === 'bn_BD' ? 'bn-BD' : 'en',
       },
       memberships: memberships.map(toSummary),
-      activeMembershipId,
+      activeMembershipId: bound?.id ?? null,
       csrfToken: csrfTokenFor(token, this.config.csrfSecret),
       idleExpiresAt: times.idleExpiresAt.toISOString(),
       absoluteExpiresAt: times.absoluteExpiresAt.toISOString(),
+      mfa: await this.mfaStatus(user.id, bound, times.mfaVerifiedAt),
     };
+  }
+
+  /** What the UI needs to route to the MFA screen; the API enforces it in PermissionGuard. */
+  private async mfaStatus(
+    userId: string,
+    bound: MembershipRecord | null,
+    verifiedAt: Date | null,
+  ): Promise<MfaStatus> {
+    // Before a hospital is chosen the roles are unknown; the requirement applies once one is.
+    const required = bound
+      ? requiresSecondFactor(
+          await loadMembershipAccess(this.prisma, {
+            tenantId: bound.tenantId,
+            userId,
+            membershipId: bound.id,
+          }),
+        )
+      : false;
+    const mfa = await findMfa(this.prisma, userId);
+    return { required, enrolled: mfa?.enabledAt != null, verified: verifiedAt !== null };
   }
 
   private async activeMemberships(userId: string): Promise<MembershipRecord[]> {

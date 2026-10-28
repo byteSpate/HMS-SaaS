@@ -67,6 +67,7 @@ class GuardedProbeController {
         csrfSecret: 'z'.repeat(32),
         lockout: { maxFailedAttempts: 5, lockMinutes: 15 },
         loginRateLimits: DEFAULT_LOGIN_RATE_LIMITS,
+        mfa: { encryptionKey: Buffer.alloc(32, 7), issuer: 'HMS test' },
       },
       fixedClock(new Date()),
       { allowedOrigins: [WEB] },

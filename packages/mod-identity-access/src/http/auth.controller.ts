@@ -15,11 +15,7 @@ import { ZodBodyPipe, type CorrelatedRequest } from '@hms/platform';
 import { AuthService, type IssuedSession, type RequestMeta } from '../application/auth.service.js';
 import { AllowWithoutTenant, Public } from './decorators.js';
 import { getAuthContext, getSessionToken, type AuthenticatedRequest } from './request-context.js';
-import {
-  clearSessionCookieOptions,
-  SESSION_COOKIE,
-  sessionCookieOptions,
-} from './session-cookie.js';
+import { clearSessionCookieOptions, SESSION_COOKIE, setSessionCookie } from './session-cookie.js';
 
 // The correlation ID was checked and set by requestIdMiddleware (T-PLT-07); it is absent only
 // when the module runs without the API's request pipeline (some tests).
@@ -86,8 +82,7 @@ export class AuthController {
   }
 
   private issue(response: Response, issued: IssuedSession): SessionResponse {
-    const absolute = new Date(issued.session.absoluteExpiresAt);
-    response.cookie(SESSION_COOKIE, issued.token, sessionCookieOptions(absolute, new Date()));
+    setSessionCookie(response, issued);
     return issued.session;
   }
 }

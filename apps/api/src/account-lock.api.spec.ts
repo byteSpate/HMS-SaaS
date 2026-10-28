@@ -9,17 +9,18 @@ import {
   IdentityAccessModule,
 } from '@hms/mod-identity-access';
 import { DatabaseModule, RequestPipelineModule } from '@hms/platform';
-import { grantPermissions, seedMembership, seedTenant, seedUser } from '@hms/testkit';
+import { grantPermissions, seedMembership, seedTenant, seedUser, totpCode } from '@hms/testkit';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { configureApp } from './http/configure-app.js';
 
-// Lockout, login rate limit and administrator lock/unlock over real HTTP against PostgreSQL
-// (T-ACC-03; UC-ACC-02; AT-ACC-006, AT-ACC-007, AT-ACC-008; FR-ACC-004, FR-ACC-010).
+// Lockout, login rate limit, administrator lock/unlock and the second factor over real HTTP
+// against PostgreSQL (T-ACC-03, T-ACC-04; UC-ACC-02; AT-ACC-006..010; FR-ACC-004, -006, -010).
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required');
 
 const WEB = 'http://localhost:3100';
 const PASSWORD = 'correct horse battery';
+const clock = fixedClock(new Date());
 
 @Module({
   imports: [
@@ -31,8 +32,9 @@ const PASSWORD = 'correct horse battery';
         csrfSecret: 'w'.repeat(32),
         lockout: { maxFailedAttempts: 5, lockMinutes: 15 },
         loginRateLimits: DEFAULT_LOGIN_RATE_LIMITS,
+        mfa: { encryptionKey: Buffer.alloc(32, 7), issuer: 'HMS test' },
       },
-      fixedClock(new Date()),
+      clock,
       { allowedOrigins: [WEB] },
     ),
   ],
@@ -73,12 +75,26 @@ describe('account lock over HTTP', () => {
     });
   }
 
+  function cookieOf(res: Response): string {
+    return (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  }
+
+  /** Signs in; a privileged user also enrols the second factor, as the UI makes them (T-ACC-04). */
   async function sessionOf(username: string): Promise<Session> {
     const res = await login(username);
     expect(res.status).toBe(200);
-    const cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
-    const body = (await res.json()) as { csrfToken: string };
-    return { cookie, csrfToken: body.csrfToken };
+    const body = (await res.json()) as { csrfToken: string; mfa: { required: boolean } };
+    const session = { cookie: cookieOf(res), csrfToken: body.csrfToken };
+    if (!body.mfa.required) return session;
+
+    const enrolment = await call(session, 'POST', '/auth/mfa/enrolment');
+    const { secret } = (await enrolment.json()) as { secret: string };
+    const confirmed = await call(session, 'POST', '/auth/mfa/enrolment/confirm', {
+      code: totpCode(secret, clock.now()),
+    });
+    expect(confirmed.status).toBe(200);
+    const result = (await confirmed.json()) as { session: { csrfToken: string } };
+    return { cookie: cookieOf(confirmed), csrfToken: result.session.csrfToken };
   }
 
   /** One hospital with an administrator (admin.user.manage) and a staff member. */
@@ -205,6 +221,54 @@ describe('account lock over HTTP', () => {
     const staffSession = await sessionOf(staff.username);
     const res = await call(staffSession, 'GET', `/admin/users/${admin.id}/lock`);
     expect(res.status).toBe(403);
+  });
+
+  it('a privileged session gets MFA_REQUIRED until the second factor is set up (AT-ACC-009)', async () => {
+    const { admin, staff } = await hospital();
+    const res = await login(admin.username);
+    const body = (await res.json()) as { csrfToken: string; mfa: unknown };
+    expect(body.mfa).toEqual({ required: true, enrolled: false, verified: false });
+    const passwordOnly = { cookie: cookieOf(res), csrfToken: body.csrfToken };
+
+    const refused = await call(passwordOnly, 'GET', `/admin/users/${staff.id}/lock`);
+    expect(refused.status).toBe(403);
+    expect((await refused.json()).code).toBe('MFA_REQUIRED');
+
+    const verified = await sessionOf(admin.username);
+    expect((await call(verified, 'GET', `/admin/users/${staff.id}/lock`)).status).toBe(200);
+  });
+
+  it('asks again at the next login and refuses a replayed code (AT-ACC-010)', async () => {
+    const { admin, staff } = await hospital();
+    const first = await login(admin.username);
+    const firstBody = (await first.json()) as { csrfToken: string };
+    const firstSession = { cookie: cookieOf(first), csrfToken: firstBody.csrfToken };
+    const enrolment = await call(firstSession, 'POST', '/auth/mfa/enrolment');
+    const { secret } = (await enrolment.json()) as { secret: string };
+    const usedCode = totpCode(secret, clock.now());
+    const confirm = await call(firstSession, 'POST', '/auth/mfa/enrolment/confirm', {
+      code: usedCode,
+    });
+    expect(confirm.status).toBe(200);
+
+    const again = await login(admin.username);
+    const againBody = (await again.json()) as { csrfToken: string; mfa: unknown };
+    expect(againBody.mfa).toEqual({ required: true, enrolled: true, verified: false });
+    const session = { cookie: cookieOf(again), csrfToken: againBody.csrfToken };
+    const replay = await call(session, 'POST', '/auth/mfa/verify', { code: usedCode });
+    expect(replay.status).toBe(401);
+    expect((await replay.json()).code).toBe('MFA_CODE_INVALID');
+
+    clock.advanceBy(30_000);
+    const verify = await call(session, 'POST', '/auth/mfa/verify', {
+      code: totpCode(secret, clock.now()),
+    });
+    expect(verify.status).toBe(200);
+    const verifiedBody = (await verify.json()) as { csrfToken: string };
+    const verified = { cookie: cookieOf(verify), csrfToken: verifiedBody.csrfToken };
+    expect((await call(verified, 'GET', `/admin/users/${staff.id}/lock`)).status).toBe(200);
+    // The pre-verification cookie was replaced (session rotation, D section 7.1).
+    expect((await call(session, 'GET', '/auth/session')).status).toBe(401);
   });
 
   it('answers RATE_LIMITED with Retry-After after 10 tries on one account (AT-ACC-007)', async () => {

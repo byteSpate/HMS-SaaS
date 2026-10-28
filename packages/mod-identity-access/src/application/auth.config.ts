@@ -1,7 +1,9 @@
 // Login settings. Defaults are the C-032 decisions; per-hospital overrides (CP-12) come with
-// policy versions (T-PLT-05). Lockout and login rate limits: T-ACC-03, NFR-SEC-005.
+// policy versions (T-PLT-05). Lockout and login rate limits: T-ACC-03, NFR-SEC-005. Second
+// factor (TOTP): T-ACC-04, FR-ACC-006.
 import type { RateLimitRule } from '@hms/platform';
 import type { LockoutPolicy } from '../domain/lockout-policy.js';
+import { parseMfaKey } from '../infrastructure/secret-box.js';
 import type { SessionTimeouts } from '../domain/session-policy.js';
 
 export interface LoginRateLimits {
@@ -9,11 +11,18 @@ export interface LoginRateLimits {
   perAccount: RateLimitRule;
 }
 
+/** T-ACC-04: TOTP secrets are encrypted with this key; the issuer names the app in authenticators. */
+export interface MfaConfig {
+  encryptionKey: Buffer;
+  issuer: string;
+}
+
 export interface AuthConfig {
   timeouts: SessionTimeouts;
   csrfSecret: string;
   lockout: LockoutPolicy;
   loginRateLimits: LoginRateLimits;
+  mfa: MfaConfig;
 }
 
 export const AUTH_CONFIG = Symbol('AUTH_CONFIG');
@@ -56,5 +65,10 @@ export function loadAuthConfig(env: NodeJS.ProcessEnv): AuthConfig {
       lockMinutes: positiveNumber(env.LOGIN_LOCKOUT_MINUTES, 15, 'LOGIN_LOCKOUT_MINUTES'),
     },
     loginRateLimits: DEFAULT_LOGIN_RATE_LIMITS,
+    mfa: {
+      // Required: C-032 makes MFA mandatory for administrators and finance staff.
+      encryptionKey: parseMfaKey(env.MFA_ENCRYPTION_KEY ?? ''),
+      issuer: env.MFA_ISSUER?.trim() || 'HMS',
+    },
   };
 }

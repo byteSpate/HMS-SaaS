@@ -31,6 +31,27 @@ export const en = {
     submit: 'Sign in',
     submitting: 'Signing in...',
   },
+  mfa: {
+    setupTitle: 'Set up two-step sign-in',
+    setupDescription:
+      'Your role needs a second step at sign-in. Install an authenticator app on your phone (for example Google Authenticator or Microsoft Authenticator).',
+    startSetup: 'Show the set-up code',
+    scanCode: 'Scan this code with the app, then enter the 6-digit code it shows.',
+    qrLabel: 'QR code for your authenticator app',
+    manualKey: 'Cannot scan? Enter this key in the app instead:',
+    turnOn: 'Turn on two-step sign-in',
+    verifyTitle: 'Two-step sign-in',
+    verifyDescription: 'Enter the 6-digit code from your authenticator app.',
+    codeLabel: '6-digit code',
+    recoveryCodeLabel: 'Recovery code',
+    useRecoveryCode: 'Lost your phone? Use a recovery code',
+    useAppCode: 'Use the code from the app',
+    continue: 'Continue',
+    recoveryTitle: 'Save your recovery codes',
+    recoveryDescription:
+      'If you lose your phone, each of these codes lets you sign in once. Write them down or store them somewhere safe. They are not shown again.',
+    recoverySaved: 'I have saved the codes',
+  },
   chooseHospital: {
     title: 'Choose a hospital',
     description: 'Your account has access to more than one hospital.',
@@ -71,8 +92,10 @@ export const en = {
     api: {
       UNAUTHENTICATED: 'Please sign in again.',
       INVALID_CREDENTIALS: 'The username or password is not correct.',
+      MFA_CODE_INVALID: 'That code is not correct or was already used. Try the newest code.',
       ACCOUNT_LOCKED: 'This account is locked. Try again later or contact your administrator.',
       PERMISSION_DENIED: 'You do not have permission to do this.',
+      MFA_REQUIRED: 'Confirm it is you with your authenticator app first.',
       CSRF_TOKEN_INVALID: 'Your session needs to be refreshed. Please sign in again.',
       TENANT_NOT_SELECTED: 'Choose a hospital first.',
       MEMBERSHIP_NOT_ACTIVE: 'Your access to this hospital is not active.',

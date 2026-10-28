@@ -134,8 +134,10 @@ model UserAccount {
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
   version        Int           @default(1)
 
-  memberships Membership[]
-  sessions    UserSession[]
+  memberships   Membership[]
+  sessions      UserSession[]
+  mfa           UserMfa?
+  recoveryCodes UserMfaRecoveryCode[]
 
   @@map("user_account")
   @@schema("hms")
@@ -237,12 +239,45 @@ model UserSession {
   idleExpiresAt     DateTime  @map("idle_expires_at") @db.Timestamptz
   absoluteExpiresAt DateTime  @map("absolute_expires_at") @db.Timestamptz
   revokedAt         DateTime? @map("revoked_at") @db.Timestamptz
+  // T-ACC-04 (FR-ACC-006): when this session passed the second factor; null until then.
+  mfaVerifiedAt     DateTime? @map("mfa_verified_at") @db.Timestamptz
 
   user       UserAccount @relation(fields: [userId], references: [id])
   membership Membership? @relation(fields: [tenantId, membershipId], references: [tenantId, id])
 
   @@index([userId])
   @@map("user_session")
+  @@schema("hms")
+}
+
+// A user's TOTP second factor (T-ACC-04, FR-ACC-006, ADR-004). The secret is encrypted with
+// MFA_ENCRYPTION_KEY (AES-256-GCM). enabledAt stays null until the first code confirms the
+// enrolment. lastUsedStep refuses a code whose time step was already used (replay, AT-ACC-010).
+model UserMfa {
+  userId           String    @id @map("user_id") @db.Uuid
+  secretCiphertext Bytes     @map("secret_ciphertext")
+  enabledAt        DateTime? @map("enabled_at") @db.Timestamptz
+  lastUsedStep     BigInt?   @map("last_used_step")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_mfa")
+  @@schema("hms")
+}
+
+// Single-use recovery codes, stored as SHA-256 hashes (T-ACC-04, D section 7.1).
+model UserMfaRecoveryCode {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  codeHash  Bytes     @map("code_hash")
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user UserAccount @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, codeHash])
+  @@map("user_mfa_recovery_code")
   @@schema("hms")
 }
 

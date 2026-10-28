@@ -19,6 +19,8 @@ export interface MembershipRef {
 export interface MembershipAccess {
   granted: ReadonlySet<PermissionCode>;
   entitledModules: ReadonlySet<ModuleCode>;
+  /** Template codes of the membership's roles; decides the second factor (T-ACC-04). */
+  roleTemplates: ReadonlySet<string>;
 }
 
 export interface AccessDenial extends MembershipRef {
@@ -40,13 +42,22 @@ export async function loadMembershipAccess(
       distinct: ['permissionCode'],
     });
     const entitlements = await tx.tenantEntitlement.findMany({ select: { moduleCode: true } });
+    const roles = await tx.role.findMany({
+      where: { memberships: { some: { membershipId: ref.membershipId } } },
+      select: { templateCode: true },
+    });
     // A stored code that left the catalogue grants nothing (fail closed).
     const granted = grants.map((row) => row.permissionCode).filter(isPermissionCode);
     const entitledModules = entitlements.flatMap((row) => {
       const parsed = moduleCodeSchema.safeParse(row.moduleCode);
       return parsed.success ? [parsed.data] : [];
     });
-    return { granted: new Set(granted), entitledModules: new Set(entitledModules) };
+    const roleTemplates = roles.flatMap((role) => (role.templateCode ? [role.templateCode] : []));
+    return {
+      granted: new Set(granted),
+      entitledModules: new Set(entitledModules),
+      roleTemplates: new Set(roleTemplates),
+    };
   });
 }
 

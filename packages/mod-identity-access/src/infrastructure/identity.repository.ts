@@ -38,6 +38,7 @@ export interface SessionRecord {
   idleExpiresAt: Date;
   absoluteExpiresAt: Date;
   revokedAt: Date | null;
+  mfaVerifiedAt: Date | null;
 }
 
 export interface NewSession {
@@ -48,6 +49,8 @@ export interface NewSession {
   createdAt: Date;
   idleExpiresAt: Date;
   absoluteExpiresAt: Date;
+  /** Set when the user already passed the second factor in this login (T-ACC-04). */
+  mfaVerifiedAt: Date | null;
 }
 
 export interface AuthEventInput {
