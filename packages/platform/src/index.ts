@@ -2,6 +2,7 @@
 export * from './audit.js';
 export * from './concurrency-limiter.js';
 export * from './database.module.js';
+export * from './openapi.js';
 export * from './problem-details.filter.js';
 export * from './rate-limiter.js';
 export * from './request-context.js';
