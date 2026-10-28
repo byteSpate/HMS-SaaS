@@ -36,6 +36,10 @@ Created an editable Word document and matching Markdown text covering 14 ERP mod
 
 Added a landscape Gantt chart to the Word document and a matching standalone PNG referenced by the Markdown. It shows parallel development windows, continuous QA, acceptance weeks and milestone targets through Week 20. Rendered the updated document and visually checked the chart and existing pages. The schedule and staffing assumptions are unchanged.
 
+## Update 2026-10-28: one installation per hospital
+
+Before merging, the SaaS wording was removed from the Markdown and the Word file to match ADR-023 (C-089): module 01 is now "Platform and administration" with hospital and facility setup instead of tenants and module entitlements, and the subscription and tenant-isolation mentions are gone. The same six text replacements were applied to both files (each phrase occurred exactly once); the Gantt chart had no such wording. `unzip -t` reports the Word file intact.
+
 ## Known limitations
 
 Staffing and durations are estimates. Existing implementation must be verified at kickoff; the document is not a completion audit. Finance, payroll, integrations and other open modules require early specification. Scope or staffing adjustments need owner agreement if required to preserve the 20-week cap. Calendar dates are intentionally unset until kickoff is agreed.

@@ -29,11 +29,11 @@ Delivery approach: AI assists implementation, tests and review preparation. Deve
 
 The following sub-modules describe planned product scope. A scheduled window does not mean every open or deferred feature is included.
 
-### 01 SaaS platform and administration
+### 01 Platform and administration
 
-Tenant and facility setup; module entitlements; users, roles and permissions; login, sessions and MFA; audit history; configuration and numbering; Bangla and English; shared UI; background jobs, request handling and monitoring.
+Hospital and facility setup (one installation per hospital, ADR-023); users, roles and permissions; login, sessions and MFA; audit history; configuration and numbering; Bangla and English; shared UI; background jobs, request handling and monitoring.
 
-W1-2, maintained throughout. Foundation for every module. Includes T-FND, T-DB, T-ACC, T-PLT, T-UI and T-I18N work. Commercial suspension and automated subscription billing remain outside the first release. Source C01.
+W1-2, maintained throughout. Foundation for every module. Includes T-FND, T-DB, T-ACC, T-PLT, T-UI and T-I18N work. Source C01.
 
 ### 02 Patients and scheduling
 
@@ -134,7 +134,7 @@ Three AI-assisted development tracks share one integrator. Track A handles patie
 | Week | Main focus                   | Expected development outcome                                                                                                                                 |
 | ---- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | W1   | Baseline and contracts       | Verify existing work; approve pilot slices and team capacity; resolve clinical/financial scope; agree shared contracts. Detail CMS and partner requirements. |
-| W2   | Foundation gate              | Complete access, audit, jobs, safe retries and tenant isolation. Validate print prototypes and CI. Obtain operator-owned recovery evidence for RG-1.         |
+| W2   | Foundation gate              | Complete access, audit, jobs and safe retries. Validate print prototypes and CI. Obtain operator-owned recovery evidence for RG-1.                           |
 | W3   | Patients billing and CMS     | Track A: registration, search, practitioners and tariffs. Track B: scheduling and invoice contracts. Track C: CMS settings, content model and permissions.   |
 | W4   | Front desk acceptance        | Integrate check-in, walk-ins, invoices, cashier sessions and receipts; test payment retries. CMS page/collection editing progresses in parallel.             |
 | W5   | Clinical and laboratory core | Track A: consultation and prescriptions. Track B: lab configuration, collection and labels. Track C: CMS media, preview and bilingual editing.               |
@@ -152,7 +152,7 @@ Target milestones are RP-A readiness at Week 8, inpatient acceptance at Week 12,
 
 | Week | Main focus                     | Expected development outcome                                                                                                                                |
 | ---- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| W11  | Returns and discharge          | Medicine returns and approved credits; discharge, final bills, departure and bed cleaning. Public data privacy and tenant-isolation checks.                 |
+| W11  | Returns and discharge          | Medicine returns and approved credits; discharge, final bills, departure and bed cleaning. Public data privacy checks.                                      |
 | W12  | Inpatient acceptance           | End-to-end IPD/nursing/pharmacy UAT, concurrency, reconciliation and labels; accept ERP-to-site data links. Confirm next module scopes.                     |
 | W13  | Emergency radiology purchasing | Parallel tracks: emergency identity/priority and exceptions; radiology scheduling/exams; procurement requisition, PO and goods receipt.                     |
 | W14  | Daycare reports and reagents   | Shared Daycare occupancy and discharge; radiology release; procurement approvals/returns and reagent mappings. Domain reviews for each slice.               |
@@ -183,7 +183,7 @@ The main dependency chain is platform, patients, visits and billing, then orders
 
 RG-1 covers foundation evidence; RG-2 accepts each complete workflow; RG-3 confirms pilot readiness; RG-4 is the product owner's separate go-live decision; RG-5 controls each expansion. Apply confirmed amendments to older gate wording, including C-048 (SonarJS checks while the SonarQube server is deferred). Website releases also require their own RG-W gates.
 
-The 20-week envelope excludes autonomous clinical AI, statutory features, multi-facility groups, offline mode, full PACS, automatic subscription billing and unapproved specialty modules. It does not promise full payroll, a general ledger or every third-party adapter. If a module cannot fit, the owner must approve a narrower release slice or extra capacity before its build window. The deadline stays at Week 20; excluded work is recorded separately. AI does not resolve missing policy decisions.
+The 20-week envelope excludes autonomous clinical AI, statutory features, multi-facility groups, offline mode, full PACS and unapproved specialty modules. It does not promise full payroll, a general ledger or every third-party adapter. If a module cannot fit, the owner must approve a narrower release slice or extra capacity before its build window. The deadline stays at Week 20; excluded work is recorded separately. AI does not resolve missing policy decisions.
 
 ### Source references
 
