@@ -52,7 +52,11 @@ test('an administrator adds a user with a temporary password', async ({ page }) 
 
   await page.getByRole('link', { name: bn.nav.users }).first().click();
   await expect(page.getByRole('heading', { name: bn.admin.usersTitle, level: 1 })).toBeVisible();
-  await expect(page.getByText('Karim Hossain')).toBeVisible();
+  const karim = page.getByRole('row', { name: /Karim Hossain/ });
+  await expect(karim.getByRole('cell').nth(1)).toHaveText('CSH');
+  await expect(
+    karim.getByRole('button', { name: `${bn.admin.manage}: Karim Hossain` }),
+  ).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await page.getByRole('button', { name: bn.admin.addUser }).click();

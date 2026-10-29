@@ -1,4 +1,4 @@
-# T-ACC-05: role permissions on their own page instead of a dialog
+# T-ACC-05: role permissions on their own page, users and roles as tables
 
 - **Date:** 2026-10-29
 - **Commit:** this commit
@@ -14,19 +14,22 @@ The role permission editor no longer opens in a dialog; with 61 permissions in a
 | `/staff/admin/roles/[id]` | Role permissions: role card with back link, "x of 61 selected" with select all, one card per module |
 | `/staff/admin/roles/new`  | New role: template, code and names in the top card, then the same permission sections               |
 
+The **Users** list is a table too (owner request, same day): user (name, username), roles as code chips (full name on hover), status badges, and a Manage button per row; Manage still opens the existing dialog. Both tables keep a minimum width and scroll sideways inside their card on a phone.
+
 Each module card shows its count (`2/2`) and its own Select all / Clear all; permissions sit in a 1 to 4 column grid by screen width. Save is disabled until something changes; after saving the app returns to the list and shows "Saved."
 
 ## Files
 
-| File                                                                    | Purpose                                                                            |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| apps/web/app/(app)/admin/roles/page.tsx                                 | Roles table                                                                        |
-| apps/web/app/(app)/admin/roles/[roleId]/page.tsx, new/page.tsx          | The two role pages (loading, error, not found)                                     |
-| apps/web/src/components/admin/role-editor.tsx                           | Shared page body: header card, fields for a new role, save and cancel; `useRoles`  |
-| apps/web/src/components/admin/permission-sections.tsx                   | Summary bar and module cards with counts and select all                            |
-| apps/web/src/components/admin/role-dialog.tsx, permission-checklist.tsx | Removed (replaced by the two files above)                                          |
-| packages/i18n/src/messages/en.ts, bn-BD.ts                              | 15 texts for the pages and the table                                               |
-| apps/web/e2e/admin.spec.ts, e2e/support/mock-admin.ts                   | New-role test on the page; new edit-page test with axe; mock `PUT .../permissions` |
+| File                                                                    | Purpose                                                                                                   |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| apps/web/app/(app)/admin/roles/page.tsx                                 | Roles table                                                                                               |
+| apps/web/app/(app)/admin/users/page.tsx                                 | Users table                                                                                               |
+| apps/web/app/(app)/admin/roles/[roleId]/page.tsx, new/page.tsx          | The two role pages (loading, error, not found)                                                            |
+| apps/web/src/components/admin/role-editor.tsx                           | Shared page body: header card, fields for a new role, save and cancel; `useRoles`                         |
+| apps/web/src/components/admin/permission-sections.tsx                   | Summary bar and module cards with counts and select all                                                   |
+| apps/web/src/components/admin/role-dialog.tsx, permission-checklist.tsx | Removed (replaced by the two files above)                                                                 |
+| packages/i18n/src/messages/en.ts, bn-BD.ts                              | 17 texts for the pages and the two tables                                                                 |
+| apps/web/e2e/admin.spec.ts, e2e/support/mock-admin.ts                   | New-role test on the page; new edit-page test with axe; users-table row check; mock `PUT .../permissions` |
 
 ## Decisions applied
 
@@ -40,12 +43,13 @@ Each module card shows its count (`2/2`) and its own Select all / Clear all; per
 
 ## Verification
 
-| Command                                                         | Result                                                                 |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `vitest run` in `@hms/i18n` / `@hms/web`                        | 29 / 22 passed (catalog parity, no unused keys)                        |
-| `tsc --noEmit`, `eslint` in `@hms/web`; `pnpm boundaries:check` | clean; no violations                                                   |
-| `playwright test` admin, mfa, auth-shell, staff-path            | 21 passed; "two hospitals" failed once under load, passed alone        |
-| Screenshots at 1440 px and 400 px (mock API)                    | Table, permission page and new-role page render; one column on a phone |
+| Command                                                         | Result                                                                          |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `vitest run` in `@hms/i18n` / `@hms/web`                        | 29 / 22 passed (catalog parity, no unused keys)                                 |
+| `tsc --noEmit`, `eslint` in `@hms/web`; `pnpm boundaries:check` | clean; no violations                                                            |
+| `playwright test` admin, mfa, auth-shell, staff-path            | 21 passed; "two hospitals" failed once under load, passed alone                 |
+| Screenshots at 1440 px and 400 px (mock API)                    | Both tables, permission page and new-role page render; tables scroll on a phone |
+| `playwright test e2e/admin.spec.ts` after the users table       | 6 passed                                                                        |
 
 ## Known limitations
 

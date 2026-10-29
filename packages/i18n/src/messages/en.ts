@@ -132,6 +132,8 @@ export const en = {
     selectModule: 'Select all in {module}',
     clearModule: 'Clear all in {module}',
     roleNotFound: 'This role was not found in this hospital.',
+    user: 'User',
+    status: 'Status',
   },
   chooseHospital: {
     title: 'Choose a hospital',

@@ -136,6 +136,8 @@ export const bnBD: Messages = {
     selectModule: '{module}-এর সব বাছাই করুন',
     clearModule: '{module}-এর সব বাদ দিন',
     roleNotFound: 'এই হাসপাতালে ভূমিকাটি পাওয়া যায়নি।',
+    user: 'ব্যবহারকারী',
+    status: 'অবস্থা',
   },
   chooseHospital: {
     title: 'হাসপাতাল বেছে নিন',

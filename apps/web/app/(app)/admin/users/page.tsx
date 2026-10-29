@@ -1,5 +1,5 @@
 'use client';
-// SCR-22 (users): the hospital's staff accounts with their roles and access state; add a user
+// SCR-22 (users): the hospital's staff accounts as a table with their roles and access state; add a user
 // with a temporary password, and manage one (T-ACC-05; FR-ACC-007, FR-ACC-008, FR-ACC-010).
 // admin.user.manage; the API enforces it.
 import type { AdminUser } from '@hms/contracts';
@@ -43,41 +43,80 @@ export default function UsersPage() {
     >
       {users.error ? <Alert tone="danger">{errorMessage(users.error)}</Alert> : null}
       {users.isPending ? <Skeleton className="h-40" /> : null}
-      <ul className="flex flex-col gap-3">
-        {users.data?.users.map((user) => {
-          const badge = MEMBERSHIP_BADGE[user.membershipStatus];
-          const locked = user.accountStatus !== 'ACTIVE' && user.accountStatus !== 'DISABLED';
-          return (
-            <li
-              key={user.userId}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-border bg-surface p-4"
-            >
-              <div className="flex flex-col gap-1">
-                <p className="font-medium">
-                  {user.displayName}{' '}
-                  <span className="font-mono text-sm text-text-muted">{user.username}</span>
-                </p>
-                <p className="text-sm text-text-muted">
-                  {user.roles.length > 0
-                    ? user.roles.map((role) => role.code).join(', ')
-                    : t('admin.noRoles')}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <StatusBadge status={badge.status} label={t(badge.labelKey)} />
-                  {locked ? <StatusBadge status="problem" label={t('admin.locked')} /> : null}
-                  {user.mfaEnrolled ? <StatusBadge status="done" label={t('admin.mfaOn')} /> : null}
-                  {user.mustChangePassword ? (
-                    <StatusBadge status="review" label={t('admin.mustChange')} />
-                  ) : null}
-                </div>
-              </div>
-              <Button variant="secondary" onClick={() => setManagingId(user.userId)}>
-                {t('admin.manage')}
-              </Button>
-            </li>
-          );
-        })}
-      </ul>
+      {users.data ? (
+        <div className="overflow-x-auto rounded-panel border border-border bg-surface">
+          <table className="w-full min-w-2xl text-start">
+            <thead className="text-sm text-text-muted">
+              <tr>
+                <th scope="col" className="px-4 py-3 text-start font-medium">
+                  {t('admin.user')}
+                </th>
+                <th scope="col" className="px-4 py-3 text-start font-medium">
+                  {t('admin.roles')}
+                </th>
+                <th scope="col" className="px-4 py-3 text-start font-medium">
+                  {t('admin.status')}
+                </th>
+                <th scope="col" className="px-4 py-3 text-end font-medium">
+                  {t('admin.actions')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.data.users.map((user) => {
+                const badge = MEMBERSHIP_BADGE[user.membershipStatus];
+                const locked = user.accountStatus !== 'ACTIVE' && user.accountStatus !== 'DISABLED';
+                return (
+                  <tr key={user.userId} className="border-t border-border hover:bg-surface-hover">
+                    <td className="px-4 py-3">
+                      <p className="font-medium">{user.displayName}</p>
+                      <p className="font-mono text-sm text-text-muted">{user.username}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      {user.roles.length > 0 ? (
+                        <ul className="flex flex-wrap gap-1">
+                          {user.roles.map((role) => (
+                            <li
+                              key={role.id}
+                              title={role.nameEn}
+                              className="rounded-pill bg-primary-soft px-2 font-mono text-sm text-primary"
+                            >
+                              {role.code}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-text-muted">{t('admin.noRoles')}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        <StatusBadge status={badge.status} label={t(badge.labelKey)} />
+                        {locked ? <StatusBadge status="problem" label={t('admin.locked')} /> : null}
+                        {user.mfaEnrolled ? (
+                          <StatusBadge status="done" label={t('admin.mfaOn')} />
+                        ) : null}
+                        {user.mustChangePassword ? (
+                          <StatusBadge status="review" label={t('admin.mustChange')} />
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-end">
+                      <Button
+                        variant="secondary"
+                        aria-label={`${t('admin.manage')}: ${user.displayName}`}
+                        onClick={() => setManagingId(user.userId)}
+                      >
+                        {t('admin.manage')}
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
       {creating ? <UserCreateDialog roles={roles} onOpenChange={setCreating} /> : null}
       {managing ? (
         <UserManageDialog

@@ -28,7 +28,7 @@ export default function RolesPage() {
       {roles.isPending ? <Skeleton className="h-40" /> : null}
       {roles.data ? (
         <div className="overflow-x-auto rounded-panel border border-border bg-surface">
-          <table className="w-full text-start">
+          <table className="w-full min-w-2xl text-start">
             <thead className="text-sm text-text-muted">
               <tr>
                 <th scope="col" className="px-4 py-3 text-start font-medium">
