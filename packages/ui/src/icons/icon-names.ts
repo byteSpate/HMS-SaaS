@@ -77,6 +77,7 @@ export const iconNames = [
   'youtube',
   'share',
   'trash',
+  'pencil',
 ] as const;
 
 export type IconName = (typeof iconNames)[number];

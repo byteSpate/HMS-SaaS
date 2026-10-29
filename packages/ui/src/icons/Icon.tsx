@@ -79,6 +79,7 @@ import { YoutubeLogo } from '@phosphor-icons/react/dist/csr/YoutubeLogo';
 // Share button (T-WEB-15, C-085).
 import { ShareNetwork } from '@phosphor-icons/react/dist/csr/ShareNetwork';
 import { Trash } from '@phosphor-icons/react/dist/csr/Trash';
+import { PencilSimple } from '@phosphor-icons/react/dist/csr/PencilSimple';
 
 import type { IconName } from './icon-names.js';
 
@@ -160,6 +161,7 @@ const ICONS = {
   youtube: YoutubeLogo,
   share: ShareNetwork,
   trash: Trash,
+  pencil: PencilSimple,
 } satisfies Record<IconName, unknown>;
 
 export interface IconProps {

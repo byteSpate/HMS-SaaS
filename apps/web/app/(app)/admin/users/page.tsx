@@ -12,6 +12,7 @@ import {
   CODE_CHIP,
   HEAD_CELL,
   ROW,
+  ROW_TITLE,
   TABLE,
   TABLE_FRAME,
 } from '../../../../src/components/admin/admin-table';
@@ -71,7 +72,7 @@ export default function UsersPage() {
               {users.data.users.map((user) => {
                 const badge = MEMBERSHIP_BADGE[user.membershipStatus];
                 const revoked = user.membershipStatus === 'REVOKED';
-                const open = (kind: 'details' | 'manage' | 'remove') =>
+                const open = (kind: 'details' | 'remove') =>
                   setDialog({ kind, userId: user.userId });
                 return (
                   <tr key={user.userId} className={ROW}>
@@ -79,13 +80,13 @@ export default function UsersPage() {
                       <div className="flex items-center gap-3">
                         <span
                           aria-hidden="true"
-                          className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-on-primary"
+                          className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-on-primary"
                         >
                           {initial(user.displayName)}
                         </span>
                         <div className="min-w-0">
-                          <p className="font-medium">{user.displayName}</p>
-                          <p className="text-xs text-text-muted">{user.username}</p>
+                          <p className={ROW_TITLE}>{user.displayName}</p>
+                          <p className="text-[0.6875rem] text-text-muted">{user.username}</p>
                         </div>
                       </div>
                     </td>
@@ -104,15 +105,15 @@ export default function UsersPage() {
                     </td>
                     <td className={CELL}>
                       <div className="flex flex-wrap gap-1.5">
-                        <StatusBadge status={badge.status} label={t(badge.labelKey)} />
+                        <StatusBadge size="sm" status={badge.status} label={t(badge.labelKey)} />
                         {isLocked(user) ? (
-                          <StatusBadge status="problem" label={t('admin.locked')} />
+                          <StatusBadge size="sm" status="problem" label={t('admin.locked')} />
                         ) : null}
                         {user.mfaEnrolled ? (
-                          <StatusBadge status="done" label={t('admin.mfaOn')} />
+                          <StatusBadge size="sm" status="done" label={t('admin.mfaOn')} />
                         ) : null}
                         {user.mustChangePassword ? (
-                          <StatusBadge status="review" label={t('admin.mustChange')} />
+                          <StatusBadge size="sm" status="review" label={t('admin.mustChange')} />
                         ) : null}
                       </div>
                     </td>
@@ -123,12 +124,6 @@ export default function UsersPage() {
                           label={`${t('admin.viewDetails')}: ${user.displayName}`}
                           variant="secondary"
                           onClick={() => open('details')}
-                        />
-                        <IconButton
-                          icon="more"
-                          label={`${t('admin.manage')}: ${user.displayName}`}
-                          variant="secondary"
-                          onClick={() => open('manage')}
                         />
                         {/* Removing is final, so the button is disabled for a removed person. */}
                         <IconButton

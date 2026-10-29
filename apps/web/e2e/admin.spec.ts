@@ -55,8 +55,9 @@ test('an administrator adds a user with a temporary password', async ({ page }) 
   const karim = page.getByRole('row', { name: /Karim Hossain/ });
   await expect(karim.getByRole('cell').nth(1)).toHaveText('CSH');
   await expect(
-    karim.getByRole('button', { name: `${bn.admin.manage}: Karim Hossain` }),
+    karim.getByRole('button', { name: `${bn.admin.viewDetails}: Karim Hossain` }),
   ).toBeVisible();
+  await expect(karim.getByRole('button', { name: bn.admin.manage })).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await page.getByRole('button', { name: bn.admin.addUser }).click();
@@ -81,7 +82,12 @@ test('an administrator views a user and removes them from the hospital', async (
   const details = page.getByRole('dialog', { name: bn.admin.detailsTitle });
   await expect(details.getByText('karim').first()).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await details.getByRole('button', { name: bn.common.close }).click();
+  await details.getByRole('button', { name: bn.admin.manage }).click();
+  const manage = page.getByRole('dialog', {
+    name: bn.admin.manageTitle.replace('{name}', 'Karim Hossain'),
+  });
+  await expect(manage).toBeVisible();
+  await manage.getByRole('button', { name: bn.common.close }).click();
 
   await karim.getByRole('button', { name: `${bn.admin.remove}: Karim Hossain` }).click();
   const confirm = page.getByRole('dialog');

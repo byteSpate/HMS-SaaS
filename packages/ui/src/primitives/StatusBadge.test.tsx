@@ -10,4 +10,11 @@ describe('StatusBadge', () => {
     expect(screen.getByText(`State ${status}`)).toBeTruthy();
     expect(container.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
+
+  it('has a small size for dense tables that keeps the word and the icon', () => {
+    const { container } = render(<StatusBadge status="done" label="Ready" size="sm" />);
+    expect(screen.getByText('Ready')).toBeTruthy();
+    expect(container.firstElementChild?.className).toContain('text-xs');
+    expect(container.querySelector('svg')?.getAttribute('width')).toBe('12');
+  });
 });

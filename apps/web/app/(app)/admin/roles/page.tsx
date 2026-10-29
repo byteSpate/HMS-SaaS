@@ -2,7 +2,7 @@
 // SCR-22 (roles): the hospital's roles as a table with member and permission counts; each role
 // opens its own permissions page, and new roles start from the product templates (T-ACC-05;
 // FR-ACC-008; C-045). admin.role.manage; the API enforces it.
-import { Alert, buttonClassName, PageLayout, Skeleton } from '@hms/ui';
+import { Alert, buttonClassName, Icon, iconButtonClassName, PageLayout, Skeleton } from '@hms/ui';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import {
@@ -10,6 +10,7 @@ import {
   CODE_CHIP,
   HEAD_CELL,
   ROW,
+  ROW_TITLE,
   TABLE,
   TABLE_FRAME,
 } from '../../../../src/components/admin/admin-table';
@@ -60,7 +61,7 @@ export default function RolesPage() {
               {roles.data.roles.map((role) => (
                 <tr key={role.id} className={ROW}>
                   <td className={CELL}>
-                    <p className="font-medium">{role.nameEn}</p>
+                    <p className={ROW_TITLE}>{role.nameEn}</p>
                     <span className={CODE_CHIP}>{role.code}</span>
                   </td>
                   <td className={`${CELL} text-text-muted`}>
@@ -71,12 +72,14 @@ export default function RolesPage() {
                   <td className={`${CELL} text-end tabular-nums`}>{role.memberCount}</td>
                   <td className={`${CELL} text-end tabular-nums`}>{role.permissions.length}</td>
                   <td className={`${CELL} text-end`}>
+                    {/* An icon link, not a button: it opens the role's own page. */}
                     <Link
                       href={`${ROLES_PATH}/${role.id}`}
                       aria-label={`${t('admin.editPermissions')}: ${role.nameEn}`}
-                      className={buttonClassName('secondary')}
+                      title={t('admin.editPermissions')}
+                      className={`${iconButtonClassName('secondary')} ms-auto`}
                     >
-                      {t('admin.editPermissions')}
+                      <Icon name="pencil" />
                     </Link>
                   </td>
                 </tr>

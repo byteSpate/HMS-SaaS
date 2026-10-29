@@ -16,6 +16,14 @@ const STYLES: Record<StatusKind, string> = {
   problem: 'bg-status-problem-bg text-status-problem-text',
 };
 
+export type StatusBadgeSize = 'sm' | 'md';
+
+// sm is for dense tables (SCR-22 administration lists); md everywhere else.
+const SIZES: Record<StatusBadgeSize, { box: string; icon: number }> = {
+  sm: { box: 'gap-1 px-2 py-0.5 text-xs', icon: 12 },
+  md: { box: 'gap-1.5 px-2.5 py-0.5 text-sm', icon: 16 },
+};
+
 const ICONS: Record<StatusKind, IconName> = {
   idle: 'status-idle',
   active: 'status-active',
@@ -29,20 +37,22 @@ export interface StatusBadgeProps {
   status: StatusKind;
   /** The visible word, already translated. Required: the word is part of the status. */
   label: string;
+  size?: StatusBadgeSize;
   className?: string;
 }
 
-export function StatusBadge({ status, label, className }: StatusBadgeProps) {
+export function StatusBadge({ status, label, size = 'md', className }: StatusBadgeProps) {
   return (
     <span
       data-status={status}
       className={cx(
-        'inline-flex items-center gap-1.5 rounded-pill px-2.5 py-0.5 font-ui text-sm font-medium',
+        'inline-flex items-center rounded-pill font-ui font-medium',
+        SIZES[size].box,
         STYLES[status],
         className,
       )}
     >
-      <Icon name={ICONS[status]} size={16} />
+      <Icon name={ICONS[status]} size={SIZES[size].icon} />
       <span>{label}</span>
     </span>
   );
