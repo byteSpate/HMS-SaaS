@@ -72,12 +72,39 @@ test('an administrator creates a role from a template', async ({ page }) => {
   await signIn(page, world);
 
   await page.getByRole('link', { name: bn.nav.roles }).first().click();
-  await page.getByRole('button', { name: bn.admin.addRole }).click();
+  await page.getByRole('link', { name: bn.admin.addRole }).click();
+  await expect(page).toHaveURL(/\/staff\/admin\/roles\/new$/);
   await page.getByLabel(bn.admin.fromTemplate).selectOption('ADM');
   await page.getByLabel(bn.admin.roleCode).fill('DEPUTY_ADMIN');
   await page.getByRole('button', { name: bn.admin.create }).click();
 
+  await expect(page).toHaveURL(/\/staff\/admin\/roles$/);
   await expect(page.getByText('DEPUTY_ADMIN')).toBeVisible();
+});
+
+test("an administrator edits a role's permissions on its own page", async ({ page }) => {
+  const world = newWorld({ permissions: ADMIN_PERMISSIONS });
+  await installMockApi(page, world);
+  await signIn(page, world);
+
+  await page.getByRole('link', { name: bn.nav.roles }).first().click();
+  await page.getByRole('link', { name: `${bn.admin.editPermissions}: Cashier` }).click();
+  await expect(page).toHaveURL(/\/staff\/admin\/roles\/[0-9a-f-]+$/);
+  await expect(
+    page.getByRole('heading', { name: bn.admin.rolePermissionsTitle, level: 1 }),
+  ).toBeVisible();
+  const save = page.getByRole('button', { name: bn.admin.savePermissions });
+  await expect(save).toBeDisabled();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+
+  const scheduling = page.getByRole('region', { name: /scheduling/ });
+  await scheduling.getByRole('button', { name: /scheduling/ }).click();
+  await expect(scheduling.getByRole('checkbox', { checked: false })).toHaveCount(0);
+  await save.click();
+
+  await expect(page).toHaveURL(/\/staff\/admin\/roles$/);
+  const cashier = page.getByRole('row', { name: /Cashier/ });
+  await expect(cashier.getByRole('cell').nth(3)).not.toHaveText('1');
 });
 
 test('staff without administration permissions see no admin links', async ({ page }) => {

@@ -119,6 +119,23 @@ export const bnBD: Messages = {
     savePermissions: 'অনুমতি সংরক্ষণ করুন',
     members: '{count, plural, one {# জন সদস্য} other {# জন সদস্য}}',
     permissionCount: '{count, plural, one {# টি অনুমতি} other {# টি অনুমতি}}',
+    rolePermissionsTitle: 'ভূমিকার অনুমতি',
+    rolePermissionsDescription:
+      'এই ভূমিকা কী কী করতে পারবে তা টিক দিন। ভূমিকাটি যাঁদের আছে, তাঁদের পরের কাজ থেকেই পরিবর্তন কার্যকর হবে।',
+    newRoleDescription:
+      'একটি টেমপ্লেট দিয়ে শুরু করুন, তারপর ভূমিকাটি কী কী করতে পারবে তা টিক দিন।',
+    backToRoles: 'ভূমিকার তালিকায় ফিরুন',
+    cancel: 'বাতিল করুন',
+    role: 'ভূমিকা',
+    template: 'টেমপ্লেট',
+    membersColumn: 'সদস্য',
+    actions: 'কাজ',
+    selectedOfTotal: '{total}টির মধ্যে {selected}টি অনুমতি বাছাই করা হয়েছে',
+    selectAll: 'সব বাছাই করুন',
+    clearAll: 'সব বাদ দিন',
+    selectModule: '{module}-এর সব বাছাই করুন',
+    clearModule: '{module}-এর সব বাদ দিন',
+    roleNotFound: 'এই হাসপাতালে ভূমিকাটি পাওয়া যায়নি।',
   },
   chooseHospital: {
     title: 'হাসপাতাল বেছে নিন',
