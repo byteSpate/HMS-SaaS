@@ -78,6 +78,7 @@ import { WhatsappLogo } from '@phosphor-icons/react/dist/csr/WhatsappLogo';
 import { YoutubeLogo } from '@phosphor-icons/react/dist/csr/YoutubeLogo';
 // Share button (T-WEB-15, C-085).
 import { ShareNetwork } from '@phosphor-icons/react/dist/csr/ShareNetwork';
+import { Trash } from '@phosphor-icons/react/dist/csr/Trash';
 
 import type { IconName } from './icon-names.js';
 
@@ -158,6 +159,7 @@ const ICONS = {
   whatsapp: WhatsappLogo,
   youtube: YoutubeLogo,
   share: ShareNetwork,
+  trash: Trash,
 } satisfies Record<IconName, unknown>;
 
 export interface IconProps {

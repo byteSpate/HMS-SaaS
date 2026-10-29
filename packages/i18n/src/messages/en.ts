@@ -134,6 +134,18 @@ export const en = {
     roleNotFound: 'This role was not found in this hospital.',
     user: 'User',
     status: 'Status',
+    viewDetails: 'View details',
+    detailsTitle: 'User details',
+    accountSection: 'Account',
+    accountActive: 'Active',
+    accountDisabled: 'Disabled',
+    passwordSet: 'Chosen by the person',
+    remove: 'Remove from this hospital',
+    removeTitle: 'Remove {name} from this hospital?',
+    removeDescription:
+      'Their access to this hospital ends now and cannot be given back; open sessions end at once. The account and its history are kept for the audit trail.',
+    removeConfirm: 'Remove',
+    removed: '{name} was removed from this hospital.',
   },
   chooseHospital: {
     title: 'Choose a hospital',

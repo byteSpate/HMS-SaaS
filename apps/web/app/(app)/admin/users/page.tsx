@@ -1,17 +1,8 @@
 'use client';
 // SCR-22 (users): the hospital's staff accounts as a table with their roles and access state;
-// add a user with a temporary password, and manage one (T-ACC-05; FR-ACC-007, FR-ACC-008,
-// FR-ACC-010). admin.user.manage; the API enforces it.
-import type { AdminUser } from '@hms/contracts';
-import {
-  Alert,
-  Button,
-  IconButton,
-  PageLayout,
-  Skeleton,
-  StatusBadge,
-  type StatusKind,
-} from '@hms/ui';
+// add a user with a temporary password, view one, manage one, or remove one from the hospital
+// (T-ACC-05; FR-ACC-007, FR-ACC-008, FR-ACC-010). admin.user.manage; the API enforces it.
+import { Alert, Button, IconButton, PageLayout, Skeleton, StatusBadge } from '@hms/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -28,33 +19,26 @@ import {
   USERS_QUERY_KEY,
   UserCreateDialog,
 } from '../../../../src/components/admin/user-create-dialog';
+import { UserDetailsDialog } from '../../../../src/components/admin/user-details-dialog';
 import { UserManageDialog } from '../../../../src/components/admin/user-manage-dialog';
+import { UserRemoveDialog } from '../../../../src/components/admin/user-remove-dialog';
+import { initial, isLocked, MEMBERSHIP_BADGE } from '../../../../src/components/admin/user-status';
 import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
 
-// Full catalog keys as literals, so the unused-key check can see them.
-const MEMBERSHIP_BADGE = {
-  ACTIVE: { status: 'active', labelKey: 'admin.membershipActive' },
-  SUSPENDED: { status: 'attention', labelKey: 'admin.membershipSuspended' },
-  REVOKED: { status: 'problem', labelKey: 'admin.membershipRevoked' },
-  INVITED: { status: 'idle', labelKey: 'admin.membershipInvited' },
-} as const satisfies Record<
-  AdminUser['membershipStatus'],
-  { status: StatusKind; labelKey: string }
->;
-
-/** First letter of the name for the avatar; works for Bangla and Latin names alike. */
-function initial(name: string): string {
-  return [...name.trim()][0]?.toUpperCase() ?? '?';
-}
+/** One dialog at a time, for one user. */
+type OpenDialog = { kind: 'details' | 'manage' | 'remove'; userId: string } | null;
 
 export default function UsersPage() {
   const t = useTranslations();
   const errorMessage = useApiErrorMessage();
   const users = useQuery({ queryKey: USERS_QUERY_KEY, queryFn: adminApi.users });
   const [creating, setCreating] = useState(false);
-  const [managingId, setManagingId] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<OpenDialog>(null);
   const roles = users.data?.roles ?? [];
-  const managing = users.data?.users.find((user) => user.userId === managingId);
+  const selected = users.data?.users.find((user) => user.userId === dialog?.userId);
+  const close = (open: boolean) => {
+    if (!open) setDialog(null);
+  };
 
   return (
     <PageLayout
@@ -86,7 +70,9 @@ export default function UsersPage() {
             <tbody>
               {users.data.users.map((user) => {
                 const badge = MEMBERSHIP_BADGE[user.membershipStatus];
-                const locked = user.accountStatus !== 'ACTIVE' && user.accountStatus !== 'DISABLED';
+                const revoked = user.membershipStatus === 'REVOKED';
+                const open = (kind: 'details' | 'manage' | 'remove') =>
+                  setDialog({ kind, userId: user.userId });
                 return (
                   <tr key={user.userId} className={ROW}>
                     <td className={CELL}>
@@ -119,7 +105,9 @@ export default function UsersPage() {
                     <td className={CELL}>
                       <div className="flex flex-wrap gap-1.5">
                         <StatusBadge status={badge.status} label={t(badge.labelKey)} />
-                        {locked ? <StatusBadge status="problem" label={t('admin.locked')} /> : null}
+                        {isLocked(user) ? (
+                          <StatusBadge status="problem" label={t('admin.locked')} />
+                        ) : null}
                         {user.mfaEnrolled ? (
                           <StatusBadge status="done" label={t('admin.mfaOn')} />
                         ) : null}
@@ -128,13 +116,29 @@ export default function UsersPage() {
                         ) : null}
                       </div>
                     </td>
-                    <td className={`${CELL} text-end`}>
-                      <IconButton
-                        icon="more"
-                        label={`${t('admin.manage')}: ${user.displayName}`}
-                        variant="secondary"
-                        onClick={() => setManagingId(user.userId)}
-                      />
+                    <td className={CELL}>
+                      <div className="flex justify-end gap-1.5">
+                        <IconButton
+                          icon="eye"
+                          label={`${t('admin.viewDetails')}: ${user.displayName}`}
+                          variant="secondary"
+                          onClick={() => open('details')}
+                        />
+                        <IconButton
+                          icon="more"
+                          label={`${t('admin.manage')}: ${user.displayName}`}
+                          variant="secondary"
+                          onClick={() => open('manage')}
+                        />
+                        {/* Removing is final, so the button is disabled for a removed person. */}
+                        <IconButton
+                          icon="trash"
+                          label={`${t('admin.remove')}: ${user.displayName}`}
+                          variant="secondary"
+                          disabled={revoked}
+                          onClick={() => open('remove')}
+                        />
+                      </div>
                     </td>
                   </tr>
                 );
@@ -144,13 +148,24 @@ export default function UsersPage() {
         </div>
       ) : null}
       {creating ? <UserCreateDialog roles={roles} onOpenChange={setCreating} /> : null}
-      {managing ? (
-        <UserManageDialog
-          key={managing.userId}
-          user={managing}
-          roles={roles}
-          onOpenChange={(open) => setManagingId(open ? managing.userId : null)}
+      {selected && dialog?.kind === 'details' ? (
+        <UserDetailsDialog
+          key={selected.userId}
+          user={selected}
+          onOpenChange={close}
+          onManage={() => setDialog({ kind: 'manage', userId: selected.userId })}
         />
+      ) : null}
+      {selected && dialog?.kind === 'manage' ? (
+        <UserManageDialog
+          key={selected.userId}
+          user={selected}
+          roles={roles}
+          onOpenChange={close}
+        />
+      ) : null}
+      {selected && dialog?.kind === 'remove' ? (
+        <UserRemoveDialog key={selected.userId} user={selected} onOpenChange={close} />
       ) : null}
     </PageLayout>
   );

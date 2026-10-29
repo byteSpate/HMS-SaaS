@@ -138,6 +138,18 @@ export const bnBD: Messages = {
     roleNotFound: 'এই হাসপাতালে ভূমিকাটি পাওয়া যায়নি।',
     user: 'ব্যবহারকারী',
     status: 'অবস্থা',
+    viewDetails: 'বিস্তারিত দেখুন',
+    detailsTitle: 'ব্যবহারকারীর বিস্তারিত',
+    accountSection: 'অ্যাকাউন্ট',
+    accountActive: 'সক্রিয়',
+    accountDisabled: 'নিষ্ক্রিয়',
+    passwordSet: 'ব্যবহারকারী নিজে ঠিক করেছেন',
+    remove: 'এই হাসপাতাল থেকে সরান',
+    removeTitle: '{name}-কে এই হাসপাতাল থেকে সরাবেন?',
+    removeDescription:
+      'এই হাসপাতালে তাঁর প্রবেশাধিকার এখনই শেষ হবে এবং আর ফেরত দেওয়া যাবে না; খোলা সেশনগুলো সঙ্গে সঙ্গে বন্ধ হবে। অডিটের জন্য অ্যাকাউন্ট ও তার ইতিহাস রাখা থাকবে।',
+    removeConfirm: 'সরান',
+    removed: '{name}-কে এই হাসপাতাল থেকে সরানো হয়েছে।',
   },
   chooseHospital: {
     title: 'হাসপাতাল বেছে নিন',

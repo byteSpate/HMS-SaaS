@@ -70,6 +70,32 @@ test('an administrator adds a user with a temporary password', async ({ page }) 
   await expect(page.getByText(bn.admin.mustChange)).toBeVisible();
 });
 
+test('an administrator views a user and removes them from the hospital', async ({ page }) => {
+  const world = newWorld({ permissions: ADMIN_PERMISSIONS });
+  await installMockApi(page, world);
+  await signIn(page, world);
+  await page.getByRole('link', { name: bn.nav.users }).first().click();
+  const karim = page.getByRole('row', { name: /Karim Hossain/ });
+
+  await karim.getByRole('button', { name: `${bn.admin.viewDetails}: Karim Hossain` }).click();
+  const details = page.getByRole('dialog', { name: bn.admin.detailsTitle });
+  await expect(details.getByText('karim').first()).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await details.getByRole('button', { name: bn.common.close }).click();
+
+  await karim.getByRole('button', { name: `${bn.admin.remove}: Karim Hossain` }).click();
+  const confirm = page.getByRole('dialog');
+  await confirm.getByRole('button', { name: bn.admin.removeConfirm }).click();
+  await expect(confirm.getByText(bn.validation.required)).toBeVisible();
+  await confirm.getByLabel(bn.admin.reason).fill('Left the hospital');
+  await confirm.getByRole('button', { name: bn.admin.removeConfirm }).click();
+
+  await expect(karim.getByText(bn.admin.membershipRevoked)).toBeVisible();
+  await expect(
+    karim.getByRole('button', { name: `${bn.admin.remove}: Karim Hossain` }),
+  ).toBeDisabled();
+});
+
 test('an administrator creates a role from a template', async ({ page }) => {
   const world = newWorld({ permissions: ADMIN_PERMISSIONS });
   await installMockApi(page, world);
