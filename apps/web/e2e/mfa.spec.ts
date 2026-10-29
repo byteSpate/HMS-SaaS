@@ -46,9 +46,26 @@ test('a privileged user sets up the second factor before the shell', async ({ pa
   await page.getByRole('button', { name: bn.mfa.turnOn }).click();
   await expect(page.getByRole('heading', { name: bn.mfa.recoveryTitle })).toBeVisible();
   await expect(page.getByTestId('recovery-codes').getByRole('listitem')).toHaveCount(10);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole('button', { name: bn.mfa.recoverySaved }).click();
 
   await expect(page).toHaveURL(/\/staff$/);
+});
+
+test('the recovery codes can be copied in one click', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const world = newWorld({ mfaRequired: true });
+  await installMockApi(page, world);
+  await signIn(page, world);
+  await page.getByRole('button', { name: bn.mfa.startSetup }).click();
+  await page.getByLabel(bn.mfa.codeLabel).fill(MOCK_TOTP_CODE);
+  await page.getByRole('button', { name: bn.mfa.turnOn }).click();
+
+  await page.getByRole('button', { name: bn.mfa.copyCodes }).click();
+  await expect(page.getByRole('button', { name: bn.mfa.codesCopied })).toBeVisible();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  // The Windows clipboard turns "\n" into "\r\n", so compare lines.
+  expect(copied.split(/\r?\n/)).toEqual(MOCK_RECOVERY_CODES);
 });
 
 test('an enrolled user enters the code, or a recovery code, after sign-in', async ({ page }) => {

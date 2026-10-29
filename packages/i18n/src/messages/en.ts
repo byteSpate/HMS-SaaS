@@ -51,6 +51,9 @@ export const en = {
     recoveryDescription:
       'If you lose your phone, each of these codes lets you sign in once. Write them down or store them somewhere safe. They are not shown again.',
     recoverySaved: 'I have saved the codes',
+    copyCodes: 'Copy all codes',
+    codesCopied: 'Copied',
+    copyFailed: 'Could not copy. Select the codes and copy them by hand.',
   },
   changePassword: {
     title: 'Change your password',

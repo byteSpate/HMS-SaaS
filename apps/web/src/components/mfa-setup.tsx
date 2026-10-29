@@ -12,6 +12,7 @@ import { type FormEvent, useRef, useState } from 'react';
 import { authApi } from '../api/auth';
 import { useApiErrorMessage } from '../i18n/use-api-error-message';
 import { useSessionActions } from '../session/use-session';
+import { CopyButton } from './copy-button';
 import { QrCode } from './qr-code';
 
 /** "JBSWY3DP..." in groups of four, the way authenticator apps show keys. */
@@ -68,6 +69,12 @@ export function MfaSetup() {
             </li>
           ))}
         </ul>
+        <CopyButton
+          text={confirmed.recoveryCodes.join('\n')}
+          label={t('mfa.copyCodes')}
+          copiedLabel={t('mfa.codesCopied')}
+          failedLabel={t('mfa.copyFailed')}
+        />
         <Button size="lg" onClick={finish}>
           {t('mfa.recoverySaved')}
         </Button>
