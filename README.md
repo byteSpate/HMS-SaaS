@@ -36,6 +36,7 @@ pnpm install
 cp .env.example .env
 pnpm services:up                         # Postgres + Valkey in Docker
 pnpm db:migrate                          # apply migrations
+pnpm db:seed:dev                         # demo hospital, admin and reception users
 pnpm --filter @hms/web exec playwright install chromium
 ```
 
@@ -52,6 +53,7 @@ pnpm --filter @hms/web exec playwright install chromium
 | `pnpm format`                  | Prettier                                                                                                                               |
 | `pnpm db:migrate`              | Create/apply a migration after editing `schema.prisma`                                                                                 |
 | `pnpm db:studio`               | Browse the local database                                                                                                              |
+| `pnpm db:seed:dev`             | Demo hospital with the template roles; users `admin` / `Admin-dev-2026` and `reception` / `Reception-dev-2026` (local database only)   |
 | `pnpm services:down`           | Stop Postgres + Valkey (data is kept in Docker volumes)                                                                                |
 
 ## Decisions made at scaffold

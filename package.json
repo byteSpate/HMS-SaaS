@@ -21,7 +21,8 @@
     "db:generate": "pnpm --filter @hms/database db:generate",
     "db:migrate": "pnpm --filter @hms/database db:migrate",
     "db:deploy": "pnpm --filter @hms/database db:deploy",
-    "db:studio": "pnpm --filter @hms/database db:studio"
+    "db:studio": "pnpm --filter @hms/database db:studio",
+    "db:seed:dev": "pnpm --filter @hms/api seed:dev"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
