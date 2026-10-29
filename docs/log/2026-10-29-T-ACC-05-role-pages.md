@@ -14,7 +14,7 @@ The role permission editor no longer opens in a dialog; with 61 permissions in a
 | `/staff/admin/roles/[id]` | Role permissions: role card with back link, "x of 61 selected" with select all, one card per module |
 | `/staff/admin/roles/new`  | New role: template, code and names in the top card, then the same permission sections               |
 
-The **Users** list is a table too (owner request, same day): user (name, username), roles as code chips (full name on hover), status badges, and a Manage button per row; Manage still opens the existing dialog. Both tables keep a minimum width and scroll sideways inside their card on a phone.
+The **Users** list is a table too (owner request, same day), styled after the owner's reference with the project tokens: small upper-case column heads, compact rows at text-sm, an initial avatar, the username under the name, roles as upper-case code chips (full name on hover), status badges, and an icon button ("...") that opens the existing Manage dialog. The Roles table uses the same styles (shared in admin-table.ts). Both tables keep a minimum width and scroll sideways inside their card on a phone. The reference also showed email, mobile and joined date; the user record has none of these, so they are not shown.
 
 Each module card shows its count (`2/2`) and its own Select all / Clear all; permissions sit in a 1 to 4 column grid by screen width. Save is disabled until something changes; after saving the app returns to the list and shows "Saved."
 
@@ -24,6 +24,7 @@ Each module card shows its count (`2/2`) and its own Select all / Clear all; per
 | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | apps/web/app/(app)/admin/roles/page.tsx                                 | Roles table                                                                                               |
 | apps/web/app/(app)/admin/users/page.tsx                                 | Users table                                                                                               |
+| apps/web/src/components/admin/admin-table.ts                            | Shared table classes for the two admin tables                                                             |
 | apps/web/app/(app)/admin/roles/[roleId]/page.tsx, new/page.tsx          | The two role pages (loading, error, not found)                                                            |
 | apps/web/src/components/admin/role-editor.tsx                           | Shared page body: header card, fields for a new role, save and cancel; `useRoles`                         |
 | apps/web/src/components/admin/permission-sections.tsx                   | Summary bar and module cards with counts and select all                                                   |

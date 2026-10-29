@@ -1,13 +1,29 @@
 'use client';
-// SCR-22 (users): the hospital's staff accounts as a table with their roles and access state; add a user
-// with a temporary password, and manage one (T-ACC-05; FR-ACC-007, FR-ACC-008, FR-ACC-010).
-// admin.user.manage; the API enforces it.
+// SCR-22 (users): the hospital's staff accounts as a table with their roles and access state;
+// add a user with a temporary password, and manage one (T-ACC-05; FR-ACC-007, FR-ACC-008,
+// FR-ACC-010). admin.user.manage; the API enforces it.
 import type { AdminUser } from '@hms/contracts';
-import { Alert, Button, PageLayout, Skeleton, StatusBadge, type StatusKind } from '@hms/ui';
+import {
+  Alert,
+  Button,
+  IconButton,
+  PageLayout,
+  Skeleton,
+  StatusBadge,
+  type StatusKind,
+} from '@hms/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { adminApi } from '../../../../src/api/admin';
+import {
+  CELL,
+  CODE_CHIP,
+  HEAD_CELL,
+  ROW,
+  TABLE,
+  TABLE_FRAME,
+} from '../../../../src/components/admin/admin-table';
 import {
   USERS_QUERY_KEY,
   UserCreateDialog,
@@ -25,6 +41,11 @@ const MEMBERSHIP_BADGE = {
   AdminUser['membershipStatus'],
   { status: StatusKind; labelKey: string }
 >;
+
+/** First letter of the name for the avatar; works for Bangla and Latin names alike. */
+function initial(name: string): string {
+  return [...name.trim()][0]?.toUpperCase() ?? '?';
+}
 
 export default function UsersPage() {
   const t = useTranslations();
@@ -44,20 +65,20 @@ export default function UsersPage() {
       {users.error ? <Alert tone="danger">{errorMessage(users.error)}</Alert> : null}
       {users.isPending ? <Skeleton className="h-40" /> : null}
       {users.data ? (
-        <div className="overflow-x-auto rounded-panel border border-border bg-surface">
-          <table className="w-full min-w-2xl text-start">
-            <thead className="text-sm text-text-muted">
+        <div className={TABLE_FRAME}>
+          <table className={TABLE}>
+            <thead>
               <tr>
-                <th scope="col" className="px-4 py-3 text-start font-medium">
+                <th scope="col" className={`${HEAD_CELL} text-start`}>
                   {t('admin.user')}
                 </th>
-                <th scope="col" className="px-4 py-3 text-start font-medium">
+                <th scope="col" className={`${HEAD_CELL} text-start`}>
                   {t('admin.roles')}
                 </th>
-                <th scope="col" className="px-4 py-3 text-start font-medium">
+                <th scope="col" className={`${HEAD_CELL} text-start`}>
                   {t('admin.status')}
                 </th>
-                <th scope="col" className="px-4 py-3 text-end font-medium">
+                <th scope="col" className={`${HEAD_CELL} text-end`}>
                   {t('admin.actions')}
                 </th>
               </tr>
@@ -67,20 +88,26 @@ export default function UsersPage() {
                 const badge = MEMBERSHIP_BADGE[user.membershipStatus];
                 const locked = user.accountStatus !== 'ACTIVE' && user.accountStatus !== 'DISABLED';
                 return (
-                  <tr key={user.userId} className="border-t border-border hover:bg-surface-hover">
-                    <td className="px-4 py-3">
-                      <p className="font-medium">{user.displayName}</p>
-                      <p className="font-mono text-sm text-text-muted">{user.username}</p>
+                  <tr key={user.userId} className={ROW}>
+                    <td className={CELL}>
+                      <div className="flex items-center gap-3">
+                        <span
+                          aria-hidden="true"
+                          className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-on-primary"
+                        >
+                          {initial(user.displayName)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-medium">{user.displayName}</p>
+                          <p className="text-xs text-text-muted">{user.username}</p>
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={CELL}>
                       {user.roles.length > 0 ? (
                         <ul className="flex flex-wrap gap-1">
                           {user.roles.map((role) => (
-                            <li
-                              key={role.id}
-                              title={role.nameEn}
-                              className="rounded-pill bg-primary-soft px-2 font-mono text-sm text-primary"
-                            >
+                            <li key={role.id} title={role.nameEn} className={CODE_CHIP}>
                               {role.code}
                             </li>
                           ))}
@@ -89,8 +116,8 @@ export default function UsersPage() {
                         <span className="text-text-muted">{t('admin.noRoles')}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
+                    <td className={CELL}>
+                      <div className="flex flex-wrap gap-1.5">
                         <StatusBadge status={badge.status} label={t(badge.labelKey)} />
                         {locked ? <StatusBadge status="problem" label={t('admin.locked')} /> : null}
                         {user.mfaEnrolled ? (
@@ -101,14 +128,13 @@ export default function UsersPage() {
                         ) : null}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-end">
-                      <Button
+                    <td className={`${CELL} text-end`}>
+                      <IconButton
+                        icon="more"
+                        label={`${t('admin.manage')}: ${user.displayName}`}
                         variant="secondary"
-                        aria-label={`${t('admin.manage')}: ${user.displayName}`}
                         onClick={() => setManagingId(user.userId)}
-                      >
-                        {t('admin.manage')}
-                      </Button>
+                      />
                     </td>
                   </tr>
                 );

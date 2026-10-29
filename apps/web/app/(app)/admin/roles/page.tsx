@@ -5,6 +5,14 @@
 import { Alert, buttonClassName, PageLayout, Skeleton } from '@hms/ui';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import {
+  CELL,
+  CODE_CHIP,
+  HEAD_CELL,
+  ROW,
+  TABLE,
+  TABLE_FRAME,
+} from '../../../../src/components/admin/admin-table';
 import { ROLES_PATH, useRoles } from '../../../../src/components/admin/role-editor';
 import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
 
@@ -27,42 +35,42 @@ export default function RolesPage() {
       {roles.error ? <Alert tone="danger">{errorMessage(roles.error)}</Alert> : null}
       {roles.isPending ? <Skeleton className="h-40" /> : null}
       {roles.data ? (
-        <div className="overflow-x-auto rounded-panel border border-border bg-surface">
-          <table className="w-full min-w-2xl text-start">
-            <thead className="text-sm text-text-muted">
+        <div className={TABLE_FRAME}>
+          <table className={TABLE}>
+            <thead>
               <tr>
-                <th scope="col" className="px-4 py-3 text-start font-medium">
+                <th scope="col" className={`${HEAD_CELL} text-start`}>
                   {t('admin.role')}
                 </th>
-                <th scope="col" className="px-4 py-3 text-start font-medium">
+                <th scope="col" className={`${HEAD_CELL} text-start`}>
                   {t('admin.template')}
                 </th>
-                <th scope="col" className="px-4 py-3 text-end font-medium">
+                <th scope="col" className={`${HEAD_CELL} text-end`}>
                   {t('admin.membersColumn')}
                 </th>
-                <th scope="col" className="px-4 py-3 text-end font-medium">
+                <th scope="col" className={`${HEAD_CELL} text-end`}>
                   {t('admin.permissions')}
                 </th>
-                <th scope="col" className="px-4 py-3 text-end font-medium">
+                <th scope="col" className={`${HEAD_CELL} text-end`}>
                   {t('admin.actions')}
                 </th>
               </tr>
             </thead>
             <tbody>
               {roles.data.roles.map((role) => (
-                <tr key={role.id} className="border-t border-border hover:bg-surface-hover">
-                  <td className="px-4 py-3">
+                <tr key={role.id} className={ROW}>
+                  <td className={CELL}>
                     <p className="font-medium">{role.nameEn}</p>
-                    <p className="font-mono text-sm text-text-muted">{role.code}</p>
+                    <span className={CODE_CHIP}>{role.code}</span>
                   </td>
-                  <td className="px-4 py-3 text-text-muted">
+                  <td className={`${CELL} text-text-muted`}>
                     {role.templateCode
                       ? (templateName.get(role.templateCode) ?? role.templateCode)
                       : t('admin.noTemplate')}
                   </td>
-                  <td className="px-4 py-3 text-end tabular-nums">{role.memberCount}</td>
-                  <td className="px-4 py-3 text-end tabular-nums">{role.permissions.length}</td>
-                  <td className="px-4 py-3 text-end">
+                  <td className={`${CELL} text-end tabular-nums`}>{role.memberCount}</td>
+                  <td className={`${CELL} text-end tabular-nums`}>{role.permissions.length}</td>
+                  <td className={`${CELL} text-end`}>
                     <Link
                       href={`${ROLES_PATH}/${role.id}`}
                       aria-label={`${t('admin.editPermissions')}: ${role.nameEn}`}
