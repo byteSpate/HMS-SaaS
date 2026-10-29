@@ -2,6 +2,8 @@
 // Draws a text (the MFA key URI, T-ACC-04) as a QR code. qrcode-generator only computes the
 // module grid; React draws it as one SVG path, so no generated markup is injected into the page.
 // Always black on white with a quiet zone, whatever the theme, so phone cameras can read it.
+// The colours are SVG attributes, not Tailwind classes: the theme removes Tailwind's default
+// palette (theme-light.css), so fill-white did not exist and the background fell back to black.
 import qrcode from 'qrcode-generator';
 import { useMemo } from 'react';
 
@@ -40,8 +42,8 @@ export function QrCode({
       height={pixels}
       shapeRendering="crispEdges"
     >
-      <rect width={size} height={size} className="fill-white" />
-      <path d={path} className="fill-black" />
+      <rect width={size} height={size} fill="white" />
+      <path d={path} fill="black" />
     </svg>
   );
 }
