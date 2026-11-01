@@ -6,11 +6,13 @@ import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import {
   changePasswordRequestSchema,
+  forgotPasswordRequestSchema,
   loginRequestSchema,
   selectMembershipRequestSchema,
   sessionResponseSchema,
   updatePreferencesRequestSchema,
   type ChangePasswordRequest,
+  type ForgotPasswordRequest,
   type LoginRequest,
   type SelectMembershipRequest,
   type SessionResponse,
@@ -72,6 +74,27 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<SessionResponse> {
     return this.issue(response, await this.auth.login(body, metaOf(request)));
+  }
+
+  // C-093, FR-ACC-012: the answer is the same whether or not the username exists.
+  @Public()
+  @Post('password-reset-requests')
+  @HttpCode(202)
+  @ApiEndpoint({
+    summary: 'Ask an administrator for a new password',
+    description:
+      'For someone who cannot sign in. Flags the account on the user list of the administrator; ' +
+      'it changes no password, lock or session. Always answers 202, whether or not the ' +
+      'username exists. Shares the login rate limits.',
+    body: forgotPasswordRequestSchema,
+    success: { status: 202, description: 'Received' },
+    errors: ['VALIDATION_FAILED', 'RATE_LIMITED', 'CSRF_TOKEN_INVALID'],
+  })
+  requestPasswordReset(
+    @Body(new ZodBodyPipe(forgotPasswordRequestSchema)) body: ForgotPasswordRequest,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<void> {
+    return this.auth.requestPasswordReset(body, metaOf(request));
   }
 
   @AllowWithoutTenant()

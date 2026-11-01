@@ -18,6 +18,7 @@ export interface AdminUserRow {
   roles: { id: string; code: string; nameEn: string; nameBn: string | null }[];
   mfaEnrolled: boolean;
   mustChangePassword: boolean;
+  passwordResetRequestedAt: Date | null;
 }
 
 export interface RoleChoice {
@@ -91,6 +92,7 @@ export async function listUsers(
             status: true,
             lockedUntil: true,
             mustChangePassword: true,
+            passwordResetRequestedAt: true,
             mfa: { select: { enabledAt: true } },
           },
         },
@@ -109,6 +111,7 @@ export async function listUsers(
       roles: m.roles.map((r) => r.role),
       mfaEnrolled: m.user.mfa?.enabledAt != null,
       mustChangePassword: m.user.mustChangePassword,
+      passwordResetRequestedAt: m.user.passwordResetRequestedAt,
     }));
     return { users, roles };
   });
@@ -173,7 +176,12 @@ export async function resetPassword(
     if (!(await membershipOf(tx, targetUserId))) return false;
     await tx.userAccount.update({
       where: { id: targetUserId },
-      data: { passwordHash, mustChangePassword: true, version: { increment: 1 } },
+      data: {
+        passwordHash,
+        mustChangePassword: true,
+        passwordResetRequestedAt: null,
+        version: { increment: 1 },
+      },
     });
     await tx.userSession.updateMany({
       where: { userId: targetUserId, revokedAt: null },

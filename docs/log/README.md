@@ -105,3 +105,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-10-28 | [T-ACC-04: TOTP second factor for administrators and finance staff](2026-10-28-T-ACC-04-mfa.md)                                  |
 | 2026-10-28 | [T-ACC-05: user, membership and role administration, with temporary passwords](2026-10-28-T-ACC-05-user-admin.md)                |
 | 2026-10-28 | [Swagger documentation for the authentication and administration API](2026-10-28-api-swagger-auth.md)                            |
+| 2026-11-01 | [T-ACC-05: show password button and forgotten password requests](2026-11-01-T-ACC-05-forgot-password.md)                         |

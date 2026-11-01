@@ -133,6 +133,8 @@ model UserAccount {
   // T-ACC-05 (FR-ACC-007): a password set by an administrator must be changed at next login.
   mustChangePassword Boolean       @default(false) @map("must_change_password")
   passwordChangedAt  DateTime?     @map("password_changed_at") @db.Timestamptz
+  // C-093: when the person asked for a new password; cleared when one is set.
+  passwordResetRequestedAt DateTime? @map("password_reset_requested_at") @db.Timestamptz
   preferredLang      PreferredLang @default(bn_BD) @map("preferred_lang")
   createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
   version            Int           @default(1)

@@ -4,7 +4,7 @@
 // product minimums; the form only checks that both new entries match. Passwords are never kept
 // after a failed attempt.
 import { PASSWORD_MIN_LENGTH } from '@hms/contracts';
-import { Alert, Button, Field, TextInput, useToast } from '@hms/ui';
+import { Alert, Button, Field, PasswordInput, useToast } from '@hms/ui';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { type FormEvent, useState } from 'react';
@@ -79,10 +79,11 @@ export function ChangePasswordForm({ forced }: { forced: boolean }) {
           }
         >
           {({ id, invalid, required, ...aria }) => (
-            <TextInput
+            <PasswordInput
               id={id}
               name={field.id}
-              type="password"
+              showLabel={t('common.showSecret')}
+              hideLabel={t('common.hideSecret')}
               autoComplete={field.id === 'current' ? 'current-password' : 'new-password'}
               minLength={field.id === 'current' ? undefined : PASSWORD_MIN_LENGTH}
               invalid={invalid}

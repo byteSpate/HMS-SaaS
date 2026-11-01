@@ -36,7 +36,11 @@ const roleNotFound = () =>
   });
 
 function toAdminUser(row: AdminUserRow): AdminUser {
-  return { ...row, lockedUntil: row.lockedUntil?.toISOString() ?? null };
+  return {
+    ...row,
+    lockedUntil: row.lockedUntil?.toISOString() ?? null,
+    passwordResetRequestedAt: row.passwordResetRequestedAt?.toISOString() ?? null,
+  };
 }
 
 @Injectable()

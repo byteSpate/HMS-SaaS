@@ -19,6 +19,8 @@ export const en = {
     signOut: 'Sign out',
     dismiss: 'Dismiss',
     notifications: 'Notifications',
+    showSecret: 'Show password',
+    hideSecret: 'Hide password',
   },
   validation: {
     required: 'This field is required.',
@@ -30,6 +32,18 @@ export const en = {
     passwordLabel: 'Password',
     submit: 'Sign in',
     submitting: 'Signing in...',
+    forgotLink: 'Forgot password?',
+  },
+  forgot: {
+    title: 'Forgot your password?',
+    description:
+      'Enter your username. Your hospital administrator will see the request and give you a temporary password.',
+    submit: 'Send request',
+    submitting: 'Sending...',
+    sentTitle: 'Request sent',
+    sentBody:
+      'If an account has this username, the administrator can now see the request. Contact them for your temporary password.',
+    back: 'Back to sign in',
   },
   mfa: {
     setupTitle: 'Set up two-step sign-in',
@@ -87,6 +101,10 @@ export const en = {
     lockedUntil: 'Locked until {time}',
     mfaOn: 'Two-step on',
     mustChange: 'Must change password',
+    resetRequested: 'Asked for a new password',
+    resetRequestedAt: 'Asked for a new password: {time}',
+    resetPendingNotice:
+      'Requests for a new password: {count}. Before you set a temporary password, confirm the person really asked for it.',
     reason: 'Reason',
     reasonHint: 'Required for this change; it is kept in the audit trail.',
     rolesSection: 'Roles',

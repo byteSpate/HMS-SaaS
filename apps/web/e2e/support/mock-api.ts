@@ -138,6 +138,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
     });
 
     if (path === '/auth/login') return answerLogin(route, body);
+    if (path === '/auth/password-reset-requests') return reply(route, 202);
     if (!signedIn) return reply(route, 401, PROBLEM(401, 'UNAUTHENTICATED'));
 
     if (path === '/auth/session' && request.method() === 'GET') return reply(route, 200, session());

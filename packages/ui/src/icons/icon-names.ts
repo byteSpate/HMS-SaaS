@@ -35,6 +35,7 @@ export const iconNames = [
   'ear',
   'envelope',
   'eye',
+  'eye-slash',
   'file-text',
   'first-aid',
   'flask',

@@ -4,7 +4,8 @@
 // field, which error) and turned into text at render, so switching language re-translates them
 // without clearing what the person typed (FR-I18N-001, AT-I18N-001). Implements: T-UI-02.
 import { loginRequestSchema } from '@hms/contracts';
-import { Alert, Button, Field, TextInput } from '@hms/ui';
+import { Alert, Button, buttonClassName, Field, PasswordInput, TextInput } from '@hms/ui';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { type FormEvent, useRef, useState } from 'react';
@@ -89,11 +90,12 @@ export function LoginForm() {
         error={missing.password ? t('validation.required') : undefined}
       >
         {({ id, invalid, required, ...aria }) => (
-          <TextInput
+          <PasswordInput
             id={id}
             ref={passwordRef}
             name="password"
-            type="password"
+            showLabel={t('common.showSecret')}
+            hideLabel={t('common.hideSecret')}
             autoComplete="current-password"
             invalid={invalid}
             required={required}
@@ -107,6 +109,10 @@ export function LoginForm() {
       <Button type="submit" size="lg" loading={login.isPending}>
         {login.isPending ? t('login.submitting') : t('login.submit')}
       </Button>
+
+      <Link href="/forgot-password" className={buttonClassName('ghost')}>
+        {t('login.forgotLink')}
+      </Link>
     </form>
   );
 }

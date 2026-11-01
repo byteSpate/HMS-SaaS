@@ -18,7 +18,7 @@ const en = messages.en;
 
 async function signIn(page: Page, world: MockWorld, password = world.password) {
   await page.getByLabel(bn.login.usernameLabel).fill(world.username);
-  await page.getByLabel(bn.login.passwordLabel).fill(password);
+  await page.getByRole('textbox', { name: bn.login.passwordLabel, exact: true }).fill(password);
   await page.getByRole('button', { name: bn.login.submit }).click();
 }
 
@@ -60,7 +60,9 @@ test('a wrong password gives a localized error and clears only the password', as
     page.getByRole('alert').filter({ hasText: bn.errors.api.INVALID_CREDENTIALS }),
   ).toBeVisible();
   await expect(page.getByLabel(bn.login.usernameLabel)).toHaveValue('rahim');
-  await expect(page.getByLabel(bn.login.passwordLabel)).toHaveValue('');
+  await expect(
+    page.getByRole('textbox', { name: bn.login.passwordLabel, exact: true }),
+  ).toHaveValue('');
 });
 
 test('empty fields are reported per field', async ({ page }) => {

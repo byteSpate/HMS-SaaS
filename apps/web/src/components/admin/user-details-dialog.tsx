@@ -106,6 +106,16 @@ export function UserDetailsDialog({
           ) : (
             <span className="text-text-muted">{t('admin.passwordSet')}</span>
           )}
+          {user.passwordResetRequestedAt ? (
+            <div className="mt-2">
+              <StatusBadge
+                status="attention"
+                label={t('admin.resetRequestedAt', {
+                  time: formatDateTime(user.passwordResetRequestedAt, locale),
+                })}
+              />
+            </div>
+          ) : null}
         </Detail>
       </dl>
     </Dialog>

@@ -52,6 +52,7 @@ export function createAdminStore() {
       roles: [{ id: ID(51), code: 'CSH', nameEn: 'Cashier', nameBn: null }],
       mfaEnrolled: false,
       mustChangePassword: false,
+      passwordResetRequestedAt: '2026-10-29T04:00:00.000Z',
     },
   ];
 
@@ -71,6 +72,7 @@ export function createAdminStore() {
       roles: summaries().filter((role) => body.roleIds.includes(role.id)),
       mfaEnrolled: false,
       mustChangePassword: true,
+      passwordResetRequestedAt: null,
     });
     users.push(user);
     return user;

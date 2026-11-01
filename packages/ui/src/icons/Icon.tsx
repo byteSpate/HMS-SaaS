@@ -16,6 +16,7 @@ import { Check } from '@phosphor-icons/react/dist/csr/Check';
 import { CheckCircle } from '@phosphor-icons/react/dist/csr/CheckCircle';
 import { Circle } from '@phosphor-icons/react/dist/csr/Circle';
 import { Eye } from '@phosphor-icons/react/dist/csr/Eye';
+import { EyeSlash } from '@phosphor-icons/react/dist/csr/EyeSlash';
 import { Hourglass } from '@phosphor-icons/react/dist/csr/Hourglass';
 import { Info } from '@phosphor-icons/react/dist/csr/Info';
 import { MagnifyingGlass } from '@phosphor-icons/react/dist/csr/MagnifyingGlass';
@@ -119,6 +120,7 @@ const ICONS = {
   ear: Ear,
   envelope: Envelope,
   eye: Eye,
+  'eye-slash': EyeSlash,
   'file-text': FileText,
   'first-aid': FirstAid,
   flask: Flask,

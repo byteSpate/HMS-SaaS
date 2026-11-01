@@ -125,8 +125,21 @@ export async function changeOwnPassword(
       passwordHash,
       mustChangePassword: false,
       passwordChangedAt: now,
+      passwordResetRequestedAt: null,
       version: { increment: 1 },
     },
+  });
+}
+
+/** Records a request for a new password (C-093); a repeat keeps the first time. */
+export async function markPasswordResetRequested(
+  prisma: PrismaClient,
+  userId: string,
+  now: Date,
+): Promise<void> {
+  await prisma.userAccount.updateMany({
+    where: { id: userId, passwordResetRequestedAt: null },
+    data: { passwordResetRequestedAt: now },
   });
 }
 

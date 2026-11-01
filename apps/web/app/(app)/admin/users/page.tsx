@@ -2,9 +2,10 @@
 // SCR-22 (users): the hospital's staff accounts as a table with their roles and access state;
 // add a user with a temporary password, view one, manage one, or remove one from the hospital
 // (T-ACC-05; FR-ACC-007, FR-ACC-008, FR-ACC-010). admin.user.manage; the API enforces it.
+import { formatNumber, type Locale } from '@hms/i18n';
 import { Alert, Button, IconButton, PageLayout, Skeleton, StatusBadge } from '@hms/ui';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { adminApi } from '../../../../src/api/admin';
 import {
@@ -31,12 +32,15 @@ type OpenDialog = { kind: 'details' | 'manage' | 'remove'; userId: string } | nu
 
 export default function UsersPage() {
   const t = useTranslations();
+  const locale = useLocale() as Locale;
   const errorMessage = useApiErrorMessage();
   const users = useQuery({ queryKey: USERS_QUERY_KEY, queryFn: adminApi.users });
   const [creating, setCreating] = useState(false);
   const [dialog, setDialog] = useState<OpenDialog>(null);
   const roles = users.data?.roles ?? [];
   const selected = users.data?.users.find((user) => user.userId === dialog?.userId);
+  const resetRequests =
+    users.data?.users.filter((user) => user.passwordResetRequestedAt !== null).length ?? 0;
   const close = (open: boolean) => {
     if (!open) setDialog(null);
   };
@@ -49,6 +53,12 @@ export default function UsersPage() {
     >
       {users.error ? <Alert tone="danger">{errorMessage(users.error)}</Alert> : null}
       {users.isPending ? <Skeleton className="h-40" /> : null}
+      {/* C-093: anyone can ask under any username, so the administrator must check it was them. */}
+      {resetRequests > 0 ? (
+        <Alert tone="warning">
+          {t('admin.resetPendingNotice', { count: formatNumber(String(resetRequests), locale) })}
+        </Alert>
+      ) : null}
       {users.data ? (
         <div className={TABLE_FRAME}>
           <table className={TABLE}>
@@ -114,6 +124,13 @@ export default function UsersPage() {
                         ) : null}
                         {user.mustChangePassword ? (
                           <StatusBadge size="sm" status="review" label={t('admin.mustChange')} />
+                        ) : null}
+                        {user.passwordResetRequestedAt ? (
+                          <StatusBadge
+                            size="sm"
+                            status="attention"
+                            label={t('admin.resetRequested')}
+                          />
                         ) : null}
                       </div>
                     </td>

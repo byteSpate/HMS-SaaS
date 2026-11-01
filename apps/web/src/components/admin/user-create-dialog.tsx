@@ -2,7 +2,7 @@
 // Add a staff user with a temporary password and roles (T-ACC-05; FR-ACC-007, FR-ACC-008). The
 // person must replace the password at first sign-in; the API enforces the minimums.
 import { PASSWORD_MIN_LENGTH, type RoleSummary } from '@hms/contracts';
-import { Alert, Button, Dialog, Field, TextInput, useToast } from '@hms/ui';
+import { Alert, Button, Dialog, Field, PasswordInput, TextInput, useToast } from '@hms/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -85,9 +85,10 @@ export function UserCreateDialog({
           required
         >
           {({ id, invalid, required, ...aria }) => (
-            <TextInput
+            <PasswordInput
               id={id}
-              type="password"
+              showLabel={t('common.showSecret')}
+              hideLabel={t('common.hideSecret')}
               autoComplete="new-password"
               minLength={PASSWORD_MIN_LENGTH}
               value={temporaryPassword}

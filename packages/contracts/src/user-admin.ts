@@ -25,6 +25,12 @@ export const changePasswordRequestSchema = z.object({
 });
 export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 
+/** Signed-out request for a new password (C-093). Same looseness as the login username. */
+export const forgotPasswordRequestSchema = z.object({
+  username: z.string().trim().min(1).max(100),
+});
+export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;
+
 export const membershipStatusSchema = z.enum(['INVITED', 'ACTIVE', 'SUSPENDED', 'REVOKED']);
 export type MembershipStatusCode = z.infer<typeof membershipStatusSchema>;
 
@@ -47,6 +53,8 @@ export const adminUserSchema = z.object({
   roles: z.array(roleSummarySchema),
   mfaEnrolled: z.boolean(),
   mustChangePassword: z.boolean(),
+  // C-093: when the person asked for a new password and nobody has set one yet.
+  passwordResetRequestedAt: z.iso.datetime().nullable(),
 });
 export type AdminUser = z.infer<typeof adminUserSchema>;
 

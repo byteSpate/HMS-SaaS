@@ -7,6 +7,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { requiresSecondFactor } from '@hms/authz';
 import type {
   ChangePasswordRequest,
+  ForgotPasswordRequest,
   LoginRequest,
   MembershipSummary,
   MfaStatus,
@@ -46,6 +47,7 @@ import {
   insertSession,
   isMembershipActive,
   listMembershipsForUser,
+  markPasswordResetRequested,
   replaceSession,
   revokeSessionsOfUser,
   revokeSession,
@@ -98,6 +100,32 @@ export class AuthService {
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(LOGIN_THROTTLE) private readonly throttle: LoginThrottle,
   ) {}
+
+  /**
+   * Signed-out request for a new password (C-093, FR-ACC-012). It only raises a flag for the
+   * administrator: no password, lock or session changes, so nobody can harm an account by asking.
+   * The caller always gets the same answer, so it does not reveal which usernames exist, and it
+   * shares the login rate limits, so it cannot be used to test usernames faster than login.
+   */
+  async requestPasswordReset(input: ForgotPasswordRequest, meta: RequestMeta): Promise<void> {
+    const username = normalizeUsername(input.username);
+    const now = this.clock.now();
+    await this.throttle.assertAllowed(meta.ipAddress, username, now);
+    const user = await findUserByUsername(this.prisma, username);
+    if (user && user.status !== 'DISABLED') {
+      await markPasswordResetRequested(this.prisma, user.id, now);
+      await this.authEvent('auth.password_reset.requested', 'SUCCEEDED', meta, {
+        userId: user.id,
+      });
+      return;
+    }
+    const loggable = safeUsernameForLog(username);
+    await this.authEvent('auth.password_reset.requested', 'DENIED', meta, {
+      ...(user ? { userId: user.id } : {}),
+      ...(loggable ? { usernameAttempted: loggable } : {}),
+      reason: user ? 'ACCOUNT_DISABLED' : 'UNKNOWN_USER',
+    });
+  }
 
   async login(input: LoginRequest, meta: RequestMeta): Promise<IssuedSession> {
     const username = normalizeUsername(input.username);

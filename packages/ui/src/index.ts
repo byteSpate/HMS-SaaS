@@ -14,6 +14,7 @@ export {
 export { buttonClassName, iconButtonClassName } from './primitives/button-styles.js';
 export { Checkbox, type CheckboxProps } from './primitives/Checkbox.js';
 export { TextInput, type TextInputProps } from './primitives/TextInput.js';
+export { PasswordInput, type PasswordInputProps } from './primitives/PasswordInput.js';
 export { TextArea, type TextAreaProps } from './primitives/TextArea.js';
 export { Select, type SelectOption, type SelectProps } from './primitives/Select.js';
 export { Field, type FieldControlProps, type FieldProps } from './primitives/Field.js';

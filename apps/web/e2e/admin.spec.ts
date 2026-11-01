@@ -11,7 +11,9 @@ const ADMIN_PERMISSIONS = ['admin.user.manage', 'admin.role.manage'];
 async function signIn(page: Page, world: MockWorld) {
   await page.goto('/staff/login');
   await page.getByLabel(bn.login.usernameLabel).fill(world.username);
-  await page.getByLabel(bn.login.passwordLabel).fill(world.password);
+  await page
+    .getByRole('textbox', { name: bn.login.passwordLabel, exact: true })
+    .fill(world.password);
   await page.getByRole('button', { name: bn.login.submit }).click();
 }
 
@@ -22,11 +24,15 @@ test('a temporary password must be replaced before the shell (FR-ACC-007)', asyn
 
   await expect(page).toHaveURL(/\/staff\/change-password$/);
   await expect(page.getByText(bn.changePassword.forced)).toBeVisible();
-  await page.getByLabel(bn.changePassword.current).fill(world.password);
+  await page
+    .getByRole('textbox', { name: bn.changePassword.current, exact: true })
+    .fill(world.password);
   await page
     .getByRole('textbox', { name: bn.changePassword.next, exact: true })
     .fill('my own new password');
-  await page.getByLabel(bn.changePassword.repeat).fill('my own new password');
+  await page
+    .getByRole('textbox', { name: bn.changePassword.repeat, exact: true })
+    .fill('my own new password');
   await page.getByRole('button', { name: bn.changePassword.submit }).click();
 
   await expect(page).toHaveURL(/\/staff$/);
@@ -36,11 +42,15 @@ test('the two new passwords must match', async ({ page }) => {
   const world = newWorld({ mustChangePassword: true });
   await installMockApi(page, world);
   await signIn(page, world);
-  await page.getByLabel(bn.changePassword.current).fill(world.password);
+  await page
+    .getByRole('textbox', { name: bn.changePassword.current, exact: true })
+    .fill(world.password);
   await page
     .getByRole('textbox', { name: bn.changePassword.next, exact: true })
     .fill('my own new password');
-  await page.getByLabel(bn.changePassword.repeat).fill('something else entirely');
+  await page
+    .getByRole('textbox', { name: bn.changePassword.repeat, exact: true })
+    .fill('something else entirely');
   await page.getByRole('button', { name: bn.changePassword.submit }).click();
   await expect(page.getByText(bn.changePassword.mismatch)).toBeVisible();
 });
@@ -63,7 +73,9 @@ test('an administrator adds a user with a temporary password', async ({ page }) 
   await page.getByRole('button', { name: bn.admin.addUser }).click();
   await page.getByLabel(bn.admin.username).fill('selina');
   await page.getByLabel(bn.admin.displayName).fill('Selina Akter');
-  await page.getByLabel(bn.admin.temporaryPasswordLabel).fill('temporary pass 1');
+  await page
+    .getByRole('textbox', { name: bn.admin.temporaryPasswordLabel, exact: true })
+    .fill('temporary pass 1');
   await page.getByRole('checkbox', { name: /Cashier/ }).check();
   await page.getByRole('button', { name: bn.admin.create }).click();
 

@@ -113,6 +113,88 @@ describe('user administration over HTTP', () => {
     return ((await res.json()) as { id: string }).id;
   }
 
+  describe('asking for a new password while signed out (C-093, FR-ACC-012)', () => {
+    async function ask(username: string, origin: string | null = WEB) {
+      return fetch(`${await app.getUrl()}/api/v1/auth/password-reset-requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(origin ? { Origin: origin } : {}),
+        },
+        body: JSON.stringify({ username }),
+      });
+    }
+
+    async function requestedAt(adminSession: StaffSession, userId: string) {
+      const res = await call(adminSession, 'GET', '/admin/users');
+      const { users } = (await res.json()) as {
+        users: { userId: string; passwordResetRequestedAt: string | null }[];
+      };
+      return users.find((user) => user.userId === userId)?.passwordResetRequestedAt;
+    }
+
+    it('answers the same for a real and an unknown username', async () => {
+      const { staff } = await hospital();
+      const real = await ask(staff.username);
+      const unknown = await ask(`nobody-${randomUUID().slice(0, 8)}`);
+      expect(real.status).toBe(202);
+      expect(unknown.status).toBe(202);
+      expect(await real.text()).toBe(await unknown.text());
+    });
+
+    it('flags only that person for the administrator and changes nothing else', async () => {
+      const { admin, staff, adminSession } = await hospital();
+      expect(await requestedAt(adminSession, staff.id)).toBeNull();
+
+      await ask(staff.username.toUpperCase());
+
+      expect(await requestedAt(adminSession, staff.id)).toEqual(expect.any(String));
+      expect(await requestedAt(adminSession, admin.id)).toBeNull();
+      expect((await client.login(staff.username, PASSWORD)).status).toBe(200);
+    });
+
+    it('is cleared when the administrator sets a temporary password', async () => {
+      const { staff, adminSession } = await hospital();
+      await ask(staff.username);
+      const reset = await call(adminSession, 'POST', `/admin/users/${staff.id}/password`, {
+        temporaryPassword: TEMPORARY,
+        reason: 'Asked at the front desk',
+      });
+      expect(reset.ok).toBe(true);
+      expect(await requestedAt(adminSession, staff.id)).toBeNull();
+    });
+
+    it('is cleared when the person changes their own password', async () => {
+      const { staff, adminSession } = await hospital();
+      await ask(staff.username);
+      const session = await client.sessionOf(staff.username, PASSWORD);
+      const changed = await call(session, 'POST', '/auth/password', {
+        currentPassword: PASSWORD,
+        newPassword: 'remembered it after all',
+      });
+      expect(changed.status).toBe(200);
+      expect(await requestedAt(adminSession, staff.id)).toBeNull();
+    });
+
+    it('ignores a disabled account, with the same answer', async () => {
+      const { staff, adminSession } = await hospital();
+      await prisma.userAccount.update({ where: { id: staff.id }, data: { status: 'DISABLED' } });
+      expect((await ask(staff.username)).status).toBe(202);
+      expect(await requestedAt(adminSession, staff.id)).toBeNull();
+    });
+
+    it('refuses another website and is rate limited per account', async () => {
+      const username = `flood-${randomUUID().slice(0, 8)}`;
+      expect((await ask(username, 'https://evil.example')).status).toBe(403);
+      const answers: number[] = [];
+      for (let attempt = 0; attempt < 11; attempt += 1) {
+        answers.push((await ask(username)).status);
+      }
+      expect(answers[0]).toBe(202);
+      expect(answers.at(-1)).toBe(429);
+    });
+  });
+
   it('creates a user who must replace the temporary password first (FR-ACC-007)', async () => {
     const { adminSession } = await hospital();
     const roleId = await auditorRole(adminSession);

@@ -2,6 +2,7 @@
 // password change T-ACC-05). Each answer is validated against the shared contract.
 import {
   type ChangePasswordRequest,
+  type ForgotPasswordRequest,
   type LoginRequest,
   type MfaVerifyRequest,
   mfaConfirmResponseSchema,
@@ -15,6 +16,8 @@ const parse = (data: unknown): SessionResponse => sessionResponseSchema.parse(da
 
 export const authApi = {
   login: (body: LoginRequest) => apiRequest('/auth/login', { method: 'POST', body, parse }),
+  requestPasswordReset: (body: ForgotPasswordRequest) =>
+    apiRequest('/auth/password-reset-requests', { method: 'POST', body }),
   session: () => apiRequest('/auth/session', { parse }),
   selectMembership: (membershipId: string) =>
     apiRequest('/auth/session/membership', { method: 'POST', body: { membershipId }, parse }),

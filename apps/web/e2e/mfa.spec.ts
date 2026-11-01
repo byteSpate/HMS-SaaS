@@ -18,7 +18,9 @@ const bn = messages['bn-BD'];
 async function signIn(page: Page, world: MockWorld) {
   await page.goto('/staff/login');
   await page.getByLabel(bn.login.usernameLabel).fill(world.username);
-  await page.getByLabel(bn.login.passwordLabel).fill(world.password);
+  await page
+    .getByRole('textbox', { name: bn.login.passwordLabel, exact: true })
+    .fill(world.password);
   await page.getByRole('button', { name: bn.login.submit }).click();
 }
 

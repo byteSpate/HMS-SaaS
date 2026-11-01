@@ -5,7 +5,7 @@
 // locking ends the person's open sessions at once.
 import type { AdminUser, RoleSummary } from '@hms/contracts';
 import { formatDateTime, type Locale } from '@hms/i18n';
-import { Alert, Button, Dialog, Field, TextInput, useToast } from '@hms/ui';
+import { Alert, Button, Dialog, Field, PasswordInput, TextInput, useToast } from '@hms/ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
 import { type ReactNode, useState } from 'react';
@@ -154,9 +154,10 @@ export function UserManageDialog({
         <Section title={t('admin.credentialSection')}>
           <Field label={t('admin.temporaryPasswordLabel')} hint={t('admin.temporaryPasswordHint')}>
             {({ id, ...aria }) => (
-              <TextInput
+              <PasswordInput
                 id={id}
-                type="password"
+                showLabel={t('common.showSecret')}
+                hideLabel={t('common.hideSecret')}
                 autoComplete="new-password"
                 value={temporaryPassword}
                 onChange={(event) => setTemporaryPassword(event.target.value)}
