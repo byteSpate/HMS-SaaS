@@ -1,0 +1,63 @@
+# syntax=docker/dockerfile:1
+# Next.js apps in the monorepo, standalone output (T-FND-05, K sections 2 and 3). From the root:
+#   docker build -f docker/Dockerfile.next --build-arg APP=web --build-arg PORT=3100 \
+#     --build-arg HEALTH_PATH=/staff/api/health --build-arg NEXT_PUBLIC_API_URL=https://api.example -t hms-web .
+#   docker build -f docker/Dockerfile.next --build-arg APP=site --build-arg PORT=3200 \
+#     --build-arg HEALTH_PATH=/robots.txt -t hms-site .
+# NEXT_PUBLIC_API_URL is compiled into the web bundle, so changing it needs a rebuild (ADR-021).
+ARG NODE_IMAGE=node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
+
+FROM ${NODE_IMAGE} AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+WORKDIR /repo
+
+FROM base AS pruner
+ARG APP
+ARG TURBO_VERSION=2.11.7
+COPY . .
+RUN npx --yes turbo@${TURBO_VERSION} prune @hms/${APP} --docker
+
+FROM base AS deps
+COPY --from=pruner /repo/out/json/ .
+COPY --from=pruner /repo/out/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN pnpm install --frozen-lockfile
+
+FROM deps AS build
+ARG APP
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV TURBO_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+COPY --from=pruner /repo/out/full/ .
+RUN pnpm turbo run build --filter=@hms/${APP}...
+# Standalone output holds the server and traced modules; static files are copied explicitly.
+RUN mkdir -p /out/app \
+ && cp -a apps/${APP}/.next/standalone/. /out/app/ \
+ && cp -a apps/${APP}/.next/static /out/app/apps/${APP}/.next/static \
+ && cp -a apps/${APP}/public /out/app/apps/${APP}/public
+
+FROM ${NODE_IMAGE} AS runner
+ARG APP
+ARG PORT=3100
+ARG HEALTH_PATH=/
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV APP_NAME=${APP}
+ENV PORT=${PORT}
+ENV HOSTNAME=0.0.0.0
+ENV HEALTH_PATH=${HEALTH_PATH}
+WORKDIR /app
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tini ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=build --chown=node:node /out/app/ ./
+USER node
+EXPOSE ${PORT}
+HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+process.env.HEALTH_PATH).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["sh", "-c", "exec node apps/${APP_NAME}/server.js"]

@@ -1,0 +1,57 @@
+# syntax=docker/dockerfile:1
+# NestJS apps in the monorepo (T-FND-05, K sections 2 and 3). Build from the repository root:
+#   docker build -f docker/Dockerfile.nest --build-arg APP=api -t hms-api .
+#   docker build -f docker/Dockerfile.nest --build-arg APP=worker -t hms-worker .
+# Secrets and environment come at run time; nothing secret is passed to the build.
+ARG NODE_IMAGE=node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
+
+FROM ${NODE_IMAGE} AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+WORKDIR /repo
+
+# Reduce the monorepo to what APP needs, so an unrelated change does not rebuild this image.
+FROM base AS pruner
+ARG APP
+ARG TURBO_VERSION=2.11.7
+COPY . .
+RUN npx --yes turbo@${TURBO_VERSION} prune @hms/${APP} --docker
+
+FROM base AS deps
+COPY --from=pruner /repo/out/json/ .
+COPY --from=pruner /repo/out/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN pnpm install --frozen-lockfile
+
+FROM deps AS build
+ARG APP
+ENV TURBO_TELEMETRY_DISABLED=1
+ENV PRISMA_HIDE_UPDATE_MESSAGE=1
+COPY --from=pruner /repo/out/full/ .
+RUN pnpm turbo run build --filter=@hms/${APP}...
+RUN pnpm --filter=@hms/${APP} deploy --prod --legacy /out/app
+# @prisma/client has an optional peer on the Prisma CLI, so a production install still brings the
+# CLI, Studio, an embedded database, TypeScript and React. The client runs through adapter-pg and
+# needs none of them at run time; migrations have their own image (K section 3).
+RUN cd /out/app/node_modules/.pnpm \
+ && rm -rf prisma@* @prisma+studio-core@* @prisma+engines@* @electric-sql+pglite* \
+           typescript@* react-dom@* elkjs@*
+
+FROM ${NODE_IMAGE} AS runner
+ARG APP
+ENV NODE_ENV=production
+ENV APP_NAME=${APP}
+WORKDIR /app
+# tini is PID 1 so SIGTERM reaches Node and the API can drain requests (K section 5).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tini ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=build --chown=node:node /out/app/ ./
+USER node
+EXPOSE 4100
+# The worker has no HTTP server until T-PLT-03 gives it a health port, so only the API is probed.
+HEALTHCHECK --interval=15s --timeout=3s --start-period=30s --retries=3 \
+  CMD node -e "if(process.env.APP_NAME!=='api')process.exit(0);fetch('http://127.0.0.1:'+(process.env.API_PORT||4100)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["node", "dist/main.js"]

@@ -1,11 +1,13 @@
 // Rule tests for the reuse guardrails (T-UI-01, ADR-022 section 9).
 // Each case lints a snippet as if it lived at the given path and checks the rule fires or not.
+import { fileURLToPath } from 'node:url';
 import { ESLint } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { uiGuardrails, webGuardrails } from './index.js';
 
-const repoRoot = new URL('../../', import.meta.url).pathname;
+// fileURLToPath, not URL.pathname: on Windows the pathname is "/C:/...", which is not absolute.
+const repoRoot = fileURLToPath(new URL('../../', import.meta.url));
 
 const eslint = new ESLint({
   cwd: repoRoot,
