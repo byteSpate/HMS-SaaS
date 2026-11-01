@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPrismaClient, withTenant, withUserContext, type PrismaClient } from './index.js';
 
@@ -99,5 +99,70 @@ describe('identity tables', () => {
     await expect(
       prisma.authEvent.update({ where: { id: event.id }, data: { reason: 'changed' } }),
     ).rejects.toThrow(/permission denied/);
+  });
+
+  // Column-level UPDATE (E section 6): the app changes only what its features change.
+  describe('column grants', () => {
+    const farFuture = new Date('2099-01-01T00:00:00Z');
+
+    async function createSession(userId: string): Promise<Uint8Array<ArrayBuffer>> {
+      const tokenHash = new Uint8Array(randomBytes(32));
+      await prisma.userSession.create({
+        data: { tokenHash, userId, idleExpiresAt: farFuture, absoluteExpiresAt: farFuture },
+      });
+      return tokenHash;
+    }
+
+    it.each([
+      ['username', { username: 'renamed-by-app' }],
+      ['display_name', { displayName: 'Renamed by app' }],
+      ['created_at', { createdAt: farFuture }],
+    ])('refuses to change user_account.%s', async (_column, data) => {
+      await expect(prisma.userAccount.update({ where: { id: ownerId }, data })).rejects.toThrow(
+        /permission denied/,
+      );
+    });
+
+    it('still allows the columns the features change on user_account', async () => {
+      const updated = await prisma.userAccount.update({
+        where: { id: strangerId },
+        data: {
+          passwordHash: 'y',
+          status: 'LOCKED_ADMIN',
+          failedAttempts: 1,
+          lockedUntil: farFuture,
+          lockReason: 'ADMIN_ACTION',
+          lockedAt: farFuture,
+          lockNote: 'note',
+          lockedByUserId: ownerId,
+          mustChangePassword: true,
+          passwordChangedAt: farFuture,
+          preferredLang: 'en',
+          version: { increment: 1 },
+        },
+      });
+      expect(updated.version).toBe(2);
+    });
+
+    it.each([
+      ['user_id', () => ({ userId: strangerId })],
+      ['absolute_expires_at', () => ({ absoluteExpiresAt: new Date('2100-01-01T00:00:00Z') })],
+      ['mfa_verified_at', () => ({ mfaVerifiedAt: farFuture })],
+      ['created_at', () => ({ createdAt: farFuture })],
+    ])('refuses to change user_session.%s', async (_column, data) => {
+      const tokenHash = await createSession(ownerId);
+      await expect(
+        prisma.userSession.update({ where: { tokenHash }, data: data() }),
+      ).rejects.toThrow(/permission denied/);
+    });
+
+    it('still allows revoking a session and sliding its idle limit', async () => {
+      const tokenHash = await createSession(ownerId);
+      const updated = await prisma.userSession.update({
+        where: { tokenHash },
+        data: { lastSeenAt: farFuture, idleExpiresAt: farFuture, revokedAt: farFuture },
+      });
+      expect(updated.revokedAt).toEqual(farFuture);
+    });
   });
 });
