@@ -16,4 +16,5 @@ export * from './request-id.middleware.js';
 export * from './request-pipeline.module.js';
 export * from './response-envelope.js';
 export * from './valkey.js';
+export * from './valkey-rate-limiter.js';
 export * from './zod-body.pipe.js';

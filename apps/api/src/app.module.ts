@@ -20,6 +20,7 @@ function requireEnv(name: string): string {
     DatabaseModule.forRoot(requireEnv('DATABASE_URL')),
     IdentityAccessModule.forRoot(loadAuthConfig(process.env), undefined, {
       allowedOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
+      ...(process.env.VALKEY_URL ? { valkeyUrl: process.env.VALKEY_URL } : {}),
     }),
   ],
   controllers: [AppController, HealthController, OperationsController],

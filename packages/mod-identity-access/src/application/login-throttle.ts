@@ -2,7 +2,7 @@
 // before the password, so a refused attempt costs no argon2 work. The account key is the
 // normalized username, also for unknown users, so the answer does not reveal which exist.
 import { DomainError } from '@hms/domain-kernel';
-import { InMemoryRateLimiter, type RateLimiter, type RateLimitResult } from '@hms/platform';
+import type { RateLimiter, RateLimiterFactory, RateLimitResult } from '@hms/platform';
 import type { LoginRateLimits } from './auth.config.js';
 
 export const LOGIN_THROTTLE = Symbol('LOGIN_THROTTLE');
@@ -13,11 +13,10 @@ export class LoginThrottle {
     private readonly perAccount: RateLimiter,
   ) {}
 
-  /** Counts per API process, so it suits a single process only; Valkey replaces this in T-PLT-03. */
-  static inMemory(limits: LoginRateLimits): LoginThrottle {
+  static from(factory: RateLimiterFactory, limits: LoginRateLimits): LoginThrottle {
     return new LoginThrottle(
-      new InMemoryRateLimiter(limits.perIp),
-      new InMemoryRateLimiter(limits.perAccount),
+      factory.limiter('login-ip', limits.perIp),
+      factory.limiter('login-account', limits.perAccount),
     );
   }
 

@@ -11,6 +11,9 @@ export default defineConfig({
   plugins: [swc.vite({ module: { type: 'es6' } })],
   test: {
     include: ['src/**/*.spec.ts'],
+    // These specs share one PostgreSQL and hash passwords with Argon2. Running files side by side
+    // pushed logins past the 5 second test limit, so they run one file at a time.
+    fileParallelism: false,
     coverage: { provider: 'v8', reporter: ['text', 'lcov'], include: ['src/**'] },
   },
 });

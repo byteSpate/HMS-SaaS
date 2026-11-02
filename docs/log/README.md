@@ -120,3 +120,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-02 | [T-PLT-04: number sequences](2026-11-02-T-PLT-04-number-sequences.md)                                                            |
 | 2026-11-02 | [T-PLT-02: audit search](2026-11-02-T-PLT-02-audit-search.md)                                                                    |
 | 2026-11-02 | [T-PLT-03: outbox, relay, inbox and background jobs](2026-11-02-T-PLT-03-outbox-jobs.md)                                         |
+| 2026-11-02 | [T-PLT-07 part 2: per-session rate limit and shared limits](2026-11-02-T-PLT-07-session-rate-limit.md)                           |

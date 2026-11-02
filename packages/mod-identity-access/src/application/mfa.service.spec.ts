@@ -1,3 +1,4 @@
+import { createRateLimiterFactory } from '@hms/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPrismaClient, type PrismaClient } from '@hms/database';
 import { DomainError, fixedClock, type FixedClock } from '@hms/domain-kernel';
@@ -42,7 +43,15 @@ describe('MfaService', () => {
   beforeAll(async () => {
     prisma = createPrismaClient(databaseUrl);
     clock = fixedClock(new Date('2026-10-28T08:00:00.000Z'));
-    auth = new AuthService(prisma, config, clock, LoginThrottle.inMemory(config.loginRateLimits));
+    auth = new AuthService(
+      prisma,
+      config,
+      clock,
+      LoginThrottle.from(
+        createRateLimiterFactory(undefined, () => undefined),
+        config.loginRateLimits,
+      ),
+    );
     mfa = new MfaService(prisma, config, clock, auth);
     passwordHash = await hashPassword(PASSWORD);
   });

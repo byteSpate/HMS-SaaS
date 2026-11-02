@@ -22,8 +22,12 @@ export interface AuthConfig {
   csrfSecret: string;
   lockout: LockoutPolicy;
   loginRateLimits: LoginRateLimits;
+  /** Per session (NFR-SEC-005); the default is PROPOSED. */
+  apiRateLimit?: RateLimitRule;
   mfa: MfaConfig;
 }
+
+export const DEFAULT_API_RATE_LIMIT: RateLimitRule = { limit: 600, windowMs: 60_000 };
 
 export const AUTH_CONFIG = Symbol('AUTH_CONFIG');
 export const CLOCK = Symbol('CLOCK');
@@ -65,6 +69,14 @@ export function loadAuthConfig(env: NodeJS.ProcessEnv): AuthConfig {
       lockMinutes: positiveNumber(env.LOGIN_LOCKOUT_MINUTES, 15, 'LOGIN_LOCKOUT_MINUTES'),
     },
     loginRateLimits: DEFAULT_LOGIN_RATE_LIMITS,
+    apiRateLimit: {
+      limit: positiveNumber(
+        env.API_RATE_LIMIT_PER_MINUTE,
+        DEFAULT_API_RATE_LIMIT.limit,
+        'API_RATE_LIMIT_PER_MINUTE',
+      ),
+      windowMs: DEFAULT_API_RATE_LIMIT.windowMs,
+    },
     mfa: {
       // Required: C-032 makes MFA mandatory for administrators and finance staff.
       encryptionKey: parseMfaKey(env.MFA_ENCRYPTION_KEY ?? ''),

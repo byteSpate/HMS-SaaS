@@ -1,3 +1,4 @@
+import { createRateLimiterFactory } from '@hms/platform';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPrismaClient, withTenant, type PrismaClient } from '@hms/database';
@@ -41,7 +42,10 @@ describe('AuthService', () => {
       prisma,
       config,
       clock,
-      LoginThrottle.inMemory(config.loginRateLimits),
+      LoginThrottle.from(
+        createRateLimiterFactory(undefined, () => undefined),
+        config.loginRateLimits,
+      ),
     );
     passwordHash = await hashPassword(PASSWORD);
   });
@@ -174,10 +178,13 @@ describe('AuthService', () => {
         prisma,
         config,
         clock,
-        LoginThrottle.inMemory({
-          perIp: { limit: 100, windowMs: 60_000 },
-          perAccount: { limit: 2, windowMs: 60_000 },
-        }),
+        LoginThrottle.from(
+          createRateLimiterFactory(undefined, () => undefined),
+          {
+            perIp: { limit: 100, windowMs: 60_000 },
+            perAccount: { limit: 2, windowMs: 60_000 },
+          },
+        ),
       );
       const attempt = () => throttled.login({ username: 'rate-limit-probe', password: 'x' }, meta);
       await expectCode(attempt(), 'INVALID_CREDENTIALS');

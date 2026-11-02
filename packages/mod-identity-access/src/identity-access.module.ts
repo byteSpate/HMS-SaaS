@@ -19,10 +19,28 @@ import { RoleAdminController } from './http/role-admin.controller.js';
 import { UserAdminController } from './http/user-admin.controller.js';
 import { ALLOWED_ORIGINS, CsrfGuard, SessionGuard, TenantGuard } from './http/guards.js';
 import { PermissionGuard } from './http/permission.guard.js';
+import { SESSION_RATE_LIMITER, SessionRateLimitGuard } from './http/session-rate-limit.guard.js';
+import { createRateLimiterFactory, type RateLimiterFactory } from '@hms/platform';
+import { Inject, Injectable, Logger, type OnApplicationShutdown } from '@nestjs/common';
+import { DEFAULT_API_RATE_LIMIT } from './application/auth.config.js';
+
+const RATE_LIMITERS = Symbol('RATE_LIMITERS');
+
+/** Closes the shared rate limit connection with the app. */
+@Injectable()
+class RateLimitersLifecycle implements OnApplicationShutdown {
+  constructor(@Inject(RATE_LIMITERS) private readonly limiters: RateLimiterFactory) {}
+
+  onApplicationShutdown(): Promise<void> {
+    return this.limiters.close();
+  }
+}
 
 export interface IdentityAccessOptions {
   /** Exact web origins allowed to send writes (same list as CORS_ORIGINS). */
   allowedOrigins?: readonly string[];
+  /** Shared rate limits; without it they are per process (T-PLT-07 part 2). */
+  valkeyUrl?: string;
 }
 
 @Module({})
@@ -50,7 +68,26 @@ export class IdentityAccessModule {
         UserAdminService,
         RoleAdminService,
         { provide: AUTH_CONFIG, useValue: config },
-        { provide: LOGIN_THROTTLE, useValue: LoginThrottle.inMemory(config.loginRateLimits) },
+        {
+          provide: RATE_LIMITERS,
+          useFactory: () =>
+            createRateLimiterFactory(options.valkeyUrl, (message) =>
+              new Logger('RateLimit').warn(message),
+            ),
+        },
+        RateLimitersLifecycle,
+        {
+          provide: LOGIN_THROTTLE,
+          inject: [RATE_LIMITERS],
+          useFactory: (limiters: RateLimiterFactory) =>
+            LoginThrottle.from(limiters, config.loginRateLimits),
+        },
+        {
+          provide: SESSION_RATE_LIMITER,
+          inject: [RATE_LIMITERS],
+          useFactory: (limiters: RateLimiterFactory) =>
+            limiters.limiter('api-session', config.apiRateLimit ?? DEFAULT_API_RATE_LIMIT),
+        },
         { provide: CLOCK, useValue: clock },
         { provide: ALLOWED_ORIGINS, useValue: allowedOrigins },
         // Order matters: session first, then CSRF (needs the session token), then tenant,
@@ -59,6 +96,7 @@ export class IdentityAccessModule {
         { provide: APP_GUARD, useClass: CsrfGuard },
         { provide: APP_GUARD, useClass: TenantGuard },
         { provide: APP_GUARD, useClass: PermissionGuard },
+        { provide: APP_GUARD, useClass: SessionRateLimitGuard },
       ],
       exports: [AuthService],
     };
