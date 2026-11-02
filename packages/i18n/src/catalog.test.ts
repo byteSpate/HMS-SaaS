@@ -61,7 +61,7 @@ function listFiles(directory: string): string[] {
 }
 
 function sourceText(): string {
-  const dirs = ['apps/web/app', 'apps/web/src', 'packages/ui/src'];
+  const dirs = ['apps/web/app', 'apps/web/src', 'packages/ui/src', 'packages/print-templates/src'];
   const chunks: string[] = [];
   for (const dir of dirs) {
     for (const entry of listFiles(`${root}${dir}`)) {

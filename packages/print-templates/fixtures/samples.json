@@ -1,0 +1,83 @@
+{
+  "receipt": {
+    "hospital": {
+      "nameEn": "Sample Medical Hospital",
+      "nameBn": "নমুনা মেডিকেল হাসপাতাল",
+      "addressEn": "12 Sample Road, Dhaka",
+      "addressBn": "১২ নমুনা সড়ক, ঢাকা"
+    },
+    "receiptNo": "RCPT-2026-000045",
+    "paidAt": "2026-11-02T04:15:00.000Z",
+    "patient": { "nameEn": "Rahima Khatun", "nameBn": "রহিমা খাতুন", "mrn": "SMH-000123" },
+    "lines": [
+      {
+        "descriptionEn": "Doctor fee: new patient",
+        "descriptionBn": "চিকিৎসকের ফি: নতুন রোগী",
+        "amount": "800.00"
+      },
+      {
+        "descriptionEn": "Complete blood count",
+        "descriptionBn": "সম্পূর্ণ রক্ত পরীক্ষা",
+        "amount": "450.00"
+      },
+      {
+        "descriptionEn": "X-ray chest PA view",
+        "descriptionBn": "বুকের এক্স-রে",
+        "amount": "650.00"
+      }
+    ],
+    "total": "1900.00",
+    "paid": "1900.00",
+    "balance": "0.00",
+    "method": { "nameEn": "Cash", "nameBn": "নগদ" },
+    "cashier": "Sample Cashier",
+    "printedAt": "2026-11-02T04:16:00.000Z"
+  },
+  "labReport": {
+    "hospital": {
+      "nameEn": "Sample Medical Hospital",
+      "nameBn": "নমুনা মেডিকেল হাসপাতাল",
+      "addressEn": "12 Sample Road, Dhaka",
+      "addressBn": "১২ নমুনা সড়ক, ঢাকা"
+    },
+    "reportNo": "LAB-2026-000210",
+    "version": 1,
+    "section": { "nameEn": "Haematology", "nameBn": "হেমাটোলজি" },
+    "patient": {
+      "nameEn": "Rahima Khatun",
+      "nameBn": "রহিমা খাতুন",
+      "mrn": "SMH-000123",
+      "ageSex": "38 / F"
+    },
+    "referringDoctor": "Dr. Sample Physician",
+    "specimenNo": "SP-2026-001123",
+    "collectedAt": "2026-11-02T04:30:00.000Z",
+    "releasedAt": "2026-11-02T08:00:00.000Z",
+    "results": [
+      {
+        "test": "Haemoglobin",
+        "value": "10.9",
+        "unit": "g/dL",
+        "referenceRange": "SAMPLE 12.0-15.0",
+        "flag": "LOW"
+      },
+      {
+        "test": "White cell count",
+        "value": "7.2",
+        "unit": "x10^9/L",
+        "referenceRange": "SAMPLE 4.0-11.0",
+        "flag": "NORMAL"
+      },
+      {
+        "test": "Platelet count",
+        "value": "460",
+        "unit": "x10^9/L",
+        "referenceRange": "SAMPLE 150-400",
+        "flag": "HIGH"
+      }
+    ],
+    "verifiedBy": "Sample Technologist",
+    "releasedBy": "Dr. Sample Pathologist",
+    "printedAt": "2026-11-02T08:05:00.000Z"
+  }
+}

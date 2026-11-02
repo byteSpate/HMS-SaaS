@@ -1,0 +1,5 @@
+{
+  "extends": "@hms/config-typescript/library.json",
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}

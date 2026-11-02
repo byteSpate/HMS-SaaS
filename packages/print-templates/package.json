@@ -1,0 +1,27 @@
+{
+  "name": "@hms/print-templates",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src e2e",
+    "test": "vitest run --coverage",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@fontsource/noto-sans-bengali": "5.3.0",
+    "@hms/i18n": "workspace:*"
+  },
+  "devDependencies": {
+    "@hms/config-typescript": "workspace:*",
+    "@playwright/test": "1.64.0"
+  }
+}

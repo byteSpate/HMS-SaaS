@@ -89,6 +89,15 @@ Each task lists requirement IDs, dependencies, blocking questions and its key ac
 | **T-OPS-02** Backups and restore drill | pgBackRest + object storage; RB-07 executed | NFR-REC-001 | T-OPS-01 | Q-043 (interim targets) | Timed restore record |
 | **T-OPS-03** Monitoring stack | Prometheus/Grafana/Loki/Alloy; alerts | NFR-OBS-001 | T-OPS-01 | — | Alert fires in a drill |
 
+**Tenant provisioning (PROPOSED 2026-11-02, C-094).** SaaS needs these before a second hospital can be onboarded. They have requirements but no design yet, and they are not part of RG-1.
+
+| Task | Outcome | Requirements | Depends on | Blocking Qs | Key acceptance criteria |
+| --- | --- | --- | --- | --- | --- |
+| **T-SAA-01** Provision a tenant | Vendor operator creates a tenant, its first facility and first administrator through an idempotent command; `hms_control` role; `hms_app` loses write access to `tenant_entitlement` | FR-SAA-002, FR-SAA-003, FR-SAA-004 | T-PLT-01, T-PLT-02 | Who may administer an account shared between hospitals; unique usernames across hospitals | AT-SAA-001, -002 |
+| **T-SAA-02** Activation checklist | Activation blocked until required masters exist | FR-SAA-006 | T-SAA-01, T-PLT-05 | — | Checklist blocks activation until complete |
+| **T-SAA-03** Tenant export | Export one tenant's data in a documented format | FR-SAA-008 | T-SAA-01, T-PLT-03 | Q-052 | Export holds that tenant only |
+| **T-SAA-04** Subscription state | Trial, active, suspended, terminated; never stops care for active visits | FR-SAA-007 | T-SAA-01 | Q-052 | AT-SAA-* |
+
 ### Phase 2 — Front desk and cashier slice
 
 | Task | Outcome | Requirements | Depends on | Blocking Qs | Key acceptance criteria |
