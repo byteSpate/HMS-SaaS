@@ -2,7 +2,7 @@
 
 - **Date:** 2026-11-02
 - **Commit:** this commit
-- **Implements:** C-094 and C-095 (new); reinstates ADR-003; supersedes ADR-023, C-089 and C-090; reverses commit 8416158
+- **Implements:** C-094, C-095 and C-096 (new); reinstates ADR-003; supersedes ADR-023, C-089 and C-090; reverses commit 8416158
 
 ## What was built
 
@@ -27,7 +27,7 @@ The product owner confirmed that HMS is sold as shared SaaS with tenants. The pl
 
 - C-094: shared SaaS with tenants. ADR-003 applies, and new tenant-owned tables use `tenant_id`, RLS and `withTenant()`.
 - Dated logs stay as history, including `2026-10-26-docs-single-installation.md`. ADR-023 keeps its file so older references still resolve.
-- CMS decisions C-086, C-087 and C-088 have nothing to do with hosting, so they stay. Q-082 (plan limits) is open again.
+- CMS decisions C-086, C-087 and C-088 have nothing to do with hosting, so they stay. C-096 answers Q-082 with the website plan limits: Standard 5 GB, 20 custom pages and 1 custom domain; larger plan 20 GB, 50 custom pages and 3 custom domains.
 - C-095 answers Q-086: keep the two hosts for now, and add host names as data when several hospitals exist.
 
 ## Verification

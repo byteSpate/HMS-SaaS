@@ -15,7 +15,7 @@ Release: **WEB-B** (needs the API and database). WEB-A prepares for it by using 
 
 ## Confirmed scope update (2026-10-25)
 
-C-086..C-088 in [A](A-decisions-and-questions.md) supersede conflicting proposals below. The same website editor saves drafts, previews and publishes without second-person approval. Pages use ready-made sections. Branding includes hospital name, logo, favicon and brand color, plus selectable themes and curated fonts supporting Bangla. The hospital selects public prices; ERP supplies amounts and finance controls changes. C-094 reversed C-089 and C-090: each tenant has its own site, and plan limits are open (Q-082).
+C-086..C-088 in [A](A-decisions-and-questions.md) supersede conflicting proposals below. The same website editor saves drafts, previews and publishes without second-person approval. Pages use ready-made sections. Branding includes hospital name, logo, favicon and brand color, plus selectable themes and curated fonts supporting Bangla. The hospital selects public prices; ERP supplies amounts and finance controls changes. C-094 reversed C-089 and C-090: each tenant has its own site. Website plan limits are set by C-096.
 
 ## 1. Concepts
 
