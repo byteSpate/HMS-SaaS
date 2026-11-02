@@ -1,6 +1,7 @@
 // The Nest-module part of the API request pipeline (D section 8.6, layers 4 and 5): the request
 // context middleware, and one structured log line per request via nestjs-pino with the
-// correlation, tenant and user IDs. T-PLT-07, NFR-OBS-001, FR-AUD-006.
+// correlation, tenant and user IDs. Also registers the response envelope (layer 8, T-PLT-08).
+// T-PLT-07, NFR-OBS-001, FR-AUD-006.
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import {
   Module,
@@ -9,11 +10,13 @@ import {
   type MiddlewareConsumer,
   type NestModule,
 } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import type { DestinationStream, Level, LevelWithSilent } from 'pino';
 import type { Options } from 'pino-http';
 import { resolveRequestId } from './request-context.js';
 import { RequestContextMiddleware, type ContextualRequest } from './request-context.middleware.js';
+import { ResponseEnvelopeInterceptor } from './response-envelope.js';
 
 export { Logger as AppLogger } from 'nestjs-pino';
 
@@ -80,6 +83,7 @@ export class RequestPipelineModule implements NestModule {
           pinoHttp: options.destination ? [pinoHttp, options.destination] : pinoHttp,
         }),
       ],
+      providers: [{ provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor }],
     };
   }
 

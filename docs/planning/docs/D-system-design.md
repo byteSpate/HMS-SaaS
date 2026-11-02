@@ -344,7 +344,7 @@ flowchart LR
 | Transitions | `POST …/{id}:{action}` style (colon action) or sub-resource | `POST /api/v1/lab/results/{id}:release` |
 | Idempotency | `Idempotency-Key` header (UUID v4/v7 from the client per user intent); required on all POSTs that create or transition | `Idempotency-Key: 0192f…` |
 | Optimistic concurrency | Responses include `ETag: "v{version}"`; transitions send `If-Match`. A missing `If-Match` on a transition → `428`. | `If-Match: "v7"` |
-| Success body (PROPOSED, T-PLT-08) | Every successful JSON response has the same shape, `{ "data": …, "meta": { "correlationId": "…" } }`, added by a global response interceptor. `204` has no body. Errors are not wrapped: they stay RFC 9457 problem details (§8.3), which also carry `correlationId`. | `{ "data": { "patientId": "…", "mrn": "MRN-000123" }, "meta": { "correlationId": "01J…" } }` |
+| Success body (T-PLT-08, done) | Every successful JSON response has the same shape, `{ "data": …, "meta": { "correlationId": "…" } }`, added by a global response interceptor. `204` has no body. Errors are not wrapped: they stay RFC 9457 problem details (§8.3), which also carry `correlationId`. | `{ "data": { "patientId": "…", "mrn": "MRN-000123" }, "meta": { "correlationId": "01J…" } }` |
 | Pagination | Keyset (cursor) for worklists and large lists: `?limit=50&cursor=…`; response `{ data: [...], meta: { nextCursor, correlationId } }`. Offset only for small admin lists. | `/api/v1/lab/worklists/to-verify?limit=50` |
 | Filtering | Explicit query params validated by Zod; no free-form query languages | `?status=RELEASED&from=2026-11-01` |
 | Money | Decimal **strings** with currency: `{ "amount": "500.00", "currency": "BDT" }` | — |
@@ -464,7 +464,7 @@ Every API request passes the same layers in a fixed order (PROPOSED, T-PLT-07). 
 | 5 | Nest middleware (`RequestPipelineModule`) | Request logger (`nestjs-pino`) | One line per request, written when the response finishes: method, path without query string, status, `durationMs`, `correlationId`, `tenantId`, `userId`. Headers are never logged. Redaction rules for other log lines come from T-PLT-06. | T-PLT-07 (done), T-PLT-06 |
 | 6 | Guards | `SessionGuard`, `CsrfGuard`, `TenantGuard`, then `PermissionGuard` reading `@RequirePermission` (default deny, §7.2) | Authorization steps 1 to 4 of §7.2 | T-ACC-01 (done), T-ACC-02 |
 | 7 | Guard | Rate-limit guard (`@nestjs/throttler`, Valkey storage) | Per-session API limit (NFR-SEC-005) answered as `RATE_LIMITED`; login per IP and account limits are T-ACC-03 | T-PLT-07 (second part, needs the Valkey client), T-ACC-03 |
-| 8 | Interceptors | Idempotency, audit, then `ResponseEnvelopeInterceptor`: checks the handler result against its contract schema (ADR-005) and wraps it as `{ data, meta }` (§8.2) | §9, §7.3, ADR-005 | T-PLT-01, T-PLT-02, T-PLT-08 |
+| 8 | Interceptors | Idempotency, audit, then `ResponseEnvelopeInterceptor`: checks the handler result against its contract schema (ADR-005) and wraps it as `{ data, meta }` (§8.2) | §9, §7.3, ADR-005 | T-PLT-01, T-PLT-02, T-PLT-08 (done) |
 | 9 | Pipe | Zod validation pipe | Input contract check, `VALIDATION_FAILED` | ADR-005 |
 | 10 | Controller, application service | `withTenant()` | Business command or query (§6.2) | module tasks |
 | 11 | Exception filter | `ProblemDetailsFilter` | RFC 9457 body with `correlationId` (§8.3) | T-ACC-01 (done) |

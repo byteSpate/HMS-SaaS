@@ -10,8 +10,9 @@ import {
   IdentityAccessModule,
   RequirePermission,
 } from '@hms/mod-identity-access';
-import { DatabaseModule, RequestPipelineModule } from '@hms/platform';
+import { DatabaseModule, RawResponse, RequestPipelineModule } from '@hms/platform';
 import {
+  dataOf,
   grantPermissions,
   seedEntitlements,
   seedMembership,
@@ -29,6 +30,7 @@ if (!databaseUrl) throw new Error('DATABASE_URL is required');
 const WEB = 'http://localhost:3100';
 const PASSWORD = 'correct horse battery';
 
+@RawResponse()
 @Controller('probe')
 class GuardedProbeController {
   @RequirePermission('billing.payment.record')
@@ -227,7 +229,7 @@ describe('permission guard over HTTP', () => {
     await grantPermissions(prisma, tenantA, membershipA, ['billing.payment.record']);
 
     const loggedIn = await login(user.username);
-    const { csrfToken } = await loggedIn.json();
+    const { csrfToken } = await dataOf(loggedIn);
     const chooseB = await fetch(`${base}/auth/session/membership`, {
       method: 'POST',
       headers: {

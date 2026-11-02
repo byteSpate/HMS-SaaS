@@ -119,7 +119,14 @@ export async function installMockApi(page: Page, world: MockWorld) {
         'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, Accept',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, OPTIONS',
       },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      // Success bodies are enveloped like the real API (T-PLT-08); problem details are not.
+      ...(body === undefined
+        ? {}
+        : {
+            body: JSON.stringify(
+              status < 400 ? { data: body, meta: { correlationId: 'mock-request' } } : body,
+            ),
+          }),
     });
   }
 

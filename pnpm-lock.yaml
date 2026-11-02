@@ -282,6 +282,9 @@ importers:
       unplugin-swc:
         specifier: 2.0.0
         version: 2.0.0(@swc/core@1.16.18(@swc/helpers@0.5.23))(rolldown@1.2.13)(vite@8.3.4(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1))
+      zod:
+        specifier: 4.6.6
+        version: 4.6.6
 
   apps/dev-proxy: {}
 

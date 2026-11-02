@@ -2,6 +2,7 @@
 // Depends only on zod.
 export * from './account-lock.js';
 export * from './auth.js';
+export * from './envelope.js';
 export * from './errors.js';
 export * from './health.js';
 export * from './permissions.js';

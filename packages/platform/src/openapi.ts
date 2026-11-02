@@ -1,7 +1,7 @@
 // Swagger (OpenAPI) documentation from the shared Zod contracts, so the documented request and
 // response shapes are the ones the API validates and returns (D section 8; Swagger at /docs).
 // One decorator per endpoint: summary, body, success response and its problem+json errors.
-import { applyDecorators } from '@nestjs/common';
+import { applyDecorators, SetMetadata } from '@nestjs/common';
 import {
   ApiBody,
   ApiOperation,
@@ -9,8 +9,9 @@ import {
   ApiSecurity,
   type SchemaObject,
 } from '@nestjs/swagger';
-import { errorCodes, problemSchema, type ErrorCode } from '@hms/contracts';
+import { errorCodes, problemSchema, successEnvelopeSchema, type ErrorCode } from '@hms/contracts';
 import { z, type ZodType } from 'zod';
+import { RESPONSE_CONTRACT } from './response-envelope.js';
 
 /** Security scheme names registered on the document (see the API's swagger setup). */
 export const SESSION_SECURITY = 'session';
@@ -72,7 +73,7 @@ function errorResponses(codes: readonly ErrorCode[]): MethodDecorator[] {
   );
 }
 
-/** Documents one endpoint from its contracts. */
+/** Documents one endpoint from its contracts; the success schema is also what the API enforces. */
 export function ApiEndpoint(doc: EndpointDoc): MethodDecorator {
   return applyDecorators(
     ApiOperation({
@@ -83,8 +84,11 @@ export function ApiEndpoint(doc: EndpointDoc): MethodDecorator {
     ApiResponse({
       status: doc.success.status,
       description: doc.success.description,
-      ...(doc.success.schema ? { schema: openApiSchema(doc.success.schema) } : {}),
+      ...(doc.success.schema
+        ? { schema: openApiSchema(successEnvelopeSchema(doc.success.schema)) }
+        : {}),
     }),
+    ...(doc.success.schema ? [SetMetadata(RESPONSE_CONTRACT, doc.success.schema)] : []),
     ...errorResponses(doc.errors),
     ...(doc.csrf ? [ApiSecurity(CSRF_SECURITY)] : []),
   );

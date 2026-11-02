@@ -9,8 +9,8 @@ import {
   RequirePermission,
   hashPassword,
 } from '@hms/mod-identity-access';
-import { DatabaseModule } from '@hms/platform';
-import { grantPermissions, seedMembership, seedTenant, seedUser } from '@hms/testkit';
+import { DatabaseModule, RawResponse, RequestPipelineModule } from '@hms/platform';
+import { dataOf, grantPermissions, seedMembership, seedTenant, seedUser } from '@hms/testkit';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { configureApp } from './http/configure-app.js';
 
@@ -25,6 +25,7 @@ const clock = fixedClock(new Date());
 // A tenant-scoped probe route, standing in for any business endpoint (AT-ACC-003, AT-ACC-004).
 // It needs a core permission, so no module entitlement is involved; seeded users hold it.
 @RequirePermission('audit.view')
+@RawResponse()
 @Controller('probe')
 class ProbeController {
   @Get('tenant-data')
@@ -40,6 +41,7 @@ class ProbeController {
 
 @Module({
   imports: [
+    RequestPipelineModule.forRoot({ level: 'silent' }),
     DatabaseModule.forRoot(databaseUrl),
     IdentityAccessModule.forRoot(
       {
@@ -124,7 +126,7 @@ describe('auth over HTTP', () => {
     const user = await seedLogin(2);
     const res = await login(user.username);
     const cookie = cookieFrom(res);
-    const { csrfToken } = await res.json();
+    const { csrfToken } = await dataOf(res);
     const blocked = await fetch(`${base}/probe/tenant-data`, { headers: { Cookie: cookie } });
     expect(blocked.status).toBe(403);
     expect((await blocked.json()).code).toBe('TENANT_NOT_SELECTED');
@@ -150,7 +152,7 @@ describe('auth over HTTP', () => {
     const user = await seedLogin(1);
     const res = await login(user.username);
     const cookie = cookieFrom(res);
-    const { csrfToken } = await res.json();
+    const { csrfToken } = await dataOf(res);
     const without = await fetch(`${base}/probe/tenant-data`, {
       method: 'POST',
       headers: { Cookie: cookie, Origin: WEB },
@@ -213,7 +215,7 @@ describe('auth over HTTP', () => {
     const user = await seedLogin(1);
     const res = await login(user.username);
     const cookie = cookieFrom(res);
-    const { csrfToken } = await res.json();
+    const { csrfToken } = await dataOf(res);
     const out = await fetch(`${base}/auth/logout`, {
       method: 'POST',
       headers: { Cookie: cookie, Origin: WEB, 'X-CSRF-Token': csrfToken },
@@ -246,7 +248,7 @@ describe('auth over HTTP', () => {
     async function signedIn() {
       const user = await seedLogin(1);
       const res = await login(user.username);
-      const { csrfToken } = await res.json();
+      const { csrfToken } = await dataOf(res);
       return { user, cookie: cookieFrom(res), csrfToken };
     }
 
@@ -267,10 +269,10 @@ describe('auth over HTTP', () => {
       const { user, cookie, csrfToken } = await signedIn();
       const changed = await patch(cookie, csrfToken, { preferredLang: 'en' });
       expect(changed.status).toBe(200);
-      expect((await changed.json()).user.preferredLang).toBe('en');
+      expect((await dataOf(changed)).user.preferredLang).toBe('en');
 
       const session = await fetch(`${base}/auth/session`, { headers: { Cookie: cookie } });
-      expect((await session.json()).user.preferredLang).toBe('en');
+      expect((await dataOf(session)).user.preferredLang).toBe('en');
       const row = await prisma.userAccount.findUnique({ where: { id: user.id } });
       expect(row?.preferredLang).toBe('en');
     });

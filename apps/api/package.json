@@ -37,6 +37,7 @@
     "@swc/core": "1.16.18",
     "@types/cookie-parser": "1.4.10",
     "@types/express": "5.0.6",
-    "unplugin-swc": "2.0.0"
+    "unplugin-swc": "2.0.0",
+    "zod": "4.6.6"
   }
 }

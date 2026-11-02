@@ -10,8 +10,9 @@ import {
   IdentityAccessModule,
   RequirePermission,
 } from '@hms/mod-identity-access';
-import { DatabaseModule, RequestPipelineModule } from '@hms/platform';
+import { DatabaseModule, RawResponse, RequestPipelineModule } from '@hms/platform';
 import {
+  dataOf,
   cookieOf,
   grantPermissions,
   seedMembership,
@@ -36,6 +37,7 @@ const clock = fixedClock(new Date());
 
 // Stands in for any business route: a core permission, so no module entitlement is involved.
 @RequirePermission('audit.view')
+@RawResponse()
 @Controller('probe')
 class ProbeController {
   @Get()
@@ -110,7 +112,7 @@ describe('user administration over HTTP', () => {
       permissions: ['audit.view'],
     });
     expect(res.status).toBe(201);
-    return ((await res.json()) as { id: string }).id;
+    return ((await dataOf(res)) as { id: string }).id;
   }
 
   describe('asking for a new password while signed out (C-093, FR-ACC-012)', () => {
@@ -127,7 +129,7 @@ describe('user administration over HTTP', () => {
 
     async function requestedAt(adminSession: StaffSession, userId: string) {
       const res = await call(adminSession, 'GET', '/admin/users');
-      const { users } = (await res.json()) as {
+      const { users } = (await dataOf(res)) as {
         users: { userId: string; passwordResetRequestedAt: string | null }[];
       };
       return users.find((user) => user.userId === userId)?.passwordResetRequestedAt;
@@ -206,10 +208,10 @@ describe('user administration over HTTP', () => {
       roleIds: [roleId],
     });
     expect(created.status).toBe(201);
-    expect(await created.json()).toMatchObject({ username, mustChangePassword: true });
+    expect(await dataOf(created)).toMatchObject({ username, mustChangePassword: true });
 
     const firstLogin = await client.login(username, TEMPORARY);
-    const first = (await firstLogin.json()) as {
+    const first = (await dataOf(firstLogin)) as {
       csrfToken: string;
       passwordChangeRequired: boolean;
     };
@@ -224,7 +226,7 @@ describe('user administration over HTTP', () => {
       newPassword: 'my own password 2',
     });
     expect(changed.status).toBe(200);
-    const after = (await changed.json()) as {
+    const after = (await dataOf(changed)) as {
       csrfToken: string;
       passwordChangeRequired: boolean;
       permissions: string[];
@@ -269,7 +271,7 @@ describe('user administration over HTTP', () => {
       reason: 'Contract ended',
     });
     expect(revoked.status).toBe(200);
-    expect(await revoked.json()).toMatchObject({ membershipStatus: 'REVOKED' });
+    expect(await dataOf(revoked)).toMatchObject({ membershipStatus: 'REVOKED' });
     expect((await call(staffSession, 'GET', '/auth/session')).status).toBe(401);
 
     const back = await call(adminSession, 'POST', `/admin/users/${staff.id}/membership`, {
@@ -302,7 +304,7 @@ describe('user administration over HTTP', () => {
     expect(res.status).toBe(200);
     expect((await call(staffSession, 'GET', '/auth/session')).status).toBe(401);
     const login = await client.login(staff.username, TEMPORARY);
-    const body = (await login.json()) as { passwordChangeRequired: boolean };
+    const body = (await dataOf(login)) as { passwordChangeRequired: boolean };
     expect(body.passwordChangeRequired).toBe(true);
   });
 
@@ -317,10 +319,10 @@ describe('user administration over HTTP', () => {
       reason: 'Lost phone',
     });
     expect(reset.status).toBe(200);
-    expect(await reset.json()).toMatchObject({ mfaEnrolled: false });
+    expect(await dataOf(reset)).toMatchObject({ mfaEnrolled: false });
     expect((await call(otherSession, 'GET', '/auth/session')).status).toBe(401);
     const login = await client.login(other.username, PASSWORD);
-    expect(((await login.json()) as { mfa: { enrolled: boolean } }).mfa.enrolled).toBe(false);
+    expect(((await dataOf(login)) as { mfa: { enrolled: boolean } }).mfa.enrolled).toBe(false);
 
     const again = await call(adminSession, 'POST', `/admin/users/${other.id}/mfa/reset`, {
       reason: 'Twice',
@@ -331,7 +333,7 @@ describe('user administration over HTTP', () => {
   it('roles start from templates; an administrator cannot lock themselves out', async () => {
     const { adminSession } = await hospital();
     const list = await call(adminSession, 'GET', '/admin/roles');
-    const body = (await list.json()) as {
+    const body = (await dataOf(list)) as {
       templates: { code: string }[];
       roles: { id: string; permissions: string[] }[];
     };
@@ -361,7 +363,7 @@ describe('user administration over HTTP', () => {
       roleIds: [],
     });
     expect(foreign.status).toBe(404);
-    const list = (await (await call(adminSession, 'GET', '/admin/users')).json()) as {
+    const list = (await dataOf(await call(adminSession, 'GET', '/admin/users'))) as {
       users: { userId: string }[];
     };
     expect(list.users.map((u) => u.userId)).not.toContain(other.staff.id);

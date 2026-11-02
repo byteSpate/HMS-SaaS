@@ -11,7 +11,12 @@ import {
 } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import { bindRequestIdentity, getRequestContext, RequestPipelineModule } from '@hms/platform';
+import {
+  bindRequestIdentity,
+  getRequestContext,
+  RawResponse,
+  RequestPipelineModule,
+} from '@hms/platform';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { configureApp } from './configure-app.js';
 
@@ -28,6 +33,8 @@ class FakeSessionGuard implements CanActivate {
   }
 }
 
+// Raw: these probes test the middleware layers; the envelope has its own spec.
+@RawResponse()
 @Controller('probe')
 class ProbeController {
   @Get('context')

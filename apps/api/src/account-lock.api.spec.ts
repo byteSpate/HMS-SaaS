@@ -10,6 +10,7 @@ import {
 } from '@hms/mod-identity-access';
 import { DatabaseModule, RequestPipelineModule } from '@hms/platform';
 import {
+  dataOf,
   cookieOf,
   grantPermissions,
   seedMembership,
@@ -101,7 +102,7 @@ describe('account lock over HTTP', () => {
     const adminSession = await sessionOf(admin.username);
     const res = await call(adminSession, 'GET', `/admin/users/${staff.id}/lock`);
     expect(res.status).toBe(200);
-    const status = await res.json();
+    const status = await dataOf(res);
     expect(status).toMatchObject({
       status: 'LOCKED_TEMPORARY',
       failedAttempts: 5,
@@ -124,7 +125,7 @@ describe('account lock over HTTP', () => {
       reason: 'Left the hospital',
     });
     expect(lock.status).toBe(200);
-    expect(await lock.json()).toMatchObject({
+    expect(await dataOf(lock)).toMatchObject({
       status: 'LOCKED_ADMIN',
       lockReason: 'ADMIN_ACTION',
       lockNote: 'Left the hospital',
@@ -138,7 +139,7 @@ describe('account lock over HTTP', () => {
       reason: 'Returned to work',
     });
     expect(unlock.status).toBe(200);
-    expect(await unlock.json()).toMatchObject({ status: 'ACTIVE', lockReason: null });
+    expect(await dataOf(unlock)).toMatchObject({ status: 'ACTIVE', lockReason: null });
     expect((await login(staff.username)).status).toBe(200);
 
     const audit = await withTenant(prisma, { tenantId }, (tx) =>
@@ -194,7 +195,7 @@ describe('account lock over HTTP', () => {
   it('a privileged session gets MFA_REQUIRED until the second factor is set up (AT-ACC-009)', async () => {
     const { admin, staff } = await hospital();
     const res = await login(admin.username);
-    const body = (await res.json()) as { csrfToken: string; mfa: unknown };
+    const body = (await dataOf(res)) as { csrfToken: string; mfa: unknown };
     expect(body.mfa).toEqual({ required: true, enrolled: false, verified: false });
     const passwordOnly = { cookie: cookieOf(res), csrfToken: body.csrfToken };
 
@@ -209,10 +210,10 @@ describe('account lock over HTTP', () => {
   it('asks again at the next login and refuses a replayed code (AT-ACC-010)', async () => {
     const { admin, staff } = await hospital();
     const first = await login(admin.username);
-    const firstBody = (await first.json()) as { csrfToken: string };
+    const firstBody = (await dataOf(first)) as { csrfToken: string };
     const firstSession = { cookie: cookieOf(first), csrfToken: firstBody.csrfToken };
     const enrolment = await call(firstSession, 'POST', '/auth/mfa/enrolment');
-    const { secret } = (await enrolment.json()) as { secret: string };
+    const { secret } = (await dataOf(enrolment)) as { secret: string };
     const usedCode = totpCode(secret, clock.now());
     const confirm = await call(firstSession, 'POST', '/auth/mfa/enrolment/confirm', {
       code: usedCode,
@@ -220,7 +221,7 @@ describe('account lock over HTTP', () => {
     expect(confirm.status).toBe(200);
 
     const again = await login(admin.username);
-    const againBody = (await again.json()) as { csrfToken: string; mfa: unknown };
+    const againBody = (await dataOf(again)) as { csrfToken: string; mfa: unknown };
     expect(againBody.mfa).toEqual({ required: true, enrolled: true, verified: false });
     const session = { cookie: cookieOf(again), csrfToken: againBody.csrfToken };
     const replay = await call(session, 'POST', '/auth/mfa/verify', { code: usedCode });
@@ -232,7 +233,7 @@ describe('account lock over HTTP', () => {
       code: totpCode(secret, clock.now()),
     });
     expect(verify.status).toBe(200);
-    const verifiedBody = (await verify.json()) as { csrfToken: string };
+    const verifiedBody = (await dataOf(verify)) as { csrfToken: string };
     const verified = { cookie: cookieOf(verify), csrfToken: verifiedBody.csrfToken };
     expect((await call(verified, 'GET', `/admin/users/${staff.id}/lock`)).status).toBe(200);
     // The pre-verification cookie was replaced (session rotation, D section 7.1).

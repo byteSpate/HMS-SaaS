@@ -18,6 +18,15 @@ export function cookieOf(res: Response): string {
   return (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
 }
 
+/**
+ * The data of a success response (T-PLT-08). `any` on purpose: it mirrors Response.json(), and each
+ * test states the shape it expects.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function dataOf(res: Response): Promise<any> {
+  return ((await res.json()) as { data: unknown }).data;
+}
+
 async function expectOk(res: Response, step: string): Promise<void> {
   if (res.ok) return;
   throw new Error(`${step} answered ${res.status}: ${await res.text()}`);
@@ -49,18 +58,18 @@ export function staffClient(base: string, origin: string, now: () => Date): Staf
   async function sessionOf(username: string, password: string): Promise<StaffSession> {
     const res = await login(username, password);
     await expectOk(res, 'login');
-    const body = (await res.json()) as { csrfToken: string; mfa: { required: boolean } };
+    const body = (await dataOf(res)) as { csrfToken: string; mfa: { required: boolean } };
     const session = { cookie: cookieOf(res), csrfToken: body.csrfToken };
     if (!body.mfa.required) return session;
 
     const enrolment = await call(session, 'POST', '/auth/mfa/enrolment');
     await expectOk(enrolment, 'MFA enrolment');
-    const { secret } = (await enrolment.json()) as { secret: string };
+    const { secret } = (await dataOf(enrolment)) as { secret: string };
     const confirmed = await call(session, 'POST', '/auth/mfa/enrolment/confirm', {
       code: totpCode(secret, now()),
     });
     await expectOk(confirmed, 'MFA confirmation');
-    const result = (await confirmed.json()) as { session: { csrfToken: string } };
+    const result = (await dataOf(confirmed)) as { session: { csrfToken: string } };
     return { cookie: cookieOf(confirmed), csrfToken: result.session.csrfToken };
   }
 

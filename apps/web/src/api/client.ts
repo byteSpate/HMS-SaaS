@@ -2,8 +2,9 @@
 // - the session is the HttpOnly cookie (credentials: 'include'); this code never sees it
 // - state-changing requests carry the CSRF token the server issued for this session (ADR-021)
 // - errors become ApiError with a stable code; responses are validated with the shared contracts
-// Implements: T-UI-02, ADR-004, ADR-021.
-import { problemSchema } from '@hms/contracts';
+// - success bodies are { data, meta } (T-PLT-08), unwrapped here and nowhere else
+// Implements: T-UI-02, T-PLT-08, ADR-004, ADR-021.
+import { anySuccessEnvelopeSchema, problemSchema } from '@hms/contracts';
 import { API_BASE_URL, API_PREFIX } from '../config';
 import { ApiError, CLIENT_ERROR_CODES } from './errors';
 
@@ -57,7 +58,7 @@ export async function apiRequest<T = void>(
   if (response.status === 204 || !parse) return undefined as T;
 
   try {
-    return parse(await response.json());
+    return parse(anySuccessEnvelopeSchema.parse(await response.json()).data);
   } catch {
     throw new ApiError(CLIENT_ERROR_CODES.INVALID_RESPONSE, response.status);
   }

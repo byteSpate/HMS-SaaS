@@ -14,6 +14,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+function enveloped(data: unknown): Response {
+  return jsonResponse({ data, meta: { correlationId: 'test-request' } });
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -24,7 +28,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 describe('apiRequest', () => {
   it('sends the session cookie and no CSRF header on a read', async () => {
     setCsrfToken('token-1');
-    fetchMock.mockResolvedValue(jsonResponse({ ok: true }));
+    fetchMock.mockResolvedValue(enveloped({ ok: true }));
     await apiRequest('/auth/session', { parse: (data) => data });
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
@@ -62,8 +66,20 @@ describe('apiRequest', () => {
     expect((error as ApiError).code).toBe('NETWORK');
   });
 
+  it('hands only the data of the envelope to the contract check', async () => {
+    fetchMock.mockResolvedValue(enveloped({ id: 'a' }));
+    await expect(apiRequest('/x', { parse: (data) => data })).resolves.toEqual({ id: 'a' });
+  });
+
+  it('rejects a body without the envelope', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: 'a' }));
+    await expect(apiRequest('/x', { parse: (data) => data })).rejects.toMatchObject({
+      code: 'INVALID_RESPONSE',
+    });
+  });
+
   it('rejects an answer that does not match the contract', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ unexpected: true }));
+    fetchMock.mockResolvedValue(enveloped({ unexpected: true }));
     const parse = (data: unknown): string => {
       if (typeof data !== 'object' || data === null || !('id' in data)) throw new Error('shape');
       return String((data as { id: unknown }).id);
