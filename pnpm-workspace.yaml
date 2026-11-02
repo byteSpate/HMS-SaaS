@@ -23,4 +23,6 @@ allowBuilds:
   argon2: true
   # BullMQ's msgpackr uses prebuilt optional packages and falls back to plain JavaScript.
   msgpackr-extract: false
+  # OpenTelemetry's protobufjs install script only prints a notice.
+  protobufjs: false
   prisma: true
