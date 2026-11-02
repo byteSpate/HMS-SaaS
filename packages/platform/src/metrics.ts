@@ -91,3 +91,17 @@ export function startMetricsServer(
     });
   });
 }
+
+/** Metrics must never stop care or billing: a port that cannot be opened only warns. */
+export async function startOptionalMetricsServer(
+  port: number,
+  health: () => HealthReport,
+  warn: (message: string) => void,
+): Promise<MetricsServer | undefined> {
+  try {
+    return await startMetricsServer(port, health);
+  } catch (error) {
+    warn(`Metrics are off, port ${port} could not be opened: ${(error as Error).message}`);
+    return undefined;
+  }
+}

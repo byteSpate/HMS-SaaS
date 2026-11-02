@@ -33,7 +33,7 @@ Logs now redact NID, passwords, cookies and tokens at any common depth. The API 
 | Command                                             | Result                         |
 | --------------------------------------------------- | ------------------------------ |
 | `vitest run src/http/observability.spec.ts`, before | Failed: code missing           |
-| Same, after                                         | 7 of 7                         |
+| Same, after                                         | 8 of 8                         |
 | `pnpm audit --prod --audit-level=high`              | No known vulnerabilities found |
 | Full suite                                          | In the pull request's CI run   |
 
@@ -44,7 +44,7 @@ Logs now redact NID, passwords, cookies and tokens at any common depth. The API 
 - **Dashboards and alert rules** belong to T-OPS-03.
 - **No DB pool or login failure metrics yet** (D section 12 lists them).
 
-Deploy impact: new optional variables `METRICS_PORT` (default 9464) and `OTEL_EXPORTER_OTLP_ENDPOINT`. Keep port 9464 private. No migration.
+Deploy impact: new optional variables `METRICS_PORT` (default 9464) and `OTEL_EXPORTER_OTLP_ENDPOINT`. Keep port 9464 private. On one machine, set `WORKER_HEALTH_PORT=9465`; a port that cannot be opened only warns. No migration.
 
 ## How to debug
 
