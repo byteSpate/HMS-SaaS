@@ -1,6 +1,7 @@
 # Checks for pull requests and pushes to dev and main (docs/GIT_WORKFLOW.md, L §3).
 # Third-party actions are pinned to full commit SHAs; the comment shows the release.
-# Image scanning, secret scanning and the SonarQube job are added with T-FND-03 / T-FND-05.
+# Images are built and scanned in images.yml. Secret scanning and the SonarQube job (C-048) are
+# still to come with T-FND-03.
 name: ci
 
 on:
@@ -52,6 +53,10 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Next.js 16.4.0 with known remote code execution reached three releases because nothing
+      # checked advisories. A new high or critical advisory stops merges until it is handled.
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level=high
       - name: Create database roles (same script as local dev)
         run: psql "postgresql://postgres:ci-only-password@localhost:5432/hms" -v ON_ERROR_STOP=1 -f docker/postgres/initdb/10-roles.sql
       - run: pnpm db:deploy

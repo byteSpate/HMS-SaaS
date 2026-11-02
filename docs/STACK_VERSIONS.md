@@ -4,31 +4,32 @@ Recorded at scaffold on **2026-10-13** (T-FND-01, D1 §6). Versions were checked
 
 pnpm's `minimumReleaseAge` supply-chain check is on. Releases less than a day old are refused, so the previous release was pinned (noted below).
 
-| Component                                          | Pinned                         | Note                                                                                    |
-| -------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------- |
-| Node.js                                            | 24.x LTS (`.nvmrc`, `engines`) | Re-evaluate Node 26 LTS after 2026-10-28                                                |
-| pnpm                                               | 12.11.2 (`packageManager`)     |                                                                                         |
-| Turborepo                                          | 2.11.7                         |                                                                                         |
-| TypeScript                                         | 6.0.3                          | Not 7.x: NestJS CLI and typescript-eslint require < 7 / < 6.1                           |
-| NestJS core/common/platform-express/testing        | 12.1.2                         | 12.1.3 was < 1 day old                                                                  |
-| @nestjs/cli / schematics                           | 12.0.8 / 12.0.7                |                                                                                         |
-| Next.js                                            | **16.4.0, temporary**          | Security release due 2026-10-14. Upgrade before any deploy; never deploy 16.4.0 (D1 §4) |
-| React / React DOM                                  | 19.3.0                         |                                                                                         |
-| Tailwind CSS                                       | 4.3.3                          |                                                                                         |
-| Prisma CLI / client / adapter-pg                   | 7.10.0                         | npm `latest` is 8.0.0-rc; stay on 7.10.x (CX-017)                                       |
-| pg                                                 | 8.23.1                         |                                                                                         |
-| Zod                                                | 4.6.6                          | 4.6.7 was < 1 day old                                                                   |
-| Vitest / coverage-v8                               | 5.0.4                          | ADR-018                                                                                 |
-| unplugin-swc / @swc/core                           | 2.0.0 / 1.16.18                | Decorator metadata for NestJS tests                                                     |
-| Playwright / @axe-core/playwright                  | 1.64.0 / 4.13.0                | Chromium headless shell 156                                                             |
-| ESLint / typescript-eslint / eslint-plugin-sonarjs | 10.12.0 / 8.71.1 / 4.2.2       | typescript-eslint 8.71.2 was < 1 day old                                                |
-| dependency-cruiser                                 | 18.6.0                         |                                                                                         |
-| argon2                                             | 0.45.1                         | Native module; install script allowed in `pnpm-workspace.yaml` (T-ACC-01)               |
-| cookie-parser / @types/cookie-parser               | 1.4.7 / 1.4.10                 | T-ACC-01                                                                                |
-| @types/express                                     | 5.0.6                          | T-ACC-01                                                                                |
-| Prettier                                           | 3.9.10                         |                                                                                         |
-| PostgreSQL (local, CI)                             | 17 (17.11 resolved locally)    | Matches Supabase (ADR-019)                                                              |
-| Valkey (local, CI)                                 | 9 (9.1.2 resolved locally)     | ADR-020                                                                                 |
+| Component                                          | Pinned                         | Note                                                                                 |
+| -------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------ |
+| Node.js                                            | 24.x LTS (`.nvmrc`, `engines`) | Re-evaluate Node 26 LTS after 2026-10-28                                             |
+| pnpm                                               | 12.11.2 (`packageManager`)     |                                                                                      |
+| Turborepo                                          | 2.11.7                         |                                                                                      |
+| TypeScript                                         | 6.0.3                          | Not 7.x: NestJS CLI and typescript-eslint require < 7 / < 6.1                        |
+| NestJS core/common/platform-express/testing        | 12.3.2                         | Hotfix 2026-11-01: brings multer 2.5.0 (DoS advisory)                                |
+| body-parser / qs (overrides, through Express)      | 2.4.0 / 6.16.2                 | Hotfix 2026-11-01: DoS advisories; set in `pnpm-workspace.yaml`                      |
+| @nestjs/cli / schematics                           | 12.0.8 / 12.0.7                |                                                                                      |
+| Next.js                                            | 16.4.3                         | Hotfix 2026-11-01. Never run 16.4.0 or older: unauthenticated RCE advisories (D1 §4) |
+| React / React DOM                                  | 19.3.0                         |                                                                                      |
+| Tailwind CSS                                       | 4.3.3                          |                                                                                      |
+| Prisma CLI / client / adapter-pg                   | 7.10.0                         | npm `latest` is 8.0.0-rc; stay on 7.10.x (CX-017)                                    |
+| pg                                                 | 8.23.1                         |                                                                                      |
+| Zod                                                | 4.6.6                          | 4.6.7 was < 1 day old                                                                |
+| Vitest / coverage-v8                               | 5.0.4                          | ADR-018                                                                              |
+| unplugin-swc / @swc/core                           | 2.0.0 / 1.16.18                | Decorator metadata for NestJS tests                                                  |
+| Playwright / @axe-core/playwright                  | 1.64.0 / 4.13.0                | Chromium headless shell 156                                                          |
+| ESLint / typescript-eslint / eslint-plugin-sonarjs | 10.12.0 / 8.71.1 / 4.2.2       | typescript-eslint 8.71.2 was < 1 day old                                             |
+| dependency-cruiser                                 | 18.6.0                         |                                                                                      |
+| argon2                                             | 0.45.1                         | Native module; install script allowed in `pnpm-workspace.yaml` (T-ACC-01)            |
+| cookie-parser / @types/cookie-parser               | 1.4.7 / 1.4.10                 | T-ACC-01                                                                             |
+| @types/express                                     | 5.0.6                          | T-ACC-01                                                                             |
+| Prettier                                           | 3.9.10                         |                                                                                      |
+| PostgreSQL (local, CI)                             | 17 (17.11 resolved locally)    | Matches Supabase (ADR-019)                                                           |
+| Valkey (local, CI)                                 | 9 (9.1.2 resolved locally)     | ADR-020                                                                              |
 
 ## Commands run on 2026-10-13 and their results
 

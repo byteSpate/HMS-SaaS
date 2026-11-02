@@ -1,0 +1,32 @@
+# syntax=docker/dockerfile:1
+# One-off migration image (T-FND-05, K sections 2 and 8). It holds the Prisma CLI, which the app
+# images do not need, and exits when done. Run it with DATABASE_MIGRATOR_URL set to the
+# hms_migrator role (ADR-019), never the app or an admin role.
+#   docker build -f docker/Dockerfile.migrate -t hms-migrate .
+ARG NODE_IMAGE=node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
+
+FROM ${NODE_IMAGE} AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
+WORKDIR /repo
+
+FROM base AS pruner
+ARG TURBO_VERSION=2.11.7
+COPY . .
+RUN npx --yes turbo@${TURBO_VERSION} prune @hms/database --docker
+
+FROM base AS runner
+ENV PRISMA_HIDE_UPDATE_MESSAGE=1
+COPY --from=pruner /repo/out/json/ .
+COPY --from=pruner /repo/out/pnpm-lock.yaml ./pnpm-lock.yaml
+RUN pnpm install --frozen-lockfile
+COPY --from=pruner /repo/out/full/ .
+# Corepack caches the pnpm binary under the home directory of the user who first ran it.
+RUN mkdir -p /home/node/.cache \
+ && cp -a /root/.cache/node /home/node/.cache/node \
+ && chown -R node:node /repo /home/node/.cache
+USER node
+WORKDIR /repo/packages/database
+CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]

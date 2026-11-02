@@ -1,0 +1,74 @@
+# Builds every application image, checks it starts as non-root and scans it (T-FND-05, T-FND-03,
+# K sections 2 and 3, L section 5). Nothing is pushed and nothing is deployed: the server still
+# builds from source (docs/DEPLOYMENT.md). Pull requests run this only when the images could
+# change, because five builds are slow and private repositories have limited CI minutes (C-047);
+# every push to dev and main runs it.
+name: images
+
+on:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - 'docker/Dockerfile.*'
+      - 'docker/smoke-image.mjs'
+      - '.dockerignore'
+      - '.nvmrc'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '**/package.json'
+      - 'apps/*/next.config.ts'
+      - '.github/workflows/images.yml'
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            dockerfile: docker/Dockerfile.nest
+            build-args: --build-arg APP=api
+            smoke: 4100 /health CSRF_SECRET=ci-only-csrf-secret-0123456789abcdef MFA_ENCRYPTION_KEY=Y2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2M= DATABASE_URL=postgresql://hms_app:unused@127.0.0.1:1/hms CORS_ORIGINS=http://localhost:3100
+          # The worker has no HTTP server until T-PLT-03, so it is built and scanned only.
+          - name: worker
+            dockerfile: docker/Dockerfile.nest
+            build-args: --build-arg APP=worker
+          - name: web
+            dockerfile: docker/Dockerfile.next
+            build-args: --build-arg APP=web --build-arg PORT=3100 --build-arg HEALTH_PATH=/staff/api/health --build-arg NEXT_PUBLIC_API_URL=https://api.example.test
+            smoke: 3100 /staff/api/health
+          - name: site
+            dockerfile: docker/Dockerfile.next
+            build-args: --build-arg APP=site --build-arg PORT=3200 --build-arg HEALTH_PATH=/robots.txt
+            smoke: 3200 /robots.txt
+          - name: migrate
+            dockerfile: docker/Dockerfile.migrate
+            build-args: ''
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Build
+        run: docker build -f ${{ matrix.dockerfile }} ${{ matrix.build-args }} -t hms-${{ matrix.name }}:ci .
+      - name: Starts as non-root and answers its health check
+        if: matrix.smoke != ''
+        run: node docker/smoke-image.mjs hms-${{ matrix.name }}:ci ${{ matrix.smoke }}
+      - name: Scan for critical vulnerabilities with a fix available
+        run: >-
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+          image --exit-code 1 --severity CRITICAL --ignore-unfixed --scanners vuln --no-progress
+          hms-${{ matrix.name }}:ci

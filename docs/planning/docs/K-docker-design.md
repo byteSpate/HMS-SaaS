@@ -152,6 +152,8 @@ The repository's `docker/compose.dev.yaml` runs **PostgreSQL 17** (matching Supa
 
 ## 10. What has and has not been checked
 
+T-FND-05 built the repository's own images on 2026-11-01 from this design: `docker/Dockerfile.nest`, `Dockerfile.next` and `Dockerfile.migrate`, checked by `.github/workflows/images.yml`. See [the log](../../log/2026-11-01-T-FND-05-docker-images.md) for what differs from the templates. The rows below describe the templates, which remain unbuilt.
+
 | Item | Checked? |
 | --- | --- |
 | Compose YAML syntax (`compose.prod.yaml`, `compose.dev.yaml`) | Parsed with a YAML parser |

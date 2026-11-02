@@ -18,6 +18,14 @@ test('staff screens are served under /staff with their assets', async ({ page })
   expect(assets.every((path) => path.startsWith('/staff/_next/'))).toBe(true);
 });
 
+test('the container health check answers under /staff without calling the API (T-FND-05)', async ({
+  request,
+}) => {
+  const response = await request.get('/staff/api/health');
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toEqual({ status: 'ok', service: 'web' });
+});
+
 test('staff responses are not indexed and carry the enforced security headers', async ({
   request,
 }) => {
