@@ -37,6 +37,7 @@ model Tenant {
   auditEvents  AuditEvent[]
   roles        Role[]
   entitlements TenantEntitlement[]
+  numberSequences NumberSequence[]
 
   @@map("tenant")
   @@schema("hms")
@@ -343,5 +344,18 @@ model IdempotencyRecord {
   @@id([tenantId, actorUserId, idemKey])
   @@index([expiresAt])
   @@map("idempotency_record")
+  @@schema("hms")
+}
+
+// Business number sequence of one hospital (T-PLT-04, FR-CFG-003).
+model NumberSequence {
+  tenantId    String @map("tenant_id") @db.Uuid
+  sequenceKey String @map("sequence_key")
+  nextValue   BigInt @default(1) @map("next_value")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@id([tenantId, sequenceKey])
+  @@map("number_sequence")
   @@schema("hms")
 }
