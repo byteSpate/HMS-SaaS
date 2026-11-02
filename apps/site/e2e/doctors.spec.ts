@@ -3,6 +3,11 @@
 import { expect, test } from '@playwright/test';
 import { scan } from './a11y';
 
+// Dr. Tanvir Ahmed's demo leave runs 20 to 30 October 2026 in content/doctors.json. Leave is worked
+// out in the browser against the visitor's today, so these tests fix the clock inside that window;
+// on the real clock they would start failing once the leave has passed.
+const DURING_DEMO_LEAVE = new Date('2026-10-22T03:00:00Z');
+
 test('filters by department and branch together and keeps them in the URL', async ({ page }) => {
   await page.goto('/en/doctors');
   await expect(page.getByTestId('doctor-count')).toHaveText('24 doctors found');
@@ -59,6 +64,7 @@ test('the profile shows the schedule with Bangla digits on /bn (AT-WEB-012)', as
 });
 
 test('a doctor on leave shows the leave notice (AT-WEB-050)', async ({ page }) => {
+  await page.clock.setFixedTime(DURING_DEMO_LEAVE);
   await page.goto('/en/doctors/tanvir-ahmed');
   await expect(page.getByTestId('leave-notice')).toContainText('on leave');
 });
@@ -97,6 +103,7 @@ test('a symptom search finds the right doctors and an empty search offers help (
 test('cards show the next chamber and fee, and a doctor on leave shows the return day', async ({
   page,
 }) => {
+  await page.clock.setFixedTime(DURING_DEMO_LEAVE);
   await page.goto('/en/doctors?department=cardiology');
   const card = page.getByTestId('doctor-results').getByRole('article').first();
   await expect(card).toContainText('Fee');

@@ -100,9 +100,16 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-10-24 | [T-WEB-18: staff app under /staff, and one local origin for both apps](2026-10-24-T-WEB-18-staff-base-path.md)                   |
 | 2026-10-24 | [T-WEB-18: image import types for a fresh checkout](2026-10-24-T-WEB-18-image-types.md)                                          |
 | 2026-10-24 | [Docs: modules and 20-week development timeline](2026-10-24-modules-development-timeline.md)                                     |
+| 2026-10-25 | [CMS owner decisions](2026-10-25-cms-owner-decisions.md)                                                                         |
 | 2026-10-26 | [Docs: one installation per hospital, SaaS planning removed](2026-10-26-docs-single-installation.md)                             |
 | 2026-10-28 | [T-ACC-03: account lockout, login rate limit and lock diagnostics](2026-10-28-T-ACC-03-lockout.md)                               |
 | 2026-10-28 | [T-ACC-04: TOTP second factor for administrators and finance staff](2026-10-28-T-ACC-04-mfa.md)                                  |
 | 2026-10-28 | [T-ACC-05: user, membership and role administration, with temporary passwords](2026-10-28-T-ACC-05-user-admin.md)                |
 | 2026-10-28 | [Swagger documentation for the authentication and administration API](2026-10-28-api-swagger-auth.md)                            |
+| 2026-10-29 | [Development seed: demo hospital, administrator and receptionist](2026-10-29-dev-seed.md)                                        |
+| 2026-10-29 | [T-ACC-04 fix: MFA set-up QR code showed as a black square](2026-10-29-T-ACC-04-qr-code-colours.md)                              |
+| 2026-10-29 | [T-ACC-04: copy all recovery codes in one click](2026-10-29-T-ACC-04-copy-recovery-codes.md)                                     |
+| 2026-10-29 | [T-ACC-05: role permissions on their own page, users and roles as tables](2026-10-29-T-ACC-05-role-pages.md)                     |
+| 2026-11-01 | [Hotfix: Next.js remote code execution and Express denial-of-service advisories](2026-11-01-hotfix-next-nest-security.md)        |
+| 2026-11-01 | [T-FND-04 follow-up: column-level UPDATE on the identity tables](2026-11-01-T-FND-04-identity-column-grants.md)                  |
 | 2026-11-01 | [T-FND-05 and T-FND-03: application images, image CI and dependency audit](2026-11-01-T-FND-05-docker-images.md)                 |

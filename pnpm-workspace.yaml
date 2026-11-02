@@ -6,6 +6,13 @@ packages:
 # pnpm's minimumReleaseAge supply-chain check stays on: pick an older release rather than adding exclusions.
 savePrefix: ''
 
+# Security floor for transitive dependencies of Express (GHSA-27r3-jxmh-p828 and the qs
+# stringify advisory): both ranges allow these versions, but the lockfile held older ones.
+# Remove an entry once a direct dependency requires this version or newer.
+overrides:
+  body-parser: 2.4.0
+  qs: 6.16.2
+
 # Only these packages may run install scripts (pnpm blocks all others).
 allowBuilds:
   # next-intl's optional watcher is only for its message-extraction CLI, which we do not run.
