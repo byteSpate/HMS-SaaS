@@ -118,3 +118,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-02 | [T-PLT-08: response envelope](2026-11-02-T-PLT-08-response-envelope.md)                                                          |
 | 2026-11-02 | [T-PLT-01: idempotency](2026-11-02-T-PLT-01-idempotency.md)                                                                      |
 | 2026-11-02 | [T-PLT-04: number sequences](2026-11-02-T-PLT-04-number-sequences.md)                                                            |
+| 2026-11-02 | [T-PLT-02: audit search](2026-11-02-T-PLT-02-audit-search.md)                                                                    |

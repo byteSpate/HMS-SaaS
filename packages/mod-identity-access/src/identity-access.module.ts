@@ -12,6 +12,7 @@ import { MfaService } from './application/mfa.service.js';
 import { RoleAdminService } from './application/role-admin.service.js';
 import { UserAdminService } from './application/user-admin.service.js';
 import { AccountLockController } from './http/account-lock.controller.js';
+import { AuditController } from './http/audit.controller.js';
 import { AuthController } from './http/auth.controller.js';
 import { MfaController } from './http/mfa.controller.js';
 import { RoleAdminController } from './http/role-admin.controller.js';
@@ -38,6 +39,7 @@ export class IdentityAccessModule {
         AuthController,
         MfaController,
         AccountLockController,
+        AuditController,
         UserAdminController,
         RoleAdminController,
       ],

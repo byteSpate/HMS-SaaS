@@ -2,7 +2,7 @@
 // contracts. It lets the browser tests exercise the real screens (cookie-less, cross-origin, CSRF
 // header and all) without a database. Behavior against the real API is covered by apps/api tests
 // and by the manual smoke run recorded in the T-UI-02 log.
-import { sessionResponseSchema, type SessionResponse } from '@hms/contracts';
+import { auditEventSchema, sessionResponseSchema, type SessionResponse } from '@hms/contracts';
 import type { Page, Route } from '@playwright/test';
 import { createAdminStore } from './mock-admin';
 
@@ -35,6 +35,7 @@ export interface MockWorld {
 export interface RecordedRequest {
   method: string;
   path: string;
+  query: string;
   csrf: string | null;
   body: unknown;
 }
@@ -85,6 +86,28 @@ const PROBLEM = (status: number, code: string) => ({
   code,
 });
 
+/** Two pages of audit events (T-PLT-02); a person filter finds nothing. */
+function auditPage(query: URLSearchParams) {
+  const row = (id: number, action: string, outcome: 'SUCCEEDED' | 'DENIED') =>
+    auditEventSchema.parse({
+      id: ID(id),
+      occurredAt: '2026-11-02T04:00:00.000Z',
+      action,
+      outcome,
+      actorUserId: ID(1),
+      actorName: 'Mock User',
+      targetType: null,
+      targetId: null,
+      reason: null,
+      correlationId: null,
+      details: null,
+    });
+  if (query.get('actor')) return { rows: [], nextCursor: null };
+  return query.get('cursor')
+    ? { rows: [row(902, 'authz.access.denied', 'DENIED')], nextCursor: null }
+    : { rows: [row(901, 'admin.user.created', 'SUCCEEDED')], nextCursor: ID(901) };
+}
+
 export async function installMockApi(page: Page, world: MockWorld) {
   const requests: RecordedRequest[] = [];
   let activeMembershipId: string | null = null;
@@ -109,7 +132,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
     });
   }
 
-  function reply(route: Route, status: number, body?: unknown) {
+  function reply(route: Route, status: number, body?: unknown, meta: object = {}) {
     return route.fulfill({
       status,
       contentType: 'application/json',
@@ -124,7 +147,9 @@ export async function installMockApi(page: Page, world: MockWorld) {
         ? {}
         : {
             body: JSON.stringify(
-              status < 400 ? { data: body, meta: { correlationId: 'mock-request' } } : body,
+              status < 400
+                ? { data: body, meta: { correlationId: 'mock-request', ...meta } }
+                : body,
             ),
           }),
     });
@@ -140,10 +165,15 @@ export async function installMockApi(page: Page, world: MockWorld) {
     requests.push({
       method: request.method(),
       path,
+      query: new URL(request.url()).search,
       csrf: request.headers()['x-csrf-token'] ?? null,
       body,
     });
 
+    if (path === '/audit/events') {
+      const page = auditPage(new URL(request.url()).searchParams);
+      return reply(route, 200, page.rows, { nextCursor: page.nextCursor });
+    }
     if (path === '/auth/login') return answerLogin(route, body);
     if (path === '/auth/password-reset-requests') return reply(route, 202);
     if (!signedIn) return reply(route, 401, PROBLEM(401, 'UNAUTHENTICATED'));

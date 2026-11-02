@@ -34,10 +34,16 @@ async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(CLIENT_ERROR_CODES.UNKNOWN, response.status);
 }
 
-export async function apiRequest<T = void>(
+/** One page of a keyset list (D section 8.2). */
+export interface Page<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+async function send(
   path: string,
-  { method = 'GET', body, parse }: RequestOptions<T> = {},
-): Promise<T> {
+  { method = 'GET', body }: Pick<RequestOptions<unknown>, 'method' | 'body'>,
+): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken;
@@ -55,10 +61,30 @@ export async function apiRequest<T = void>(
   }
 
   if (!response.ok) throw await toApiError(response);
+  return response;
+}
+
+export async function apiRequest<T = void>(
+  path: string,
+  { method = 'GET', body, parse }: RequestOptions<T> = {},
+): Promise<T> {
+  const response = await send(path, { method, body });
   if (response.status === 204 || !parse) return undefined as T;
 
   try {
     return parse(anySuccessEnvelopeSchema.parse(await response.json()).data);
+  } catch {
+    throw new ApiError(CLIENT_ERROR_CODES.INVALID_RESPONSE, response.status);
+  }
+}
+
+/** Reads a keyset list: each item is checked, and the cursor comes from `meta`. */
+export async function apiPage<T>(path: string, parseItem: (item: unknown) => T): Promise<Page<T>> {
+  const response = await send(path, {});
+  try {
+    const { data, meta } = anySuccessEnvelopeSchema.parse(await response.json());
+    if (!Array.isArray(data)) throw new Error('A list answer must hold an array');
+    return { items: data.map(parseItem), nextCursor: meta.nextCursor ?? null };
   } catch {
     throw new ApiError(CLIENT_ERROR_CODES.INVALID_RESPONSE, response.status);
   }

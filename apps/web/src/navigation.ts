@@ -6,7 +6,7 @@
 import type { IconName } from '@hms/ui';
 
 // Full catalog keys, so the unused-key check can see them as literals.
-export type NavLabelKey = 'nav.home' | 'nav.users' | 'nav.roles';
+export type NavLabelKey = 'nav.home' | 'nav.users' | 'nav.roles' | 'nav.audit';
 
 export interface NavDefinition {
   id: string;
@@ -33,6 +33,14 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/admin/roles',
     icon: 'shield-check',
     requires: 'admin.role.manage',
+  },
+  // T-PLT-02 (SCR-24).
+  {
+    id: 'audit',
+    labelKey: 'nav.audit',
+    href: '/admin/audit',
+    icon: 'file-text',
+    requires: 'audit.view',
   },
 ];
 
