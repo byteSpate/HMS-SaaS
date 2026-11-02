@@ -13,7 +13,7 @@ export class LoginThrottle {
     private readonly perAccount: RateLimiter,
   ) {}
 
-  /** One API process per hospital installation (ADR-023); Valkey replaces this in T-PLT-03. */
+  /** Counts per API process, so it suits a single process only; Valkey replaces this in T-PLT-03. */
   static inMemory(limits: LoginRateLimits): LoginThrottle {
     return new LoginThrottle(
       new InMemoryRateLimiter(limits.perIp),

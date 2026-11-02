@@ -1,6 +1,6 @@
 # ADR-023 - One installation per customer hospital
 
-- **Status:** ACCEPTED by the product owner. C-089 (2026-10-25, site pack A) set the direction; on 2026-10-26 the product owner asked for the shared-hosting and tenancy planning to be removed from the documentation. Supersedes ADR-003.
+- **Status:** SUPERSEDED by the product owner's decision C-094 (2026-11-02): HMS is sold as shared SaaS and ADR-003 is in force again. Accepted 2026-10-26; the text below is kept as history.
 - **Date:** 2026-10-26
 - **Approver:** Product owner
 

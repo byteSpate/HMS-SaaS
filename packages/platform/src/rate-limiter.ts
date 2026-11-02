@@ -1,5 +1,5 @@
 // Fixed-window rate limiting (NFR-SEC-005). T-ACC-03 uses it for login per IP and per account.
-// The in-memory store fits one API process per hospital installation (ADR-023); a Valkey store
+// The in-memory store counts per API process, so it suits a single process only; a Valkey store
 // with the same interface follows with T-PLT-03 (D section 8.6 layer 7).
 
 export interface RateLimitRule {

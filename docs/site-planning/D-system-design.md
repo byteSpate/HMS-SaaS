@@ -104,11 +104,15 @@ export interface SiteContent {
 
 Needed `packages/ui` additions (P-031): about 36 icons for departments and contact, and `buttonClassName(variant, size)` so links can look like buttons. Possible later candidates if `apps/web` needs them too: a `Container` layout and a `Card` pattern.
 
-## 8. Customer installations (C-089)
+## 8. Multi-tenancy (C-067)
 
-Each purchasing hospital receives its own ERP installation and public website on its own domain. WEB-A continues to use the CareSpate demo content. Customer identity and branding remain configuration and CMS data, never hard-coded into page components.
+Every hospital tenant gets its own website (C-067). WEB-A serves one demo tenant, CareSpate (C-069), but is built so that adding tenants needs no page changes:
 
-WEB-B reads the published website snapshot for the hospital configured for that installation. Each installation serves one hospital on its own domain, so the site needs no host-based hospital selection. Deployment-specific host validation and configuration will be designed during implementation; this decision changes no staging hosts or runtime code.
+- hospital identity (names, logo, hotlines, branches, social links) is one `SiteConfig` object (`src/config/site.ts`), never hard-coded in components;
+- the content adapter interface is tenant-scoped in shape: WEB-A has a single implementation for the demo tenant; WEB-B creates the adapter per request from the resolved tenant;
+- colors come only from tokens, so a tenant theme override (C-060) applies without code changes, guarded by the contrast test;
+- tenant resolution in WEB-B is by host name (custom domain or `<tenant>.<platform domain>`), mapped to the ERP tenant; the hosting and domain model is Q-075;
+- static generation (P-028) then becomes per tenant, or pages move to cached server rendering with revalidation; this choice is a WEB-B design task, not WEB-A.
 
 ## 9. Security
 
@@ -135,19 +139,19 @@ flowchart LR
   ED[Hospital editor] --> WEB[apps/web<br/>Website area: pages, sections,<br/>collections, media, theme, publish]
   WEB -->|admin API, session + permissions| API[apps/api]
   API --> MOD[mod-website<br/>drafts, versions, audit]
-  MOD --> DB[(PostgreSQL)]
+  MOD --> DB[(PostgreSQL<br/>tenant RLS)]
   MOD --> OBJ[(Object storage<br/>media, ADR-014)]
   API -->|on publish: revalidate paths| SITE[apps/site]
   V[Visitor] --> SITE
-  SITE -->|public read API, installation hospital| API
+  SITE -->|public read API, by host name| API
   ERP[ERP master data<br/>practitioners, schedules, tariffs] --> MOD
 ```
 
 - **Shared schemas:** site settings, navigation, every section type and every collection type are Zod schemas in `@hms/contracts`. The editor builds its forms from them, the API validates against them, and `apps/site` renders with them, so a field cannot exist in one place and not another.
 - **Section registry:** `apps/site` keeps a map from section type to a React component; `apps/web` keeps a map from section type to an editor form. Adding a section type means adding a schema, a renderer and an editor form together (one task).
 - **Publish flow:** the same authorized editor changes drafts and publishes without second-person approval (C-086); "Publish" validates the whole site, writes an immutable `website_version` snapshot, records an audit event and calls the site's revalidation endpoint for the changed paths (P-037, P-041).
-- **Public read API:** `GET /api/v1/public/site` and per-collection endpoints return only the installation's published snapshot; no session, no draft data, rate limited and cacheable.
-- **Preview:** `apps/web` opens `apps/site` in preview mode with a short-lived signed token that lets it read the draft only.
+- **Public read API:** `GET /api/v1/public/site` and per-collection endpoints return only the published snapshot for the tenant resolved from the request host; no session, no draft data, rate limited and cacheable.
+- **Preview:** `apps/web` opens `apps/site` in preview mode with a short-lived signed token that lets it read the draft for that tenant only.
 - **Doctor and price data:** read from ERP modules and merged with CMS public fields at publish time (P-042); the site never writes to the ERP.
 - **WEB-A to WEB-B switch:** only the content adapter changes from "read JSON files" to "read published snapshot" (P-026, P-040).
 
@@ -163,7 +167,7 @@ flowchart LR
 
 ## 13. One host: public site and staff app (C-075..C-081)
 
-Only two hosts exist: `healthcare.bytespate.com` and `healthcareapi.bytespate.com` (C-075). The public site takes the root of the first; the staff app (ERP and CMS) moves under `/staff` (C-076). The API host is unchanged. This section is a proposal for ADR-023 "Public site and staff app share one host", which would amend ADR-021 point 1 (one container per host); it is merged into the ERP ADRs only on approval. This section describes existing staging routing; customer installation direction is now C-089 (section 8).
+Only two hosts exist: `healthcare.bytespate.com` and `healthcareapi.bytespate.com` (C-075). The public site takes the root of the first; the staff app (ERP and CMS) moves under `/staff` (C-076). The API host is unchanged. This section is a proposal for ADR-023 "Public site and staff app share one host", which would amend ADR-021 point 1 (one container per host); it is merged into the ERP ADRs only on approval. It does not change any SaaS or tenancy text (Q-086).
 
 ### 13.1 Request routing
 

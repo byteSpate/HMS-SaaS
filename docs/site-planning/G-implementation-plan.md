@@ -89,20 +89,21 @@ flowchart LR
 
 ### EP-32 Website CMS (WEB-B, outline; detailed when scheduled)
 
-Scope update 2026-10-25: C-086..C-090 settle Q-078, Q-080..082 and Q-086. The same editor publishes, ready-made sections support selectable themes and curated fonts, finance controls ERP prices, and each customer gets its own installation and domain without plan-based restrictions. Exact theme/font options and technical upload limits remain implementation design work.
+Scope update 2026-10-25, revised 2026-11-02: C-086..C-088 settle Q-078, Q-080 and Q-081. The same editor publishes, ready-made sections support selectable themes and curated fonts, and finance controls ERP prices. C-094 reversed C-089 and C-090, so Q-082 and Q-086 are open again. Exact theme/font options and technical upload limits remain implementation design work.
+
 
 | Task                                                    | Outcome                                                                                                                                      | Requirements                     | Depends on                          | Blocking Qs    |
 | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ----------------------------------- | -------------- |
-| **T-CMS-01** Data model                                 | `mod-website` tables, migrations, seed from the CareSpate template                                                                           | C2 FR-CMS-001, -019; E section 4 | RG-W1, ERP foundation               | -              |
-| **T-CMS-02** Admin and public APIs                      | Draft CRUD, publish, versions, restore; public read for the installation hospital; permissions                                               | FR-CMS-010..012, -014            | T-CMS-01                            | -              |
-| **T-CMS-03** Site settings, theme and navigation editor | Settings, hospital name, logo, favicon, contrast-checked color, selectable themes, curated fonts, header and footer menus                    | FR-CMS-001, -013                 | T-CMS-02                            | -              |
-| **T-CMS-04** Page and section editor                    | Add, reorder, hide, edit sections per schema; custom pages; SEO fields                                                                       | FR-CMS-002..004, -016, -017      | T-CMS-02                            | -              |
-| **T-CMS-05** Media library                              | Upload, resize to WebP, alt text, usage view                                                                                                 | FR-CMS-008, NFR-CMS-003          | T-CMS-02                            | -              |
-| **T-CMS-06** Collections editors                        | Departments, centres, packages, branches, articles, notices, jobs, guide; doctor public profiles on ERP practitioners; published price items | FR-CMS-005..007                  | T-CMS-02, ERP scheduling and tariff | -              |
-| **T-CMS-07** Preview and publish                        | Signed preview of drafts in `apps/site`, publish with validation, revalidation, version history and rollback                                 | FR-CMS-009, -010, -015           | T-CMS-03..06                        | -              |
-| **T-CMS-08** Site on CMS data                           | Content adapter reads the installation hospital published snapshot; customer domain configuration                                            | P-041, D section 11              | T-CMS-07                            | -              |
+| **T-CMS-01** Data model                                 | `mod-website` tables, RLS, migrations, seed from the CareSpate template                                                                      | C2 FR-CMS-001, -019; E section 4 | RG-W1, ERP foundation               | -              |
+| **T-CMS-02** Admin and public APIs                      | Draft CRUD, publish, versions, restore; public read by host name; permissions                                                                | FR-CMS-010..012, -014            | T-CMS-01                            | Q-086          |
+| **T-CMS-03** Site settings, theme and navigation editor | Settings, hospital name, logo, favicon, contrast-checked color, selectable themes, curated fonts, header and footer menus                                                            | FR-CMS-001, -013                 | T-CMS-02                            | -          |
+| **T-CMS-04** Page and section editor                    | Add, reorder, hide, edit sections per schema; custom pages; SEO fields                                                                       | FR-CMS-002..004, -016, -017      | T-CMS-02                            | -          |
+| **T-CMS-05** Media library                              | Upload, resize to WebP, alt text, usage view                                                                                                 | FR-CMS-008, NFR-CMS-003          | T-CMS-02                            | Q-082          |
+| **T-CMS-06** Collections editors                        | Departments, centres, packages, branches, articles, notices, jobs, guide; doctor public profiles on ERP practitioners; published price items | FR-CMS-005..007                  | T-CMS-02, ERP scheduling and tariff | -          |
+| **T-CMS-07** Preview and publish                        | Signed preview of drafts in `apps/site`, publish with validation, revalidation, version history and rollback                                 | FR-CMS-009, -010, -015           | T-CMS-03..06                        | -          |
+| **T-CMS-08** Site on CMS data                           | Content adapter reads the published snapshot by host name; tenant domains                                                                    | P-041, D section 11              | T-CMS-07                            | Q-075          |
 | **T-CMS-09** Form inbox                                 | Site forms deliver to a staff inbox with spam protection and retention                                                                       | FR-CMS-018                       | T-CMS-02                            | privacy review |
-| **T-CMS-10** Permission-based landing and switch        | `landingFor()`, the `/staff/start` choice screen, the "ERP / Website" switch in the shell, "no access" states for ERP and CMS URLs           | FR-WEB-ROUTE-003..005, P-046     | T-WEB-18, T-ACC-02, T-CMS-02        | -              |
+| **T-CMS-10** Permission-based landing and switch        | `landingFor()`, the `/staff/start` choice screen, the "ERP / Website" switch in the shell, "no access" states for ERP and CMS URLs           | FR-WEB-ROUTE-003..005, P-046     | T-WEB-18, T-ACC-02, T-CMS-02        | -          |
 | **T-CMS-11** Two-factor for website roles               | Website publish, theme and settings permissions marked privileged, so the TOTP flow is required for them                                     | FR-WEB-ROUTE-007, C-081          | T-ACC-04, T-CMS-02                  | -              |
 
 ### Later epics (kept visible)
@@ -127,14 +128,14 @@ Give the agent: this pack's README, A, the task row above, the relevant C requir
 
 ## 6. Traceability (WEB-A)
 
-| Objective                                   | Requirements                                   | Tasks                           | Tests                                           |
-| ------------------------------------------- | ---------------------------------------------- | ------------------------------- | ----------------------------------------------- |
-| BO-W01 demo-quality site                    | FR-WEB-GEN-_, FR-WEB-NAV-_, FR-WEB-HOME-*      | T-WEB-01..06, -15               | AT-WEB-001..006, UAT-WEB-001                    |
-| BO-W02 find a doctor fast                   | FR-WEB-DOC-_, FR-WEB-DEP-_                     | T-WEB-07, -08                   | AT-WEB-010..014                                 |
-| BO-W03 one source for prices                | FR-WEB-PKG-*, FR-WEB-TST-001                   | T-WEB-09                        | AT-WEB-020..022                                 |
-| BO-W04 booking and report entry points      | FR-WEB-BOOK-*, FR-WEB-REP-001                  | T-WEB-10, -11                   | AT-WEB-030..035                                 |
-| BO-W05 search engines                       | FR-WEB-SEO-*                                   | T-WEB-13                        | AT-WEB-040..042                                 |
-| BO-W06, BO-W07 per-hospital, editable sites | FR-WEB-GEN-007, -008 (WEB-A); FR-CMS-* (WEB-B) | T-WEB-04 (format); T-CMS-01..09 | AT-WEB-007, -008; AT-CMS-* (written with EP-32) |
+| Objective                                 | Requirements                                   | Tasks                           | Tests                                           |
+| ----------------------------------------- | ---------------------------------------------- | ------------------------------- | ----------------------------------------------- |
+| BO-W01 demo-quality site                  | FR-WEB-GEN-_, FR-WEB-NAV-_, FR-WEB-HOME-*      | T-WEB-01..06, -15               | AT-WEB-001..006, UAT-WEB-001                    |
+| BO-W02 find a doctor fast                 | FR-WEB-DOC-_, FR-WEB-DEP-_                     | T-WEB-07, -08                   | AT-WEB-010..014                                 |
+| BO-W03 one source for prices              | FR-WEB-PKG-*, FR-WEB-TST-001                   | T-WEB-09                        | AT-WEB-020..022                                 |
+| BO-W04 booking and report entry points    | FR-WEB-BOOK-*, FR-WEB-REP-001                  | T-WEB-10, -11                   | AT-WEB-030..035                                 |
+| BO-W05 search engines                     | FR-WEB-SEO-*                                   | T-WEB-13                        | AT-WEB-040..042                                 |
+| BO-W06, BO-W07 per-tenant, editable sites | FR-WEB-GEN-007, -008 (WEB-A); FR-CMS-* (WEB-B) | T-WEB-04 (format); T-CMS-01..09 | AT-WEB-007, -008; AT-CMS-* (written with EP-32) |
 
 ## 7. Release gate
 

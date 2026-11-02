@@ -20,7 +20,7 @@ export function buildOpenApiDocument(
   const config = new DocumentBuilder()
     .setTitle('HMS API')
     .setDescription(
-      'Hospital ERP API (one installation per hospital, ADR-023). Errors are RFC 9457 ' +
+      'Hospital ERP API (SaaS with tenants, ADR-003). Errors are RFC 9457 ' +
         'problem+json with a stable `code`. Writes need the `X-CSRF-Token` header from the ' +
         'session response.',
     )

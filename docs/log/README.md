@@ -114,3 +114,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-01 | [T-FND-04 follow-up: column-level UPDATE on the identity tables](2026-11-01-T-FND-04-identity-column-grants.md)                  |
 | 2026-11-01 | [T-FND-05 and T-FND-03: application images, image CI and dependency audit](2026-11-01-T-FND-05-docker-images.md)                 |
 | 2026-11-01 | [T-ACC-05: show password button and forgotten password requests](2026-11-01-T-ACC-05-forgot-password.md)                         |
+| 2026-11-02 | [Docs: SaaS plan with tenants restored](2026-11-02-docs-restore-saas-plan.md)                                                    |
