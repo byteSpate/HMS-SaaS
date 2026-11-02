@@ -6,17 +6,19 @@ import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 import { AppFrame } from '../../src/components/app-frame';
 import { FullScreenStatus } from '../../src/components/full-screen-status';
+import { useApiErrorMessage } from '../../src/i18n/use-api-error-message';
 import { useAccess } from '../../src/session/use-access';
 
 export default function SignedInLayout({ children }: { children: ReactNode }) {
   const t = useTranslations();
+  const errorMessage = useApiErrorMessage();
   const access = useAccess('hospital');
 
   if (access.status === 'unreachable') {
     return (
       <FullScreenStatus>
         <span className="flex flex-col items-center gap-4">
-          <span>{t('errors.offline')}</span>
+          <span>{errorMessage(access.error)}</span>
           <Button variant="secondary" onClick={access.retry}>
             {t('common.retry')}
           </Button>

@@ -10,17 +10,19 @@ import { useTranslations } from 'next-intl';
 import { type FormEvent, useState } from 'react';
 import { authApi } from '../api/auth';
 import { useApiErrorMessage } from '../i18n/use-api-error-message';
+import { HospitalCodeField, useHospitalCode } from './hospital-code-field';
 
 export function ForgotPasswordForm() {
   const t = useTranslations();
   const errorMessage = useApiErrorMessage();
+  const [hospitalCode, setHospitalCode] = useHospitalCode();
   const [username, setUsername] = useState('');
   const [missing, setMissing] = useState(false);
   const request = useMutation({ mutationFn: authApi.requestPasswordReset });
 
   function onSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    const parsed = forgotPasswordRequestSchema.safeParse({ username });
+    const parsed = forgotPasswordRequestSchema.safeParse({ hospitalCode, username });
     setMissing(!parsed.success);
     if (parsed.success) request.mutate(parsed.data);
   }
@@ -50,10 +52,16 @@ export function ForgotPasswordForm() {
 
       {request.error ? <Alert tone="danger">{errorMessage(request.error)}</Alert> : null}
 
+      <HospitalCodeField
+        value={hospitalCode}
+        onChange={setHospitalCode}
+        missing={missing && hospitalCode.trim() === ''}
+      />
+
       <Field
         label={t('login.usernameLabel')}
         required
-        error={missing ? t('validation.required') : undefined}
+        error={missing && username.trim() === '' ? t('validation.required') : undefined}
       >
         {({ id, invalid, required, ...aria }) => (
           <TextInput

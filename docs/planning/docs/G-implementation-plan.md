@@ -73,6 +73,7 @@ Each task lists requirement IDs, dependencies, blocking questions and its key ac
 | **T-ACC-03** Lockout and diagnostics | UC-ACC-02 | FR-ACC-004, FR-SUP-003 | T-ACC-01 | Q-051 | AT-ACC-006..008 |
 | **T-ACC-04** TOTP MFA | MFA enrol/verify for privileged roles | FR-ACC-006 | T-ACC-01 | Q-051 | AT-ACC-009, -010 |
 | **T-ACC-05** User administration UI | SCR-22 | FR-ACC-008, -010 | T-ACC-02, T-UI-02 | — | Revocation effective on the next request (AT-ACC-011) |
+| **T-ACC-06** One account per hospital | Usernames unique within a hospital; sign-in by hospital code; an account cannot join a second hospital | C-099, FR-ACC-001 | T-ACC-05 | — | Two hospitals can use one username; a wrong code answers like a wrong password |
 | **T-PLT-01** Idempotency | Interceptor + `idempotency_record` + `GET /operations/{key}` | FPR-08, SP-01/02/08 | T-DB-01 | — | AT-PLT-001..004 |
 | **T-PLT-02** Audit writer and search | Same-transaction audit; denied-attempt audit; SCR-24 | FR-AUD-001..006 | T-DB-01 | Q-053 (retention excluded) | AT-AUD-001..006 |
 | **T-PLT-03** Outbox, relay, inbox, BullMQ | D §9.4, §10 | NFR-REL-001/002, ADR-006 | T-DB-01, T-FND-05 | — | AT-JOB-001..006 |
@@ -93,7 +94,7 @@ Each task lists requirement IDs, dependencies, blocking questions and its key ac
 
 | Task | Outcome | Requirements | Depends on | Blocking Qs | Key acceptance criteria |
 | --- | --- | --- | --- | --- | --- |
-| **T-SAA-01** Provision a tenant | Vendor operator creates a tenant, its first facility and first administrator through an idempotent command; `hms_control` role; `hms_app` loses write access to `tenant_entitlement` | FR-SAA-002, FR-SAA-003, FR-SAA-004 | T-PLT-01, T-PLT-02 | Who may administer an account shared between hospitals; unique usernames across hospitals | AT-SAA-001, -002 |
+| **T-SAA-01** Platform Admin and tenant provisioning | Platform Admin (C-098), outside the hospitals with no patient data, creates a tenant, its first facility and first administrator through an idempotent command, and recovers a locked-out Hospital Admin; `hms_control` role; `hms_app` loses write access to `tenant_entitlement` | FR-SAA-002, FR-SAA-003, FR-SAA-004 | T-PLT-01, T-PLT-02, T-ACC-06 | — | AT-SAA-001, -002 |
 | **T-SAA-02** Activation checklist | Activation blocked until required masters exist | FR-SAA-006 | T-SAA-01, T-PLT-05 | — | Checklist blocks activation until complete |
 | **T-SAA-03** Tenant export | Export one tenant's data in a documented format | FR-SAA-008 | T-SAA-01, T-PLT-03 | Q-052 | Export holds that tenant only |
 | **T-SAA-04** Subscription state | Trial, active, suspended, terminated; never stops care for active visits | FR-SAA-007 | T-SAA-01 | Q-052 | AT-SAA-* |

@@ -149,8 +149,9 @@ describe('RLS coverage (T-DB-02, AT-DB-001)', () => {
         FROM pg_class c
         JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'hms'
         WHERE c.relkind IN ('r', 'p')
-          -- user_session is read by token hash before a tenant is chosen (E section 6.3).
-          AND c.relname <> 'user_session'
+          -- Both are read before any hospital context exists: user_session by token hash, and
+          -- user_account at sign-in (E section 6.3; C-099).
+          AND c.relname NOT IN ('user_session', 'user_account')
           AND (c.relname = 'tenant' OR EXISTS (
                 SELECT 1 FROM pg_attribute a
                 WHERE a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped))

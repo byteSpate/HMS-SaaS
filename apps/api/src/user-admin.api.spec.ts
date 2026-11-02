@@ -12,6 +12,8 @@ import {
 } from '@hms/mod-identity-access';
 import { DatabaseModule, RawResponse, RequestPipelineModule } from '@hms/platform';
 import {
+  sameHospitalAs,
+  hospitalCodeOf,
   dataOf,
   cookieOf,
   grantPermissions,
@@ -123,7 +125,7 @@ describe('user administration over HTTP', () => {
           'Content-Type': 'application/json',
           ...(origin ? { Origin: origin } : {}),
         },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ hospitalCode: hospitalCodeOf(username.toLowerCase()), username }),
       });
     }
 
@@ -198,7 +200,7 @@ describe('user administration over HTTP', () => {
   });
 
   it('creates a user who must replace the temporary password first (FR-ACC-007)', async () => {
-    const { adminSession } = await hospital();
+    const { admin, adminSession } = await hospital();
     const roleId = await auditorRole(adminSession);
     const username = `new-${Date.now()}`;
     const created = await call(adminSession, 'POST', '/admin/users', {
@@ -209,6 +211,7 @@ describe('user administration over HTTP', () => {
     });
     expect(created.status).toBe(201);
     expect(await dataOf(created)).toMatchObject({ username, mustChangePassword: true });
+    sameHospitalAs(username, admin.username);
 
     const firstLogin = await client.login(username, TEMPORARY);
     const first = (await dataOf(firstLogin)) as {
@@ -367,58 +370,5 @@ describe('user administration over HTTP', () => {
       users: { userId: string }[];
     };
     expect(list.users.map((u) => u.userId)).not.toContain(other.staff.id);
-  });
-
-  // An account has one password, one second factor and one lock across every hospital it belongs
-  // to, so one hospital's administrator changing them would let them sign in to another (C-094).
-  describe('an account that also belongs to another hospital', () => {
-    async function sharedStaff() {
-      const first = await hospital();
-      const second = await hospital();
-      await seedMembership(prisma, second.tenantId, first.staff.id);
-      return { adminSession: first.adminSession, staff: first.staff };
-    }
-
-    it('refuses a password reset and keeps the old password', async () => {
-      const { adminSession, staff } = await sharedStaff();
-      const res = await call(adminSession, 'POST', `/admin/users/${staff.id}/password`, {
-        temporaryPassword: TEMPORARY,
-        reason: 'Forgot it',
-      });
-      expect(res.status).toBe(403);
-      await expect(client.sessionOf(staff.username, PASSWORD)).resolves.toBeDefined();
-    });
-
-    it('refuses a second factor reset', async () => {
-      const { adminSession, staff } = await sharedStaff();
-      const res = await call(adminSession, 'POST', `/admin/users/${staff.id}/mfa/reset`, {
-        reason: 'Lost phone',
-      });
-      expect(res.status).toBe(403);
-    });
-
-    it('refuses locking the account', async () => {
-      const { adminSession, staff } = await sharedStaff();
-      const res = await call(adminSession, 'POST', `/admin/users/${staff.id}/lock`, {
-        reason: 'Left the hospital',
-      });
-      expect(res.status).toBe(403);
-    });
-
-    it('allows the same reset once the other membership is revoked', async () => {
-      const first = await hospital();
-      const second = await hospital();
-      await seedMembership(prisma, second.tenantId, first.staff.id, 'REVOKED');
-      const res = await call(
-        first.adminSession,
-        'POST',
-        `/admin/users/${first.staff.id}/password`,
-        {
-          temporaryPassword: TEMPORARY,
-          reason: 'Forgot it',
-        },
-      );
-      expect(res.status).toBe(200);
-    });
   });
 });

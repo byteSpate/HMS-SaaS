@@ -36,7 +36,7 @@ function requireLocalDatabase(): string {
 async function seed(): Promise<void> {
   const prisma = createPrismaClient(requireLocalDatabase());
   try {
-    const existing = await prisma.userAccount.findUnique({ where: { username: 'admin' } });
+    const existing = await prisma.userAccount.findFirst({ where: { username: 'admin' } });
     if (existing) {
       console.log('Already seeded: user "admin" exists. Nothing changed.');
       return;
@@ -54,6 +54,7 @@ async function seed(): Promise<void> {
       for (const [index, user] of DEMO_USERS.entries()) {
         const account = await tx.userAccount.create({
           data: {
+            tenantId,
             username: user.username,
             displayName: user.displayName,
             passwordHash: hashes[index]!,
@@ -70,7 +71,9 @@ async function seed(): Promise<void> {
       }
     });
 
-    console.log('Seeded "Demo Hospital" with the nine template roles. Sign in at /staff:');
+    console.log(
+      'Seeded "Demo Hospital" with the nine template roles. Sign in at /staff with hospital code demo:',
+    );
     for (const user of DEMO_USERS) {
       console.log(`  ${user.username} / ${user.password}  (role ${user.role})`);
     }

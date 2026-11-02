@@ -28,6 +28,8 @@ export const bnBD: Messages = {
   login: {
     title: 'সাইন ইন',
     description: 'আপনার হাসপাতালের স্টাফ অ্যাকাউন্ট ব্যবহার করুন।',
+    hospitalCodeLabel: 'হাসপাতাল কোড',
+    hospitalCodeHint: 'এই কোডটি আপনার হাসপাতাল দেবে। এই ডিভাইসে এটি মনে রাখা হবে।',
     usernameLabel: 'ইউজারনেম',
     // A field label, not a secret.
     // eslint-disable-next-line sonarjs/no-hardcoded-passwords

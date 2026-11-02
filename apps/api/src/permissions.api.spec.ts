@@ -12,7 +12,7 @@ import {
 } from '@hms/mod-identity-access';
 import { DatabaseModule, RawResponse, RequestPipelineModule } from '@hms/platform';
 import {
-  dataOf,
+  hospitalCodeOf,
   grantPermissions,
   seedEntitlements,
   seedMembership,
@@ -106,7 +106,11 @@ describe('permission guard over HTTP', () => {
     return fetch(`${base}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: WEB },
-      body: JSON.stringify({ username, password: PASSWORD }),
+      body: JSON.stringify({
+        hospitalCode: hospitalCodeOf(username),
+        username,
+        password: PASSWORD,
+      }),
     });
   }
 
@@ -216,33 +220,5 @@ describe('permission guard over HTTP', () => {
     const cookie = await staff.login();
     expect((await get('payment', cookie)).status).toBe(200);
     expect((await get('discount-approval', cookie)).status).toBe(403);
-  });
-
-  it("does not count a role from the user's other hospital", async () => {
-    const user = await seedUser(prisma, { passwordHash: await hashPassword(PASSWORD) });
-    const tenantA = await seedTenant(prisma, 'Alpha Hospital');
-    const tenantB = await seedTenant(prisma, 'Beta Clinic');
-    const membershipA = await seedMembership(prisma, tenantA, user.id);
-    const membershipB = await seedMembership(prisma, tenantB, user.id);
-    await seedEntitlements(prisma, tenantA, ['billing']);
-    await seedEntitlements(prisma, tenantB, ['billing']);
-    await grantPermissions(prisma, tenantA, membershipA, ['billing.payment.record']);
-
-    const loggedIn = await login(user.username);
-    const { csrfToken } = await dataOf(loggedIn);
-    const chooseB = await fetch(`${base}/auth/session/membership`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: cookieFrom(loggedIn),
-        Origin: WEB,
-        'X-CSRF-Token': csrfToken,
-      },
-      body: JSON.stringify({ membershipId: membershipB }),
-    });
-    expect(chooseB.status).toBe(200);
-    const res = await get('payment', cookieFrom(chooseB));
-    expect(res.status).toBe(403);
-    expect((await res.json()).code).toBe('PERMISSION_DENIED');
   });
 });

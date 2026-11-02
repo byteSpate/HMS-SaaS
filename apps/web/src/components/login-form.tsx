@@ -11,39 +11,55 @@ import { useTranslations } from 'next-intl';
 import { type FormEvent, useRef, useState } from 'react';
 import { useApiErrorMessage } from '../i18n/use-api-error-message';
 import { useSessionActions } from '../session/use-session';
+import { HospitalCodeField, rememberHospitalCode, useHospitalCode } from './hospital-code-field';
 
 interface Missing {
+  hospitalCode: boolean;
   username: boolean;
   password: boolean;
 }
 
-const NOTHING_MISSING: Missing = { username: false, password: false };
+const NOTHING_MISSING: Missing = { hospitalCode: false, username: false, password: false };
 
 export function LoginForm() {
   const t = useTranslations();
   const router = useRouter();
   const errorMessage = useApiErrorMessage();
   const { login } = useSessionActions();
+  const [hospitalCode, setHospitalCode] = useHospitalCode();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [missing, setMissing] = useState<Missing>(NOTHING_MISSING);
   const [failure, setFailure] = useState<unknown>(null);
+  const hospitalCodeRef = useRef<HTMLInputElement>(null);
   const usernameRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
   function onSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     setFailure(null);
-    const parsed = loginRequestSchema.safeParse({ username, password });
+    const parsed = loginRequestSchema.safeParse({ hospitalCode, username, password });
     if (!parsed.success) {
-      const next = { username: username.trim() === '', password: password === '' };
+      const next = {
+        hospitalCode: hospitalCode.trim() === '',
+        username: username.trim() === '',
+        password: password === '',
+      };
       setMissing(next);
-      (next.username ? usernameRef : passwordRef).current?.focus();
+      const order = [
+        { missing: next.hospitalCode, ref: hospitalCodeRef },
+        { missing: next.username, ref: usernameRef },
+        { missing: next.password, ref: passwordRef },
+      ];
+      order.find((field) => field.missing)?.ref.current?.focus();
       return;
     }
     setMissing(NOTHING_MISSING);
     login.mutate(parsed.data, {
-      onSuccess: (session) => router.replace(session.activeMembershipId ? '/' : '/choose-hospital'),
+      onSuccess: (session) => {
+        rememberHospitalCode(parsed.data.hospitalCode);
+        router.replace(session.activeMembershipId ? '/' : '/choose-hospital');
+      },
       onError: (error) => {
         setFailure(error);
         // The password is never kept after a failed attempt.
@@ -61,6 +77,13 @@ export function LoginForm() {
       </div>
 
       {failure ? <Alert tone="danger">{errorMessage(failure)}</Alert> : null}
+
+      <HospitalCodeField
+        value={hospitalCode}
+        onChange={setHospitalCode}
+        missing={missing.hospitalCode}
+        inputRef={hospitalCodeRef}
+      />
 
       <Field
         label={t('login.usernameLabel')}

@@ -146,7 +146,7 @@ erDiagram
 | Business numbers | MRN, invoice, receipt, specimen and admission numbers are **unique per tenant**. They are generated from `number_sequence` rows with `UPDATE … RETURNING` inside the business transaction, formatted per CP-09 (Q-034). Gaps can occur when a transaction rolls back. Gap-free numbering is not promised (FR-CFG-003). |
 | Facility scope | Records with a physical location carry `facility_id` (visit, bed, store, cashier session, schedule). With one facility per tenant (C-024) this is constant today, but kept for DEF-002. |
 | Phone and NID | Not unique keys (v0.3 DATA). Indexed for duplicate detection only. |
-| Global tables | `user_account` (a person may hold several tenant memberships) and `user_session` (looked up by token hash) are not tenant-scoped. Access goes only through the identity module. |
+| Global tables | `user_account` (one hospital each, C-099, but read at sign-in before any hospital context exists) and `user_session` (looked up by token hash) have no RLS. Access goes only through the identity module. |
 | Control-plane tables | `tenant`, `tenant_entitlement`, `provisioning_run`. The vendor control plane reads them with `hms_control`, which has no grants on business tables (probe P24). |
 
 ## 5. Data dictionary (core entities)
@@ -281,7 +281,7 @@ export async function withTenant<T>(ctx: TenantCtx, fn: (tx: Tx) => Promise<T>):
 SELECT c.relname FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'hms'
 JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'tenant_id'
-WHERE c.relkind IN ('r','p') AND c.relname NOT IN ('user_session')
+WHERE c.relkind IN ('r','p') AND c.relname NOT IN ('user_session', 'user_account')
   AND (NOT c.relrowsecurity OR NOT c.relforcerowsecurity
        OR NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid));
 ```

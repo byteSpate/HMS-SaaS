@@ -17,6 +17,7 @@ const bn = messages['bn-BD'];
 const en = messages.en;
 
 async function signIn(page: Page, world: MockWorld, password = world.password) {
+  await page.getByLabel(bn.login.hospitalCodeLabel).fill('demo');
   await page.getByLabel(bn.login.usernameLabel).fill(world.username);
   await page.getByRole('textbox', { name: bn.login.passwordLabel, exact: true }).fill(password);
   await page.getByRole('button', { name: bn.login.submit }).click();
@@ -39,6 +40,8 @@ test('the sign-in screen is Bangla first and accessible', async ({ page }) => {
 test('switching language keeps what was typed (AT-I18N-001)', async ({ page }) => {
   await installMockApi(page, newWorld());
   await page.goto('/staff/login');
+
+  await page.getByLabel(bn.login.hospitalCodeLabel).fill('demo');
 
   await page.getByLabel(bn.login.usernameLabel).fill('rahim');
   await page.getByRole('button', { name: en.language.en }).click();
@@ -70,8 +73,8 @@ test('empty fields are reported per field', async ({ page }) => {
   await page.goto('/staff/login');
   await page.getByRole('button', { name: bn.login.submit }).click();
 
-  await expect(page.getByText(bn.validation.required)).toHaveCount(2);
-  await expect(page.getByLabel(bn.login.usernameLabel)).toBeFocused();
+  await expect(page.getByText(bn.validation.required)).toHaveCount(3);
+  await expect(page.getByLabel(bn.login.hospitalCodeLabel)).toBeFocused();
 });
 
 test('a one-hospital user lands on the home screen inside the shell', async ({ page }) => {

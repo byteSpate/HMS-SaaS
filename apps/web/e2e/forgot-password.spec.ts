@@ -41,14 +41,16 @@ test('a person who forgot the password can send a request from the sign-in page'
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 
   await page.getByRole('button', { name: bn.forgot.submit }).click();
-  await expect(page.getByText(bn.validation.required)).toBeVisible();
+  await expect(page.getByText(bn.validation.required)).toHaveCount(2);
 
+  await page.getByLabel(bn.login.hospitalCodeLabel).fill('demo');
   await page.getByLabel(bn.login.usernameLabel).fill('karim');
   await page.getByRole('button', { name: bn.forgot.submit }).click();
 
   await expect(page.getByRole('heading', { name: bn.forgot.sentTitle })).toBeVisible();
   await expect(page.getByText(bn.forgot.sentBody)).toBeVisible();
   expect(api.requests.find((r) => r.path === '/auth/password-reset-requests')?.body).toEqual({
+    hospitalCode: 'demo',
     username: 'karim',
   });
 
@@ -62,6 +64,7 @@ test('the administrator sees who asked, with the reminder to confirm it was them
   const world = newWorld({ permissions: ADMIN_PERMISSIONS });
   await installMockApi(page, world);
   await page.goto('/staff/login');
+  await page.getByLabel(bn.login.hospitalCodeLabel).fill('demo');
   await page.getByLabel(bn.login.usernameLabel).fill(world.username);
   await page.locator('input[name="password"]').fill(world.password);
   await page.getByRole('button', { name: bn.login.submit }).click();

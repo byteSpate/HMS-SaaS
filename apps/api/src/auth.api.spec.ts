@@ -10,7 +10,14 @@ import {
   hashPassword,
 } from '@hms/mod-identity-access';
 import { DatabaseModule, RawResponse, RequestPipelineModule } from '@hms/platform';
-import { dataOf, grantPermissions, seedMembership, seedTenant, seedUser } from '@hms/testkit';
+import {
+  hospitalCodeOf,
+  dataOf,
+  grantPermissions,
+  seedMembership,
+  seedTenant,
+  seedUser,
+} from '@hms/testkit';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { configureApp } from './http/configure-app.js';
 
@@ -99,7 +106,7 @@ describe('auth over HTTP', () => {
     return fetch(`${base}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: WEB },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ hospitalCode: hospitalCodeOf(username), username, password }),
     });
   }
 
@@ -120,32 +127,6 @@ describe('auth over HTTP', () => {
     const res = await login(user.username, 'wrong');
     expect(res.status).toBe(401);
     expect((await res.json()).code).toBe('INVALID_CREDENTIALS');
-  });
-
-  it('AT-ACC-003: a multi-hospital user must choose before tenant requests', async () => {
-    const user = await seedLogin(2);
-    const res = await login(user.username);
-    const cookie = cookieFrom(res);
-    const { csrfToken } = await dataOf(res);
-    const blocked = await fetch(`${base}/probe/tenant-data`, { headers: { Cookie: cookie } });
-    expect(blocked.status).toBe(403);
-    expect((await blocked.json()).code).toBe('TENANT_NOT_SELECTED');
-
-    const chosen = await fetch(`${base}/auth/session/membership`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: cookie,
-        Origin: WEB,
-        'X-CSRF-Token': csrfToken,
-      },
-      body: JSON.stringify({ membershipId: user.memberships[0] }),
-    });
-    expect(chosen.status).toBe(200);
-    const allowed = await fetch(`${base}/probe/tenant-data`, {
-      headers: { Cookie: cookieFrom(chosen) },
-    });
-    expect(allowed.status).toBe(200);
   });
 
   it('AT-ACC-004: a state-changing request without the CSRF token is 403', async () => {
@@ -186,7 +167,11 @@ describe('auth over HTTP', () => {
     const res = await fetch(`${base}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: 'https://evil.bytespate.com' },
-      body: JSON.stringify({ username: user.username, password: PASSWORD }),
+      body: JSON.stringify({
+        hospitalCode: hospitalCodeOf(user.username),
+        username: user.username,
+        password: PASSWORD,
+      }),
     });
     expect(res.status).toBe(403);
     expect(res.headers.get('set-cookie')).toBeNull();
@@ -197,7 +182,11 @@ describe('auth over HTTP', () => {
     const res = await fetch(`${base}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Request-Id': 'bad id; drop table' },
-      body: JSON.stringify({ username: user.username, password: 'wrong' }),
+      body: JSON.stringify({
+        hospitalCode: hospitalCodeOf(user.username),
+        username: user.username,
+        password: 'wrong',
+      }),
     });
     const issuedId = res.headers.get('x-request-id');
     expect(issuedId).not.toBe('bad id; drop table');

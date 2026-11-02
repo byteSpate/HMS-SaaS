@@ -102,33 +102,6 @@ describe('identity tables', () => {
   });
 
   // Column-level UPDATE (E section 6): the app changes only what its features change.
-  describe('shared-account guard (C-094)', () => {
-    const belongsElsewhere = async (tx: Parameters<Parameters<typeof withTenant>[2]>[0]) => {
-      const rows = await tx.$queryRaw<{ shared: boolean }[]>`
-        SELECT hms.user_belongs_elsewhere(${ownerId}::uuid) AS shared`;
-      return rows[0]?.shared;
-    };
-
-    it('is false for an account only in the current hospital', async () => {
-      await expect(withTenant(prisma, { tenantId }, belongsElsewhere)).resolves.toBe(false);
-    });
-
-    it('is true from any other hospital, whose rows stay hidden from the app', async () => {
-      const otherTenantId = randomUUID();
-      await withTenant(prisma, { tenantId: otherTenantId }, async (tx) => {
-        await tx.tenant.create({
-          data: { id: otherTenantId, code: `test-${otherTenantId.slice(0, 8)}`, nameEn: 'Other' },
-        });
-        await expect(belongsElsewhere(tx)).resolves.toBe(true);
-        await expect(tx.membership.count({ where: { userId: ownerId } })).resolves.toBe(0);
-      });
-    });
-
-    it('refuses by default when no hospital is set', async () => {
-      await expect(withUserContext(prisma, strangerId, belongsElsewhere)).resolves.toBe(true);
-    });
-  });
-
   describe('column grants', () => {
     const farFuture = new Date('2099-01-01T00:00:00Z');
 

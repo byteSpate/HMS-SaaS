@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPrismaClient, withTenant, type PrismaClient } from '@hms/database';
 import { DomainError, fixedClock, type FixedClock } from '@hms/domain-kernel';
-import { seedMembership, seedTenant, seedUser } from '@hms/testkit';
+import { hospitalCodeOf, seedMembership, seedTenant, seedUser } from '@hms/testkit';
 import { hashPassword } from '../infrastructure/password-hasher.js';
 import { DEFAULT_LOGIN_RATE_LIMITS, type AuthConfig } from './auth.config.js';
 import { AuthService } from './auth.service.js';
@@ -63,8 +63,11 @@ describe('AuthService', () => {
     return { ...user, memberships };
   }
 
+  // A login may pad the username, as a person might.
+  const codeFor = (username: string) => hospitalCodeOf(username.trim().toLowerCase());
+
   function login(username: string, password = PASSWORD) {
-    return service.login({ username, password }, meta);
+    return service.login({ hospitalCode: codeFor(username), username, password }, meta);
   }
 
   it('binds the only hospital at login and writes audit events', async () => {
@@ -86,13 +89,6 @@ describe('AuthService', () => {
     expect(session.user.id).toBe(user.id);
   });
 
-  it('leaves the hospital unselected when the user has several', async () => {
-    const user = await userWithHospitals(2);
-    const { session } = await login(user.username);
-    expect(session.activeMembershipId).toBeNull();
-    expect(session.memberships).toHaveLength(2);
-  });
-
   it('rejects a wrong password generically and counts the failure', async () => {
     const user = await userWithHospitals(1);
     await expectCode(login(user.username, 'wrong'), 'INVALID_CREDENTIALS');
@@ -110,6 +106,7 @@ describe('AuthService', () => {
       status: 'LOCKED_TEMPORARY',
       lockedUntil: new Date(clock.now().getTime() + 15 * 60_000),
     });
+    await seedMembership(prisma, await seedTenant(prisma), user.id);
     await expectCode(login(user.username), 'ACCOUNT_LOCKED');
   });
 
@@ -186,7 +183,11 @@ describe('AuthService', () => {
           },
         ),
       );
-      const attempt = () => throttled.login({ username: 'rate-limit-probe', password: 'x' }, meta);
+      const attempt = () =>
+        throttled.login(
+          { hospitalCode: 'any-hospital', username: 'rate-limit-probe', password: 'x' },
+          meta,
+        );
       await expectCode(attempt(), 'INVALID_CREDENTIALS');
       await expectCode(attempt(), 'INVALID_CREDENTIALS');
       await expectCode(attempt(), 'RATE_LIMITED');
@@ -200,17 +201,17 @@ describe('AuthService', () => {
   });
 
   it('old token is rejected after selectMembership (rotation)', async () => {
-    const user = await userWithHospitals(2);
+    const user = await userWithHospitals(1);
     const first = await login(user.username);
     const ctx = await service.resolveSession(first.token);
-    const second = await service.selectMembership(ctx!, user.memberships[1]!, meta);
-    expect(second.session.activeMembershipId).toBe(user.memberships[1]);
+    const second = await service.selectMembership(ctx!, user.memberships[0]!, meta);
+    expect(second.session.activeMembershipId).toBe(user.memberships[0]);
     expect(await service.resolveSession(first.token)).toBeNull();
-    expect((await service.resolveSession(second.token))?.membershipId).toBe(user.memberships[1]);
+    expect((await service.resolveSession(second.token))?.membershipId).toBe(user.memberships[0]);
   });
 
   it("selecting another user's membership is NOT_FOUND", async () => {
-    const user = await userWithHospitals(2);
+    const user = await userWithHospitals(1);
     const other = await userWithHospitals(1);
     const { token } = await login(user.username);
     const ctx = await service.resolveSession(token);
@@ -258,11 +259,11 @@ describe('AuthService', () => {
   });
 
   it('keeps the original absolute expiry when switching hospital', async () => {
-    const user = await userWithHospitals(2);
+    const user = await userWithHospitals(1);
     const first = await login(user.username);
     clock.advanceBy(30 * 60_000);
     const ctx = await service.resolveSession(first.token);
-    const second = await service.selectMembership(ctx!, user.memberships[1]!, meta);
+    const second = await service.selectMembership(ctx!, user.memberships[0]!, meta);
     expect(second.session.absoluteExpiresAt).toBe(first.session.absoluteExpiresAt);
   });
 
@@ -289,19 +290,19 @@ describe('AuthService', () => {
       prisma.userSession.count({ where: { userId, revokedAt: null } });
 
     it('creates only one session when two hospital switches run at once', async () => {
-      const user = await userWithHospitals(2);
+      const user = await userWithHospitals(1);
       const { token } = await login(user.username);
       const ctx = (await service.resolveSession(token))!;
       const results = await Promise.allSettled([
         service.selectMembership(ctx, user.memberships[0]!, meta),
-        service.selectMembership(ctx, user.memberships[1]!, meta),
+        service.selectMembership(ctx, user.memberships[0]!, meta),
       ]);
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
       expect(await activeSessions(user.id)).toBe(1);
     });
 
     it('does not create a session when a switch finishes after logout', async () => {
-      const user = await userWithHospitals(2);
+      const user = await userWithHospitals(1);
       const { token } = await login(user.username);
       const ctx = (await service.resolveSession(token))!;
       await service.logout(ctx, meta);

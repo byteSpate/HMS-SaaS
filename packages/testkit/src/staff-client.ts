@@ -1,5 +1,6 @@
 // HTTP helpers for API integration tests (T-ACC-03, T-ACC-04, T-ACC-05): sign in as staff and,
 // for a privileged role, enrol the second factor the way the staff app makes them.
+import { hospitalCodeOf } from './identity.js';
 import { totpCode } from './totp.js';
 
 export interface StaffSession {
@@ -44,7 +45,7 @@ export function staffClient(base: string, origin: string, now: () => Date): Staf
     return fetch(`${base}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: origin },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ hospitalCode: hospitalCodeOf(username), username, password }),
     });
   }
 

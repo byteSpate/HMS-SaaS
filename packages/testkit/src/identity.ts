@@ -4,8 +4,23 @@ import { randomUUID } from 'node:crypto';
 import type { ModuleCode, PermissionCode } from '@hms/contracts';
 import { withTenant, type PrismaClient } from '@hms/database';
 
+const tenantCodes = new Map<string, string>();
+const usernames = new Map<string, string>();
+const hospitalCodes = new Map<string, string>();
+
+/** The sign-in code of a person seeded in this test run (T-ACC-06). */
+export function hospitalCodeOf(username: string): string {
+  return hospitalCodes.get(username) ?? 'unknown-hospital';
+}
+
+/** For an account created through the API rather than a fixture. */
+export function sameHospitalAs(username: string, colleague: string): void {
+  hospitalCodes.set(username, hospitalCodeOf(colleague));
+}
+
 export async function seedTenant(prisma: PrismaClient, nameEn = 'Test Hospital'): Promise<string> {
   const tenantId = randomUUID();
+  tenantCodes.set(tenantId, `test-${tenantId.slice(0, 8)}`);
   await withTenant(prisma, { tenantId }, (tx) =>
     tx.tenant.create({ data: { id: tenantId, code: `test-${tenantId.slice(0, 8)}`, nameEn } }),
   );
@@ -33,6 +48,7 @@ export async function seedUser(
       lockedUntil: input.lockedUntil ?? null,
     },
   });
+  usernames.set(user.id, username);
   return { id: user.id, username };
 }
 
@@ -45,6 +61,9 @@ export async function seedMembership(
   const membership = await withTenant(prisma, { tenantId }, (tx) =>
     tx.membership.create({ data: { tenantId, userId, status } }),
   );
+  const username = usernames.get(userId);
+  const code = tenantCodes.get(tenantId);
+  if (username && code) hospitalCodes.set(username, code);
   return membership.id;
 }
 

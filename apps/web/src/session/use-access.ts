@@ -20,6 +20,8 @@ export interface Access {
   session: SessionData | undefined;
   /** Asks the API again after the server could not be reached. */
   retry: () => void;
+  /** Why the session could not be read, when status is unreachable. */
+  error?: unknown;
 }
 
 export function redirectTarget(required: AccessLevel, session: SessionData): string | null {
@@ -47,7 +49,9 @@ export function useAccess(required: AccessLevel): Access {
   }, [target, router]);
 
   const retry = () => void query.refetch();
-  if (query.isError) return { status: 'unreachable', session: undefined, retry };
+  // The real error, so a rate limit does not read as a lost connection (T-ACC-06).
+  if (query.isError)
+    return { status: 'unreachable', session: undefined, retry, error: query.error };
   if (query.data === undefined) return { status: 'loading', session: undefined, retry };
   if (target) return { status: 'redirecting', session: query.data, retry };
   return { status: 'ready', session: query.data, retry };

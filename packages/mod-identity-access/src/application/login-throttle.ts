@@ -20,11 +20,16 @@ export class LoginThrottle {
     );
   }
 
-  async assertAllowed(ipAddress: string | undefined, username: string, now: Date): Promise<void> {
+  async assertAllowed(
+    ipAddress: string | undefined,
+    hospitalCode: string,
+    username: string,
+    now: Date,
+  ): Promise<void> {
     // The IP is checked first, so an attacker spraying many usernames from one address is
     // stopped without filling the per-account table.
     if (ipAddress) refuseIfLimited(await this.perIp.consume(`ip:${ipAddress}`, now));
-    refuseIfLimited(await this.perAccount.consume(`account:${username}`, now));
+    refuseIfLimited(await this.perAccount.consume(`account:${hospitalCode}:${username}`, now));
   }
 }
 

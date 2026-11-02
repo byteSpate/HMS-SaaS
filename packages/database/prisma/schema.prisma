@@ -39,6 +39,7 @@ model Tenant {
   entitlements TenantEntitlement[]
   numberSequences NumberSequence[]
   policyVersions  PolicyVersion[]
+  userAccounts    UserAccount[]
 
   @@map("tenant")
   @@schema("hms")
@@ -119,7 +120,9 @@ enum EventOutcome {
 // Not tenant-scoped, so no RLS. Usernames are stored lower-case (CHECK in the migration).
 model UserAccount {
   id                 String        @id @default(uuid(7)) @db.Uuid
-  username           String        @unique
+  // T-ACC-06 (C-099): an account belongs to one hospital. Nullable until a later release.
+  tenantId           String?       @map("tenant_id") @db.Uuid
+  username           String
   displayName        String        @map("display_name")
   passwordHash       String        @map("password_hash")
   status             UserStatus    @default(ACTIVE)
@@ -146,6 +149,9 @@ model UserAccount {
   mfa           UserMfa?
   recoveryCodes UserMfaRecoveryCode[]
 
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, username])
   @@map("user_account")
   @@schema("hms")
 }

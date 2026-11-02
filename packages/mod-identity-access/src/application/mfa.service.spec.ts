@@ -2,7 +2,13 @@ import { createRateLimiterFactory } from '@hms/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPrismaClient, type PrismaClient } from '@hms/database';
 import { DomainError, fixedClock, type FixedClock } from '@hms/domain-kernel';
-import { grantPermissions, seedMembership, seedTenant, seedUser } from '@hms/testkit';
+import {
+  hospitalCodeOf,
+  grantPermissions,
+  seedMembership,
+  seedTenant,
+  seedUser,
+} from '@hms/testkit';
 import { findMfa } from '../infrastructure/mfa.repository.js';
 import { hashPassword } from '../infrastructure/password-hasher.js';
 import { openSecret } from '../infrastructure/secret-box.js';
@@ -70,7 +76,10 @@ describe('MfaService', () => {
   }
 
   async function signIn(username: string): Promise<{ ctx: AuthContext; token: string }> {
-    const { token, session } = await auth.login({ username, password: PASSWORD }, meta);
+    const { token, session } = await auth.login(
+      { hospitalCode: hospitalCodeOf(username), username, password: PASSWORD },
+      meta,
+    );
     expect(session.activeMembershipId).not.toBeNull();
     const ctx = await auth.resolveSession(token);
     if (!ctx) throw new Error('no session');
@@ -91,7 +100,10 @@ describe('MfaService', () => {
 
   it('reports that a privileged session needs a second factor', async () => {
     const user = await administrator();
-    const { session } = await auth.login({ username: user.username, password: PASSWORD }, meta);
+    const { session } = await auth.login(
+      { hospitalCode: hospitalCodeOf(user.username), username: user.username, password: PASSWORD },
+      meta,
+    );
     expect(session.mfa).toEqual({ required: true, enrolled: false, verified: false });
   });
 
@@ -100,7 +112,10 @@ describe('MfaService', () => {
     const tenantId = await seedTenant(prisma);
     const membershipId = await seedMembership(prisma, tenantId, user.id);
     await grantPermissions(prisma, tenantId, membershipId, ['billing.payment.record']);
-    const { session } = await auth.login({ username: user.username, password: PASSWORD }, meta);
+    const { session } = await auth.login(
+      { hospitalCode: hospitalCodeOf(user.username), username: user.username, password: PASSWORD },
+      meta,
+    );
     expect(session.mfa.required).toBe(false);
   });
 
@@ -169,17 +184,19 @@ describe('MfaService', () => {
     await expectCode(mfa.verify(again.ctx, { recoveryCode }, meta), 'MFA_CODE_INVALID');
   });
 
-  it('keeps the second factor when the user switches hospital', async () => {
+  it('keeps the second factor when the session is rotated', async () => {
     const user = await administrator();
-    await seedMembership(prisma, await seedTenant(prisma), user.id);
-    const { token } = await auth.login({ username: user.username, password: PASSWORD }, meta);
+    const { token } = await auth.login(
+      { hospitalCode: hospitalCodeOf(user.username), username: user.username, password: PASSWORD },
+      meta,
+    );
     const ctx = (await auth.resolveSession(token))!;
     const { memberships } = await auth.describeSession(ctx, token);
     const first = await auth.selectMembership(ctx, memberships[0]!.id, meta);
     const firstCtx = (await auth.resolveSession(first.token))!;
     const { issued } = await enrolled(user.id, firstCtx);
     const verifiedCtx = (await auth.resolveSession(issued.token))!;
-    const switched = await auth.selectMembership(verifiedCtx, memberships[1]!.id, meta);
+    const switched = await auth.selectMembership(verifiedCtx, memberships[0]!.id, meta);
     expect((await auth.resolveSession(switched.token))?.mfaVerifiedAt).not.toBeNull();
   });
 });

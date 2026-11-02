@@ -8,18 +8,34 @@ import {
 
 describe('loginRequestSchema', () => {
   it('trims the username', () => {
-    expect(loginRequestSchema.parse({ username: '  admin ', password: 'x' }).username).toBe(
-      'admin',
-    );
+    expect(
+      loginRequestSchema.parse({ hospitalCode: 'demo', username: '  admin ', password: 'x' })
+        .username,
+    ).toBe('admin');
+  });
+
+  it('normalizes the hospital code and requires it', () => {
+    const parsed = loginRequestSchema.parse({
+      hospitalCode: ' DEMO ',
+      username: 'a',
+      password: 'x',
+    });
+    expect(parsed.hospitalCode).toBe('demo');
+    expect(loginRequestSchema.safeParse({ username: 'a', password: 'x' }).success).toBe(false);
   });
 
   it('rejects an empty username', () => {
-    expect(loginRequestSchema.safeParse({ username: '   ', password: 'x' }).success).toBe(false);
+    expect(
+      loginRequestSchema.safeParse({ hospitalCode: 'demo', username: '   ', password: 'x' })
+        .success,
+    ).toBe(false);
   });
 
   it('rejects a password over 1024 characters', () => {
     const password = 'a'.repeat(1025);
-    expect(loginRequestSchema.safeParse({ username: 'admin', password }).success).toBe(false);
+    expect(
+      loginRequestSchema.safeParse({ hospitalCode: 'demo', username: 'admin', password }).success,
+    ).toBe(false);
   });
 });
 

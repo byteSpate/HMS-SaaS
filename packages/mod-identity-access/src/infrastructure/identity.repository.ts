@@ -65,11 +65,22 @@ export interface AuthEventInput {
   correlationId?: string;
 }
 
+/** The hospital of a sign-in code, or null. Answers one code at a time (T-ACC-06). */
+export async function findTenantIdForLogin(
+  prisma: PrismaClient,
+  hospitalCode: string,
+): Promise<string | null> {
+  const rows = await prisma.$queryRaw<{ id: string | null }[]>`
+    SELECT hms.tenant_id_for_login(${hospitalCode}) AS id`;
+  return rows[0]?.id ?? null;
+}
+
 export function findUserByUsername(
   prisma: PrismaClient,
+  tenantId: string,
   username: string,
 ): Promise<UserRecord | null> {
-  return prisma.userAccount.findUnique({ where: { username } });
+  return prisma.userAccount.findFirst({ where: { tenantId, username } });
 }
 
 export function findUserById(prisma: PrismaClient, id: string): Promise<UserRecord | null> {

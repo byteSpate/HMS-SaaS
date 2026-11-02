@@ -189,3 +189,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-01 | [T-ACC-05: show password button and forgotten password requests](2026-11-01-T-ACC-05-forgot-password.md)                                |
 | 2026-11-02 | [Docs: SaaS plan with tenants restored](2026-11-02-docs-restore-saas-plan.md)                                                           |
 | 2026-11-02 | [T-ACC-05 follow-up: administrators cannot change an account shared with another hospital](2026-11-02-T-ACC-05-shared-account-guard.md) |
+| 2026-11-02 | [T-ACC-06: one account per hospital](2026-11-02-T-ACC-06-per-hospital-accounts.md)                                                      |

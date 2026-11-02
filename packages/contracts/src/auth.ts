@@ -1,7 +1,11 @@
 // Login, hospital selection and session payloads (UC-ACC-01, ADR-004, ADR-021).
 import { z } from 'zod';
 
+/** A hospital's short code (T-ACC-06, C-099). Sign-in needs it until host names are added. */
+export const hospitalCodeSchema = z.string().trim().toLowerCase().min(1).max(50);
+
 export const loginRequestSchema = z.object({
+  hospitalCode: hospitalCodeSchema,
   username: z.string().trim().min(1).max(100),
   // The upper bound stops oversized inputs from reaching argon2 (CPU exhaustion).
   password: z.string().min(1).max(1024),

@@ -61,15 +61,17 @@ describe('identity repository', () => {
 
   it('finds a user by username and applies a failed login under a row lock', async () => {
     const { id, username } = await seedUser(prisma, { passwordHash: 'x' });
+    const tenantId = await seedTenant(prisma);
+    await seedMembership(prisma, tenantId, id);
     const seen = await applyFailedLogin(prisma, id, (current) => {
       expect(current).toEqual({ status: 'ACTIVE', failedAttempts: 0, lockedUntil: null });
       return unlockedState(current.failedAttempts + 1);
     });
     expect(seen?.failedAttempts).toBe(1);
-    const user = await findUserByUsername(prisma, username);
+    const user = await findUserByUsername(prisma, tenantId, username);
     expect(user?.failedAttempts).toBe(1);
     await clearFailedLogins(prisma, id);
-    expect((await findUserByUsername(prisma, username))?.failedAttempts).toBe(0);
+    expect((await findUserByUsername(prisma, tenantId, username))?.failedAttempts).toBe(0);
   });
 
   it("lists the user's memberships with hospital names", async () => {

@@ -28,6 +28,8 @@ export const en = {
   login: {
     title: 'Sign in',
     description: 'Use your hospital staff account.',
+    hospitalCodeLabel: 'Hospital code',
+    hospitalCodeHint: 'Your hospital gives you this. It is remembered on this device.',
     usernameLabel: 'Username',
     passwordLabel: 'Password',
     submit: 'Sign in',

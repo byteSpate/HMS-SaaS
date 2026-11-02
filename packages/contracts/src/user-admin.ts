@@ -2,6 +2,7 @@
 // FR-ACC-010; SCR-22). Hospital administrators only; every change is audited by the API.
 import { z } from 'zod';
 import { permissionCodeSchema } from './permissions.js';
+import { hospitalCodeSchema } from './auth.js';
 
 /**
  * Product-fixed password minimums (FR-ACC-007). Length is the main defence (NIST SP 800-63B);
@@ -27,6 +28,7 @@ export type ChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
 
 /** Signed-out request for a new password (C-093). Same looseness as the login username. */
 export const forgotPasswordRequestSchema = z.object({
+  hospitalCode: hospitalCodeSchema,
   username: z.string().trim().min(1).max(100),
 });
 export type ForgotPasswordRequest = z.infer<typeof forgotPasswordRequestSchema>;

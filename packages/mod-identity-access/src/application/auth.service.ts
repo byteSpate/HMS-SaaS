@@ -43,6 +43,7 @@ import {
   clearFailedLogins,
   findSessionByTokenHash,
   findUserById,
+  findTenantIdForLogin,
   findUserByUsername,
   insertSession,
   isMembershipActive,
@@ -107,11 +108,17 @@ export class AuthService {
    * The caller always gets the same answer, so it does not reveal which usernames exist, and it
    * shares the login rate limits, so it cannot be used to test usernames faster than login.
    */
+  /** An unknown hospital looks exactly like an unknown user, so hospitals cannot be probed. */
+  private async findUser(hospitalCode: string, username: string) {
+    const tenantId = await findTenantIdForLogin(this.prisma, hospitalCode);
+    return tenantId ? findUserByUsername(this.prisma, tenantId, username) : null;
+  }
+
   async requestPasswordReset(input: ForgotPasswordRequest, meta: RequestMeta): Promise<void> {
     const username = normalizeUsername(input.username);
     const now = this.clock.now();
-    await this.throttle.assertAllowed(meta.ipAddress, username, now);
-    const user = await findUserByUsername(this.prisma, username);
+    await this.throttle.assertAllowed(meta.ipAddress, input.hospitalCode, username, now);
+    const user = await this.findUser(input.hospitalCode, username);
     if (user && user.status !== 'DISABLED') {
       await markPasswordResetRequested(this.prisma, user.id, now);
       await this.authEvent('auth.password_reset.requested', 'SUCCEEDED', meta, {
@@ -129,8 +136,13 @@ export class AuthService {
 
   async login(input: LoginRequest, meta: RequestMeta): Promise<IssuedSession> {
     const username = normalizeUsername(input.username);
-    await this.throttle.assertAllowed(meta.ipAddress, username, this.clock.now());
-    const user = await findUserByUsername(this.prisma, username);
+    await this.throttle.assertAllowed(
+      meta.ipAddress,
+      input.hospitalCode,
+      username,
+      this.clock.now(),
+    );
+    const user = await this.findUser(input.hospitalCode, username);
     if (!user) {
       await verifyAgainstDummy(input.password);
       const loggable = safeUsernameForLog(username);
