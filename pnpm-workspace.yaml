@@ -21,4 +21,6 @@ allowBuilds:
   '@scarf/scarf': false
   '@swc/core': true
   argon2: true
+  # BullMQ's msgpackr uses prebuilt optional packages and falls back to plain JavaScript.
+  msgpackr-extract: false
   prisma: true
