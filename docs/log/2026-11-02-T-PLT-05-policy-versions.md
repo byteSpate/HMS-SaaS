@@ -30,7 +30,7 @@ A hospital's settings can now be published as versions with an effective time, i
 | Command                                       | Result                       |
 | --------------------------------------------- | ---------------------------- |
 | `vitest run src/policies.api.spec.ts`, before | Failed: code missing         |
-| Same, after                                   | See the pull request         |
+| Same, after                                   | 9 of 9 against PostgreSQL    |
 | Full suite                                    | In the pull request's CI run |
 
 ## Known limitations

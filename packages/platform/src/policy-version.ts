@@ -126,7 +126,8 @@ export async function publishPolicyVersion(
   }
   const current = await effectiveRow(tx, input.policyKey, input.now);
   // Serializes publishing per policy, so two admins cannot take the same version number.
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${input.tenantId}:${input.policyKey}`}))`;
+  const lockName = `${input.tenantId}:${input.policyKey}`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockName}))`;
   const latest = await tx.policyVersion.aggregate({
     where: { policyKey: input.policyKey },
     _max: { versionNo: true },
