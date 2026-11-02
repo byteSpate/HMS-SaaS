@@ -3,7 +3,7 @@ import { config } from 'dotenv';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule } from '@nestjs/swagger';
-import { AppLogger, startMetricsServer, startTelemetry } from '@hms/platform';
+import { AppLogger, startOptionalMetricsServer, startTelemetry } from '@hms/platform';
 import { configureApp } from './http/configure-app.js';
 import { buildOpenApiDocument } from './http/swagger.js';
 
@@ -29,12 +29,15 @@ async function bootstrap(): Promise<void> {
 
   await app.listen(port);
   // A private port (K section 5): reachable by Prometheus and Docker, never through nginx.
-  const metrics = await startMetricsServer(Number(process.env.METRICS_PORT ?? 9464), () => ({
-    healthy: true,
-  }));
+  const logger = app.get(AppLogger);
+  const metrics = await startOptionalMetricsServer(
+    Number(process.env.METRICS_PORT ?? 9464),
+    () => ({ healthy: true }),
+    (message) => logger.warn(message),
+  );
   for (const signal of ['SIGTERM', 'SIGINT'] as const) {
     process.once(signal, () => {
-      void Promise.allSettled([metrics.close(), telemetry.shutdown()]);
+      void Promise.allSettled([metrics?.close(), telemetry.shutdown()]);
     });
   }
 }

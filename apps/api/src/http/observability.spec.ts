@@ -9,6 +9,7 @@ import {
   RawResponse,
   RequestPipelineModule,
   startMetricsServer,
+  startOptionalMetricsServer,
   startTelemetry,
 } from '@hms/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -131,6 +132,22 @@ describe('observability', () => {
         expect((await fetch(`${url}/other`)).status).toBe(404);
       } finally {
         await server.close();
+      }
+    });
+
+    it('a busy metrics port warns and does not stop the app', async () => {
+      const first = await startMetricsServer(0, () => ({ healthy: true }));
+      const warnings: string[] = [];
+      try {
+        const second = await startOptionalMetricsServer(
+          first.port,
+          () => ({ healthy: true }),
+          (message) => warnings.push(message),
+        );
+        expect(second).toBeUndefined();
+        expect(warnings).toHaveLength(1);
+      } finally {
+        await first.close();
       }
     });
 
