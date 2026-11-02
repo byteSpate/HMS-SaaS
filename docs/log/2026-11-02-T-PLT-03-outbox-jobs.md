@@ -42,6 +42,7 @@ A command can now record an event in its own transaction with `appendOutboxEvent
 - **`audit_event` is still not partitioned by month,** although E section 9 plans it. The table is small today, and the change rewrites an append-only table, so it should be its own reviewed change.
 - **AT-JOB-003 and AT-JOB-004 wait** for reports and PDF rendering.
 - **The failed-job alert metric** is a log line until T-PLT-06.
+- **Run locally, the worker needs a Valkey or Redis of version 5 or newer.** It reads the repository `.env`, as the API does.
 - **The worker has no health check,** because it serves no HTTP. Docker restarts it only if it exits.
 - **Windows Redis on port 6379 is version 3.0.504,** too old for BullMQ. Local job tests used a Valkey container on port 6380 (`VALKEY_URL=redis://localhost:6380/0`).
 
