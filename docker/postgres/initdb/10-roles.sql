@@ -1,8 +1,10 @@
 -- DEV ONLY: runs once when the local Postgres volume is first created.
 -- Role model from E / ADR-003: migrations run as hms_migrator, the application connects as hms_app,
--- which can never bypass row-level security. Relay/control roles arrive with T-PLT-03 / T-DB-01.
+-- which can never bypass row-level security. The relay role is T-PLT-03; the control role arrives with T-DB-01.
 CREATE ROLE hms_migrator LOGIN CREATEDB PASSWORD 'dev_migrator';
 CREATE ROLE hms_app LOGIN NOBYPASSRLS PASSWORD 'dev_app';
+-- Reads the outbox across hospitals and nothing else; its grants are in the T-PLT-03 migration.
+CREATE ROLE hms_relay LOGIN BYPASSRLS PASSWORD 'dev_relay';
 
 CREATE SCHEMA hms AUTHORIZATION hms_migrator;
 GRANT USAGE ON SCHEMA hms TO hms_app;

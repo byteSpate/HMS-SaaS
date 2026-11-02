@@ -106,6 +106,7 @@ Non-secret values go in `.env` ([`env.example`](../templates/docker/env.example)
 | `DB_MIGRATOR_USER` / `DB_MIGRATOR_PASSWORD_FILE` | migrate | file | `hms_migrator` | Migration role |
 | `DB_POOL_MAX` | api, worker | no | `10` | Pool size per process ([M §6](M-capacity-performance.md#6-api-worker-scaling-and-database-connection-budgeting)) |
 | `DB_STATEMENT_TIMEOUT_MS` / `DB_TX_TIMEOUT_MS` | api, worker | no | `15000` / `5000` | Guards against runaway queries/transactions |
+| `RELAY_DATABASE_URL` | worker | yes | Outbox relay as `hms_relay` (T-PLT-03); without it events wait in the outbox |
 | `VALKEY_URL` | api, worker | no (unless an ACL password is added → file) | `redis://valkey:6379/0` | Queues, cache, rate limits (Valkey speaks the Redis protocol, ADR-020) |
 | `QUEUE_PREFIX` | api, worker | no | `hms` | BullMQ key prefix |
 | `SESSION_SECRET_FILE` | api | file | — | Session token derivation/signing material |

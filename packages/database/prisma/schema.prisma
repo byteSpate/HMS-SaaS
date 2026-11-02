@@ -361,3 +361,33 @@ model NumberSequence {
   @@map("number_sequence")
   @@schema("hms")
 }
+
+// Events written in the business transaction, sent by the relay (T-PLT-03, ADR-006).
+model OutboxEvent {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  eventType     String    @map("event_type")
+  schemaVersion Int       @default(1) @map("schema_version")
+  aggregateType String    @map("aggregate_type")
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  payload       Json
+  correlationId String?   @map("correlation_id")
+  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz
+  attempts      Int       @default(0)
+
+  @@map("outbox_event")
+  @@schema("hms")
+}
+
+// One row per consumer and event, so a repeated delivery does nothing (T-PLT-03).
+model InboxEvent {
+  tenantId    String   @map("tenant_id") @db.Uuid
+  consumer    String
+  eventId     String   @map("event_id") @db.Uuid
+  processedAt DateTime @default(now()) @map("processed_at") @db.Timestamptz
+
+  @@id([consumer, eventId])
+  @@map("inbox_event")
+  @@schema("hms")
+}
