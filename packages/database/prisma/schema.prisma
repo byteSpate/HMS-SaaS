@@ -38,6 +38,7 @@ model Tenant {
   roles        Role[]
   entitlements TenantEntitlement[]
   numberSequences NumberSequence[]
+  policyVersions  PolicyVersion[]
 
   @@map("tenant")
   @@schema("hms")
@@ -389,5 +390,24 @@ model InboxEvent {
 
   @@id([consumer, eventId])
   @@map("inbox_event")
+  @@schema("hms")
+}
+
+// Effective-dated hospital settings, append-only (T-PLT-05, FR-CFG-002, FR-SAA-005).
+model PolicyVersion {
+  tenantId      String   @map("tenant_id") @db.Uuid
+  id            String   @id @default(uuid(7)) @db.Uuid
+  policyKey     String   @map("policy_key")
+  versionNo     Int      @map("version_no")
+  effectiveFrom DateTime @map("effective_from") @db.Timestamptz
+  body          Json
+  publishedBy   String?  @map("published_by") @db.Uuid
+  publishedAt   DateTime @map("published_at") @db.Timestamptz
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, policyKey, versionNo])
+  @@index([tenantId, policyKey, effectiveFrom])
+  @@map("policy_version")
   @@schema("hms")
 }

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { IdentityAccessModule, loadAuthConfig } from '@hms/mod-identity-access';
 import { DatabaseModule, RequestPipelineModule } from '@hms/platform';
 import { AppController } from './app.controller.js';
+import { PoliciesController } from './config/policies.controller.js';
 import { HealthController } from './health/health.controller.js';
 import { parseCorsOrigins } from './http/cors.js';
 import { OperationsController } from './operations/operations.controller.js';
@@ -23,6 +24,6 @@ function requireEnv(name: string): string {
       ...(process.env.VALKEY_URL ? { valkeyUrl: process.env.VALKEY_URL } : {}),
     }),
   ],
-  controllers: [AppController, HealthController, OperationsController],
+  controllers: [AppController, HealthController, OperationsController, PoliciesController],
 })
 export class AppModule {}

@@ -8,6 +8,7 @@ export * from './number-sequence.js';
 export * from './openapi.js';
 export * from './outbox.js';
 export * from './outbox-relay.js';
+export * from './policy-version.js';
 export * from './problem-details.filter.js';
 export * from './rate-limiter.js';
 export * from './request-context.js';
