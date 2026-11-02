@@ -69,14 +69,14 @@ export default function AuditPage() {
 
   const input = (name: keyof Draft, label: string, type: 'text' | 'date' = 'text') => (
     <Field label={label}>
-      {({ id, invalid, required: _required, ...aria }) => (
+      {({ id, invalid, 'aria-describedby': describedBy }) => (
         <TextInput
           id={id}
           type={type}
           value={draft[name]}
           invalid={invalid}
           onChange={(change) => setDraft({ ...draft, [name]: change.target.value })}
-          {...aria}
+          aria-describedby={describedBy}
         />
       )}
     </Field>
