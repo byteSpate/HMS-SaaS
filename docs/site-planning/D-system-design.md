@@ -114,6 +114,8 @@ Every hospital tenant gets its own website (C-067). WEB-A serves one demo tenant
 - tenant resolution in WEB-B is by host name (custom domain or `<tenant>.<platform domain>`), mapped to the ERP tenant; the hosting and domain model is Q-075;
 - static generation (P-028) then becomes per tenant, or pages move to cached server rendering with revalidation; this choice is a WEB-B design task, not WEB-A.
 
+Host names (C-095): only the two existing hosts are used for now. Lookup reads host names stored as data, so a hospital's host name can be added later without a code change.
+
 ## 9. Security
 
 | Item                               | WEB-A setting (P-029)                                                                                                                                                                                                                                                                                       |
