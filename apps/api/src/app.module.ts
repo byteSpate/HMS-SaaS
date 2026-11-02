@@ -4,6 +4,7 @@ import { DatabaseModule, RequestPipelineModule } from '@hms/platform';
 import { AppController } from './app.controller.js';
 import { HealthController } from './health/health.controller.js';
 import { parseCorsOrigins } from './http/cors.js';
+import { OperationsController } from './operations/operations.controller.js';
 
 // HTTP composition root: imports mod-* modules through their public index only (D §5).
 function requireEnv(name: string): string {
@@ -21,6 +22,6 @@ function requireEnv(name: string): string {
       allowedOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
     }),
   ],
-  controllers: [AppController, HealthController],
+  controllers: [AppController, HealthController, OperationsController],
 })
 export class AppModule {}

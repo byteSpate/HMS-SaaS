@@ -14,6 +14,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import type { DestinationStream, Level, LevelWithSilent } from 'pino';
 import type { Options } from 'pino-http';
+import { IdempotencyInterceptor } from './idempotency.js';
 import { resolveRequestId } from './request-context.js';
 import { RequestContextMiddleware, type ContextualRequest } from './request-context.middleware.js';
 import { ResponseEnvelopeInterceptor } from './response-envelope.js';
@@ -83,7 +84,12 @@ export class RequestPipelineModule implements NestModule {
           pinoHttp: options.destination ? [pinoHttp, options.destination] : pinoHttp,
         }),
       ],
-      providers: [{ provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor }],
+      // Registered in the order D section 8.6 lists them: a replay never reaches the envelope,
+      // and the record stores the enveloped answer.
+      providers: [
+        { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
+        { provide: APP_INTERCEPTOR, useClass: ResponseEnvelopeInterceptor },
+      ],
     };
   }
 

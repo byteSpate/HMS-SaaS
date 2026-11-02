@@ -326,3 +326,22 @@ model AuditEvent {
   @@map("audit_event")
   @@schema("hms")
 }
+
+// Idempotency record of one command (T-PLT-01, D section 9.3). Written in the command's transaction.
+model IdempotencyRecord {
+  tenantId    String   @map("tenant_id") @db.Uuid
+  actorUserId String   @map("actor_user_id") @db.Uuid
+  idemKey     String   @map("idem_key")
+  operation   String
+  requestHash Bytes    @map("request_hash")
+  // IN_PROGRESS or COMPLETED (CHECK idempotency_record_status_check).
+  status      String
+  response    Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt   DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + '7 days'::interval)")) @map("expires_at") @db.Timestamptz
+
+  @@id([tenantId, actorUserId, idemKey])
+  @@index([expiresAt])
+  @@map("idempotency_record")
+  @@schema("hms")
+}

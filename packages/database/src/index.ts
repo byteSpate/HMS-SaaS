@@ -3,7 +3,13 @@ import { PrismaClient } from './generated/prisma/client.js';
 
 export { PrismaClient } from './generated/prisma/client.js';
 export type * from './generated/prisma/client.js';
-export { withTenant, withUserContext, type TenantContext, type TenantTx } from './with-tenant.js';
+export {
+  withCommandTransaction,
+  withTenant,
+  withUserContext,
+  type TenantContext,
+  type TenantTx,
+} from './with-tenant.js';
 
 export interface PrismaClientOptions {
   /** Maximum pooled connections (pg default: 10). */

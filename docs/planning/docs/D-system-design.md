@@ -464,7 +464,7 @@ Every API request passes the same layers in a fixed order (PROPOSED, T-PLT-07). 
 | 5 | Nest middleware (`RequestPipelineModule`) | Request logger (`nestjs-pino`) | One line per request, written when the response finishes: method, path without query string, status, `durationMs`, `correlationId`, `tenantId`, `userId`. Headers are never logged. Redaction rules for other log lines come from T-PLT-06. | T-PLT-07 (done), T-PLT-06 |
 | 6 | Guards | `SessionGuard`, `CsrfGuard`, `TenantGuard`, then `PermissionGuard` reading `@RequirePermission` (default deny, §7.2) | Authorization steps 1 to 4 of §7.2 | T-ACC-01 (done), T-ACC-02 |
 | 7 | Guard | Rate-limit guard (`@nestjs/throttler`, Valkey storage) | Per-session API limit (NFR-SEC-005) answered as `RATE_LIMITED`; login per IP and account limits are T-ACC-03 | T-PLT-07 (second part, needs the Valkey client), T-ACC-03 |
-| 8 | Interceptors | Idempotency, audit, then `ResponseEnvelopeInterceptor`: checks the handler result against its contract schema (ADR-005) and wraps it as `{ data, meta }` (§8.2) | §9, §7.3, ADR-005 | T-PLT-01, T-PLT-02, T-PLT-08 (done) |
+| 8 | Interceptors | Idempotency, audit, then `ResponseEnvelopeInterceptor`: checks the handler result against its contract schema (ADR-005) and wraps it as `{ data, meta }` (§8.2) | §9, §7.3, ADR-005 | T-PLT-01 (done), T-PLT-02, T-PLT-08 (done) |
 | 9 | Pipe | Zod validation pipe | Input contract check, `VALIDATION_FAILED` | ADR-005 |
 | 10 | Controller, application service | `withTenant()` | Business command or query (§6.2) | module tasks |
 | 11 | Exception filter | `ProblemDetailsFilter` | RFC 9457 body with `correlationId` (§8.3) | T-ACC-01 (done) |
@@ -520,14 +520,17 @@ sequenceDiagram
     API-->>UI: 201 stored result (Idempotent-Replay: true)
   else key exists, different hash
     API-->>UI: 409 IDEMPOTENCY_KEY_REUSED
-  else key exists, IN_PROGRESS (concurrent duplicate)
-    API-->>UI: 409 STALE_RECORD ("request in progress"), then UI polls /operations/K
+  else concurrent duplicate
+    API->>DB: INSERT waits for the first request to commit
+    API-->>UI: 201 stored result (Idempotent-Replay: true)
   end
 ```
 
 - Scope: `(tenant_id, actor_user_id, key)`. Records expire after 7 days (PROPOSED), purged by a maintenance job.
 - The client generates the key **when the user starts the action** (e.g., opens the payment dialog) and reuses it for retries of that same intent (SP-08).
 - Because the idempotency record is written in the same transaction as the effect, a crash before commit leaves no record and no effect. The retry then executes normally.
+- `IN_PROGRESS` is never visible to another request, for the same reason. A concurrent duplicate waits on the primary key and then replays the finished answer (T-PLT-01).
+- `GET /operations/{key}` answers with the finished outcome, or not found when nothing took effect, so a client that lost its answer knows a retry is safe (SP-08).
 
 ### 9.4 Outbox and inbox (ADR-006)
 

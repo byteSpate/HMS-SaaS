@@ -1,6 +1,7 @@
 // Transaction helpers that set the RLS context (ADR-003, E section 6.2). Settings are
 // transaction-local (set_config(..., true)), so they end with the transaction and never
 // leak to the next user of a pooled connection.
+import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Prisma, PrismaClient } from './generated/prisma/client.js';
 
 export interface TenantContext {
@@ -9,6 +10,8 @@ export interface TenantContext {
 }
 
 export type TenantTx = Prisma.TransactionClient;
+
+const commandTransaction = new AsyncLocalStorage<{ tenantId: string; tx: TenantTx }>();
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -42,7 +45,31 @@ export async function withTenant<T>(
 ): Promise<T> {
   assertUuid(ctx.tenantId, 'withTenant: tenantId');
   if (ctx.userId !== undefined) assertUuid(ctx.userId, 'withTenant: userId');
+  const command = commandTransaction.getStore();
+  if (command) {
+    // One command is one transaction (D section 9.1). A different hospital can never join it.
+    if (command.tenantId !== ctx.tenantId) {
+      throw new Error('withTenant: a command transaction cannot change hospital');
+    }
+    return fn(command.tx);
+  }
   return runInContext(prisma, ctx.tenantId, ctx.userId ?? '', fn);
+}
+
+/**
+ * Opens the transaction of one command. Every withTenant call inside `fn` joins it, so services
+ * need no change to commit or roll back together with the idempotency record (T-PLT-01).
+ */
+export async function withCommandTransaction<T>(
+  prisma: PrismaClient,
+  ctx: Required<TenantContext>,
+  fn: (tx: TenantTx) => Promise<T>,
+): Promise<T> {
+  assertUuid(ctx.tenantId, 'withCommandTransaction: tenantId');
+  assertUuid(ctx.userId, 'withCommandTransaction: userId');
+  return runInContext(prisma, ctx.tenantId, ctx.userId, (tx) =>
+    commandTransaction.run({ tenantId: ctx.tenantId, tx }, () => fn(tx)),
+  );
 }
 
 /**

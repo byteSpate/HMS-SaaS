@@ -222,6 +222,8 @@ export const en = {
       NOT_FOUND: 'Record not found.',
       INVALID_TRANSITION: 'This record cannot be changed that way in its current state.',
       USERNAME_TAKEN: 'This username is already in use. Choose another one.',
+      IDEMPOTENCY_KEY_REUSED:
+        'This action was already sent with different details. Please start it again.',
       VALIDATION_FAILED: 'Please check the highlighted fields.',
       PAYLOAD_TOO_LARGE: 'The request is too large. Send less data and try again.',
       RATE_LIMITED: 'Too many attempts. Please wait a few minutes and try again.',

@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createPrismaClient, withTenant, type PrismaClient } from './index.js';
+import {
+  createPrismaClient,
+  withCommandTransaction,
+  withTenant,
+  type PrismaClient,
+} from './index.js';
 
 // ADR-003 evidence for task T-FND-04, run as hms_app (NOBYPASSRLS) against a real PostgreSQL.
 // Item 5 of the ADR evidence list (hms_app cannot UPDATE audit rows) arrives with the audit
@@ -114,6 +119,24 @@ describe('tenant isolation (RLS + withTenant)', () => {
     await expect(withTenant(prisma, { tenantId: "x' OR 1=1" }, async () => 1)).rejects.toThrow(
       /must be a UUID/,
     );
+  });
+});
+
+describe('command transaction (T-PLT-01)', () => {
+  it('joins withTenant to a command transaction, in the same hospital only', async () => {
+    const userId = randomUUID();
+    const tenantId = randomUUID();
+    const otherTenantId = randomUUID();
+    const client = createPrismaClient(databaseUrl);
+    await withCommandTransaction(client, { tenantId, userId }, async (outer) => {
+      await withTenant(client, { tenantId, userId }, async (inner) => {
+        expect(inner).toBe(outer);
+      });
+      await expect(
+        withTenant(client, { tenantId: otherTenantId }, async () => undefined),
+      ).rejects.toThrow('cannot change hospital');
+    });
+    await client.$disconnect();
   });
 });
 

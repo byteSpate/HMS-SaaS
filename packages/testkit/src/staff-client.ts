@@ -11,7 +11,13 @@ export interface StaffClient {
   login(username: string, password: string): Promise<Response>;
   /** Signs in; enrols and passes MFA first when the session requires it. */
   sessionOf(username: string, password: string): Promise<StaffSession>;
-  call(session: StaffSession, method: string, path: string, body?: unknown): Promise<Response>;
+  call(
+    session: StaffSession,
+    method: string,
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ): Promise<Response>;
 }
 
 export function cookieOf(res: Response): string {
@@ -42,7 +48,13 @@ export function staffClient(base: string, origin: string, now: () => Date): Staf
     });
   }
 
-  function call(session: StaffSession, method: string, path: string, body?: unknown) {
+  function call(
+    session: StaffSession,
+    method: string,
+    path: string,
+    body?: unknown,
+    headers: Record<string, string> = {},
+  ) {
     return fetch(`${base}${path}`, {
       method,
       headers: {
@@ -50,6 +62,7 @@ export function staffClient(base: string, origin: string, now: () => Date): Staf
         Origin: origin,
         'X-CSRF-Token': session.csrfToken,
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...headers,
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
