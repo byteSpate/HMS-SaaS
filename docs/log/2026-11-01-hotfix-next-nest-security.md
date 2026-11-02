@@ -33,7 +33,7 @@ The T-FND-01 log and `docs/STACK_VERSIONS.md` both said never to deploy 16.4.0, 
 
 ## Decisions applied
 
-- **Hotfix, not a normal PR into `dev`:** the code is on `main`, which staging runs (docs/DEPLOYMENT.md section 3), so the fix must not wait for the next release.
+- **Merged into `dev`, not `main`:** this was opened as a hotfix into `main`, which staging runs (docs/DEPLOYMENT.md section 3). On 2026-11-02 it was decided that `main` stays at v0.3.0 and the fix ships with the next release, planned for 5 November 2026, so no v0.3.1 tag exists and docs/GIT_WORKFLOW.md section 6 was not followed.
 - **Overrides for body-parser and qs:** Express's ranges already allow the patched versions, but the lockfile kept the old ones after the NestJS bump. The overrides are exact versions, with a comment saying when to remove them.
 - **Release-age check kept:** the chosen versions pass `minimumReleaseAge`; the policy was not relaxed.
 - **Date-dependent tests fixed here:** two site tests expected Dr. Tanvir Ahmed's demo leave (20 to 30 October 2026) on the real clock, so they fail on every branch since 31 October and would block this hotfix. They now set the clock, as the next-chamber test already did.
@@ -49,12 +49,13 @@ The build, test and browser results for the final commit are in the pull request
 
 ## Known limitations
 
+- `main` and tag v0.3.0 keep Next.js 16.4.0 until the next release. Anything deployed from `main` before then stays exposed to the advisories above.
 - Whether staging runs 16.4.0, and whether it was attacked while it did, cannot be told from this repository. The deployer must check (see Deploy impact).
 - `pnpm audit` covers published advisories only, and only production dependencies were audited.
 
 ## Deploy impact
 
-- **Urgent: rebuild and redeploy `web` and `api`.** No new environment variable, migration, service or CORS change. The server Dockerfiles pin Node, pnpm and turbo, none of which changed.
+- **Rebuild and redeploy `web` and `api` as soon as the next release reaches `main`.** No new environment variable, migration, service or CORS change. The server Dockerfiles pin Node, pnpm and turbo, none of which changed.
 - If 16.4.0 was reachable from the internet, treat the server as possibly compromised until checked: review the web container and nginx logs, and rotate the secrets it could read.
 
 ## How to debug
