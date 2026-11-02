@@ -2,7 +2,7 @@
 
 - **Date:** 2026-11-01
 - **Commit:** this commit
-- **Implements:** T-FND-01 follow-up (known limitation "upgrade Next.js before any deploy"); D1 section 4; hotfix path in docs/GIT_WORKFLOW.md section 6
+- **Implements:** T-FND-01 follow-up (known limitation "upgrade Next.js before any deploy"); D1 section 4
 
 ## What was fixed
 
