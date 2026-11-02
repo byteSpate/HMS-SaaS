@@ -60,7 +60,6 @@ Run locally on Windows with Docker 29.9.2:
 
 ## Known limitations
 
-- **CI depends on the security hotfix:** until `main` (the Next.js and Express fixes) is merged back into `dev`, the audit step and possibly the critical scan fail on this branch.
 - The workflow and the Trivy scan were not run locally; the first CI run on the pull request is their first run.
 - `hms-migrate` is large because it keeps the whole pruned install. It runs once per deploy and is never served, so this was left alone.
 - The worker has no health check and exits immediately until T-PLT-03 gives it work.
