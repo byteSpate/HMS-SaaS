@@ -20,6 +20,8 @@ export interface RequestOptions<T> {
   body?: unknown;
   /** Validates and types the JSON body, usually `someSchema.parse`. Omit for 204 answers. */
   parse?: (data: unknown) => T;
+  /** Extra headers, such as the Idempotency-Key of a command (T-PLT-01). */
+  headers?: Record<string, string>;
 }
 
 async function toApiError(response: Response): Promise<ApiError> {
@@ -42,9 +44,13 @@ export interface Page<T> {
 
 async function send(
   path: string,
-  { method = 'GET', body }: Pick<RequestOptions<unknown>, 'method' | 'body'>,
+  {
+    method = 'GET',
+    body,
+    headers: extra,
+  }: Pick<RequestOptions<unknown>, 'method' | 'body' | 'headers'>,
 ): Promise<Response> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: 'application/json', ...extra };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
@@ -66,9 +72,9 @@ async function send(
 
 export async function apiRequest<T = void>(
   path: string,
-  { method = 'GET', body, parse }: RequestOptions<T> = {},
+  { method = 'GET', body, parse, headers }: RequestOptions<T> = {},
 ): Promise<T> {
-  const response = await send(path, { method, body });
+  const response = await send(path, { method, body, ...(headers ? { headers } : {}) });
   if (response.status === 204 || !parse) return undefined as T;
 
   try {

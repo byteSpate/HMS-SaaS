@@ -131,3 +131,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-04 | [T-PAT-02: patient search](2026-11-04-T-PAT-02-patient-search.md)                                                                       |
 | 2026-11-04 | [T-PAT-03: NID storage, masking and audited reveal](2026-11-04-T-PAT-03-nid-storage.md)                                                 |
 | 2026-11-04 | [T-PAT-04: identity correction with history](2026-11-04-T-PAT-04-identity-correction.md)                                                |
+| 2026-11-04 | [T-UI-03 (patient part): front desk and patient record screens](2026-11-04-T-UI-03-patient-screens.md)                                  |
