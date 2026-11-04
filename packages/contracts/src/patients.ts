@@ -98,3 +98,32 @@ export type RegisteredPatient = z.infer<typeof registeredPatientSchema>;
 
 /** `reason` of a VALIDATION_FAILED problem when candidates were not confirmed (FR-PAT-001). */
 export const DUPLICATE_CANDIDATES_PRESENT = 'DUPLICATE_CANDIDATES_PRESENT';
+
+/** T-PAT-02 (UC-PAT-01 step 1): one box for an MRN, a phone number or a name. */
+export const patientSearchRequestSchema = z.strictObject({
+  term: z.string().trim().min(1).max(100),
+});
+export type PatientSearchRequest = z.infer<typeof patientSearchRequestSchema>;
+
+/** The banner fields of a patient (FR-PAT-010), as listed by search. */
+export const patientSummarySchema = z.object({
+  patientId: z.uuid(),
+  mrn: z.string(),
+  identityStatus: z.enum(['CONFIRMED', 'TEMPORARY']),
+  nameBn: z.string().nullable(),
+  nameEn: z.string().nullable(),
+  sex: patientSexSchema,
+  /** Whole years on the hospital's date; null when unknown. */
+  ageYears: z.number().int().nullable(),
+  /** True when the age comes from a reported age (FR-PAT-006). */
+  ageEstimated: z.boolean(),
+  phone: z.string().nullable(),
+});
+export type PatientSummary = z.infer<typeof patientSummarySchema>;
+
+export const patientSearchResponseSchema = z.object({
+  /** How the term was read, so the screen can say "Matched by phone". */
+  matchedBy: z.enum(['MRN', 'PHONE', 'NAME']),
+  patients: z.array(patientSummarySchema),
+});
+export type PatientSearchResponse = z.infer<typeof patientSearchResponseSchema>;

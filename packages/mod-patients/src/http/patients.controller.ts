@@ -1,21 +1,26 @@
-// /api/v1/patients: register a patient and list the possible existing patients first (T-PAT-01;
-// UC-PAT-01; FR-PAT-001, -002, -011). The candidate lookup is a POST, not a GET, so names and phone
-// numbers stay out of URLs and request logs (FR-AUD-004, D section 10).
+// /api/v1/patients: search, and register a patient after listing the possible existing patients
+// (T-PAT-01, T-PAT-02; UC-PAT-01; FR-PAT-001..003, -011). Search and the candidate lookup are POSTs,
+// not GETs, so names and phone numbers stay out of URLs and request logs (FR-AUD-004, D section 10).
 import { Body, Controller, HttpCode, Inject, Post } from '@nestjs/common';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import {
   duplicateCandidatesRequestSchema,
   duplicateCandidatesResponseSchema,
+  patientSearchRequestSchema,
+  patientSearchResponseSchema,
   registeredPatientSchema,
   registerPatientRequestSchema,
   type DuplicateCandidatesRequest,
   type DuplicateCandidatesResponse,
+  type PatientSearchRequest,
+  type PatientSearchResponse,
   type RegisteredPatient,
   type RegisterPatientRequest,
 } from '@hms/contracts';
 import { RequirePermission } from '@hms/mod-identity-access';
 import { ApiEndpoint, Idempotent, SESSION_SECURITY, ZodBodyPipe } from '@hms/platform';
 import { PatientRegistrationService } from '../application/patient-registration.service.js';
+import { PatientSearchService } from '../application/patient-search.service.js';
 
 const ACCESS_ERRORS = [
   'UNAUTHENTICATED',
@@ -30,7 +35,28 @@ const ACCESS_ERRORS = [
 export class PatientsController {
   constructor(
     @Inject(PatientRegistrationService) private readonly registration: PatientRegistrationService,
+    @Inject(PatientSearchService) private readonly finder: PatientSearchService,
   ) {}
+
+  @Post('search')
+  @HttpCode(200)
+  @RequirePermission('patient.record.search')
+  @ApiEndpoint({
+    summary: 'Search patients by MRN, phone number or name',
+    description:
+      'One term: an MRN (any case), a mobile number in any spelling (FR-PAT-003), the number ' +
+      'part of an MRN, or a name in Bangla or English (similar spellings match). Up to 20 rows ' +
+      'with the banner fields, closest first. Saves nothing.',
+    body: patientSearchRequestSchema,
+    success: { status: 200, description: 'The matches', schema: patientSearchResponseSchema },
+    errors: ACCESS_ERRORS,
+    csrf: true,
+  })
+  search(
+    @Body(new ZodBodyPipe(patientSearchRequestSchema)) request: PatientSearchRequest,
+  ): Promise<PatientSearchResponse> {
+    return this.finder.search(request);
+  }
 
   @Post('duplicate-candidates')
   @HttpCode(200)

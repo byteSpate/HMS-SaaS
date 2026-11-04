@@ -9,13 +9,12 @@ import type {
   RegisterPatientRequest,
 } from '@hms/contracts';
 import { withTenant, type PrismaClient, type TenantTx } from '@hms/database';
-import { calendarDateIn, DomainError, type Clock } from '@hms/domain-kernel';
+import type { Clock } from '@hms/domain-kernel';
 import {
   allocateBusinessNumber,
   appendAuditEvent,
   appendOutboxEvent,
   getEffectivePolicy,
-  getRequestContext,
   PRISMA,
 } from '@hms/platform';
 import { assertCandidatesConfirmed } from '../domain/duplicate-policy.js';
@@ -25,31 +24,12 @@ import {
   insertPatient,
   type CandidateProbe,
 } from '../infrastructure/patient.repository.js';
+import { hospitalDate, hospitalToday, PATIENTS_CLOCK, requestScope } from './context.js';
 
-export const PATIENTS_CLOCK = Symbol('PATIENTS_CLOCK');
-
-// C-024: one facility per hospital for now, and every pilot hospital is in Bangladesh. When a
-// hospital can have facilities in other zones, read facility.timezone here instead.
-const HOSPITAL_TIME_ZONE = 'Asia/Dhaka';
 // C-033: {PREFIX}-{seq:6}, continuous. Until a hospital publishes its prefix (numbering policy),
 // MRNs use MRN, as in the plan's examples, so registration never waits for configuration.
 const MRN_PATTERN = '{PREFIX}-{seq:6}';
 const DEFAULT_MRN_PREFIX = 'MRN';
-
-interface Scope {
-  tenantId: string;
-  userId: string;
-  membershipId?: string;
-  correlationId: string;
-}
-
-function requestScope(): Scope {
-  const context = getRequestContext();
-  if (!context?.tenantId || !context.userId) {
-    throw new DomainError('TENANT_NOT_SELECTED', 'Choose a hospital first');
-  }
-  return { ...context, tenantId: context.tenantId, userId: context.userId };
-}
 
 function probeOf(facts: IdentityFacts, sex: CandidateProbe['sex']): CandidateProbe {
   return {
@@ -78,14 +58,10 @@ export class PatientRegistrationService {
     @Inject(PATIENTS_CLOCK) private readonly clock: Clock,
   ) {}
 
-  private today(): string {
-    return calendarDateIn(this.clock.now(), HOSPITAL_TIME_ZONE);
-  }
-
   /** UC-PAT-01 step 3: the possible existing patients for what the receptionist has typed. */
   findCandidates(request: DuplicateCandidatesRequest): Promise<DuplicateCandidate[]> {
     const scope = requestScope();
-    const probe = probeOf(identityFactsOf(request, this.today()), request.sex);
+    const probe = probeOf(identityFactsOf(request, hospitalToday(this.clock)), request.sex);
     return withTenant(this.prisma, scope, (tx) =>
       findDuplicateCandidates(tx, scope.tenantId, probe),
     );
@@ -94,7 +70,7 @@ export class PatientRegistrationService {
   register(request: RegisterPatientRequest): Promise<RegisteredPatient> {
     const scope = requestScope();
     const now = this.clock.now();
-    const facts = identityFactsOf(request, calendarDateIn(now, HOSPITAL_TIME_ZONE));
+    const facts = identityFactsOf(request, hospitalDate(now));
     return withTenant(this.prisma, scope, async (tx) => {
       // Checked again inside the command, so a candidate registered meanwhile is not missed.
       const candidates = await findDuplicateCandidates(

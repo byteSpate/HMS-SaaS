@@ -340,4 +340,137 @@ describe('patient registration over HTTP', () => {
     const theirs = await register(other.session, salma());
     expect((await dataOf(theirs)).mrn).toBe('MRN-000001');
   });
+
+  describe('search (T-PAT-02)', () => {
+    let next = 0;
+    /** A patient written straight to the table, so tests need no duplicate review. */
+    async function seedPatient(tenantId: string, fields: Record<string, unknown>) {
+      next += 1;
+      return withTenant(prisma, { tenantId }, (tx) =>
+        tx.patient.create({
+          data: {
+            tenantId,
+            mrn: `MRN-${String(next).padStart(6, '0')}`,
+            sex: 'MALE',
+            birthDate: new Date('1990-05-14T00:00:00Z'),
+            birthDatePrecision: 'EXACT',
+            birthYear: 1990,
+            createdBy: randomUUID(),
+            ...fields,
+          },
+        }),
+      );
+    }
+
+    const search = async (session: StaffSession, term: string) => {
+      const res = await client.call(session, 'POST', '/patients/search', { term });
+      return { status: res.status, body: (await res.json()) as { data?: SearchResult } & Problem };
+    };
+
+    interface SearchResult {
+      matchedBy: string;
+      patients: {
+        patientId: string;
+        mrn: string;
+        ageYears: number | null;
+        ageEstimated: boolean;
+        phone: string | null;
+      }[];
+    }
+
+    it('AT-PAT-007: every spelling of a phone number finds the same patient', async () => {
+      const { tenantId, session } = await hospital();
+      const karim = await seedPatient(tenantId, {
+        nameEn: 'Karim Ahmed',
+        phoneRaw: '01700-000001',
+        phoneNormalized: '01700000001',
+      });
+      for (const term of [
+        '01700-000001',
+        '+880 1700 000001',
+        '\u09e6\u09e7\u09ed\u09e6\u09e6\u09e6\u09e6\u09e6\u09e6\u09e6\u09e7',
+      ]) {
+        const { status, body } = await search(session, term);
+        expect(status).toBe(200);
+        expect(body.data?.matchedBy).toBe('PHONE');
+        expect(body.data?.patients.map((patient) => patient.patientId)).toEqual([karim.id]);
+      }
+    });
+
+    it('finds by MRN in any case or by its number, with the banner age', async () => {
+      const { tenantId, session } = await hospital();
+      const karim = await seedPatient(tenantId, { nameEn: 'Karim Ahmed', mrn: 'SMH-000042' });
+      for (const term of ['smh-000042', '42']) {
+        const { body } = await search(session, term);
+        expect(body.data?.matchedBy).toBe('MRN');
+        expect(body.data?.patients).toEqual([
+          expect.objectContaining({ patientId: karim.id, ageYears: 36, ageEstimated: false }),
+        ]);
+      }
+    });
+
+    it('finds partial and misspelt names in both scripts, closest first', async () => {
+      const { tenantId, session } = await hospital();
+      const karim = await seedPatient(tenantId, { nameEn: 'Karim Ahmed' });
+      const karima = await seedPatient(tenantId, { nameEn: 'Karima Begum', sex: 'FEMALE' });
+      await seedPatient(tenantId, { nameEn: 'Rahim Uddin' });
+      const bangla = await seedPatient(tenantId, {
+        nameBn: '\u09b8\u09be\u09b2\u09ae\u09be \u09ac\u09c7\u0997\u09ae',
+        sex: 'FEMALE',
+      });
+
+      const partial = await search(session, 'karim');
+      expect(partial.body.data?.matchedBy).toBe('NAME');
+      expect(partial.body.data?.patients.map((patient) => patient.patientId)).toEqual([
+        karim.id,
+        karima.id,
+      ]);
+      const misspelt = await search(session, 'Kareem Ahmed');
+      expect(misspelt.body.data?.patients[0]?.patientId).toBe(karim.id);
+      const inBangla = await search(session, '\u09b8\u09be\u09b2\u09ae\u09be');
+      expect(inBangla.body.data?.patients.map((patient) => patient.patientId)).toEqual([bangla.id]);
+    });
+
+    it('marks an age from a reported age as estimated', async () => {
+      const { tenantId, session } = await hospital();
+      await seedPatient(tenantId, {
+        nameEn: 'Abul Kashem',
+        birthDate: null,
+        birthDatePrecision: 'YEAR_ESTIMATED',
+        birthYear: 1966,
+        reportedAgeYears: 60,
+        reportedAgeOn: new Date('2026-01-10T00:00:00Z'),
+      });
+      const { body } = await search(session, 'Abul');
+      expect(body.data?.patients[0]).toMatchObject({ ageYears: 60, ageEstimated: true });
+    });
+
+    it('returns at most 20 rows', async () => {
+      const { tenantId, session } = await hospital();
+      for (let index = 0; index < 22; index += 1) {
+        await seedPatient(tenantId, { nameEn: `Common Name ${index}` });
+      }
+      const { body } = await search(session, 'Common Name');
+      expect(body.data?.patients).toHaveLength(20);
+    });
+
+    it('needs the search permission only, and keeps hospitals apart', async () => {
+      const mine = await hospital();
+      const other = await hospital();
+      await seedPatient(mine.tenantId, { nameEn: 'Karim Ahmed' });
+      const doctor = await staffOf(mine.tenantId, ['patient.record.search']);
+      expect((await search(doctor, 'Karim')).body.data?.patients).toHaveLength(1);
+      const nobody = await staffOf(mine.tenantId, []);
+      expect((await search(nobody, 'Karim')).status).toBe(403);
+      expect((await search(other.session, 'Karim')).body.data?.patients).toEqual([]);
+    });
+
+    it('refuses a term that is too short to search', async () => {
+      const { session } = await hospital();
+      const short = await search(session, 'a');
+      expect(short.status).toBe(422);
+      expect(short.body.fields?.map((field) => field.path)).toEqual(['term']);
+      expect((await search(session, '   ')).status).toBe(422);
+    });
+  });
 });
