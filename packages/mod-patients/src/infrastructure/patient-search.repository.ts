@@ -1,11 +1,7 @@
-// Patient search in PostgreSQL (T-PAT-02; FR-PAT-003, FR-I18N-003; E section 7: GIN trigram on both
-// name columns, btree on phone and MRN). Runs in the caller's withTenant() transaction (ADR-003).
+// Patient search in PostgreSQL (T-PAT-02; FR-PAT-003, FR-I18N-003). Phone and MRN use btree indexes;
+// names use hms.search_patients_by_name. Runs in the caller's withTenant() transaction (ADR-003).
 import type { TenantTx } from '@hms/database';
-import {
-  MAX_SEARCH_RESULTS,
-  NAME_SEARCH_SIMILARITY,
-  type SearchTerm,
-} from '../domain/search-term.js';
+import { MAX_SEARCH_RESULTS, type SearchTerm } from '../domain/search-term.js';
 
 export interface PatientRow {
   id: string;
@@ -39,21 +35,12 @@ function toRow(stored: StoredRow): PatientRow {
   return { ...stored, birthDate: stored.birthDate?.toISOString().slice(0, 10) ?? null };
 }
 
-/** ILIKE treats % and _ as wildcards; a typed name must match them literally. */
-function containsPattern(name: string): string {
-  const literal = name.replace(/[\\%_]/g, (character) => '\\' + character);
-  return `%${literal}%`;
-}
-
 /**
- * Names in either script: a contains match finds short or partial names, and trigram similarity
- * finds misspellings. The closest names come first. Under RLS PostgreSQL cannot use the GIN
- * trigram indexes for these operators, because they are not leakproof, so this scans the hospital's
- * patients: about 3 to 7 s at 600,000 (T-PAT-02 log). The fix is an open decision.
+ * Names go through hms.search_patients_by_name (migration 20261104100000): under RLS PostgreSQL
+ * cannot use the trigram index for pg_trgm's operators, so the function runs the indexed,
+ * nearest-first search itself and filters on the session's hospital (owner decision 2026-11-04).
  */
-async function byName(tx: TenantTx, tenantId: string, name: string): Promise<PatientRow[]> {
-  await tx.$executeRaw`SELECT set_config('pg_trgm.similarity_threshold', ${String(NAME_SEARCH_SIMILARITY)}, true)`;
-  const like = containsPattern(name);
+async function byName(tx: TenantTx, name: string): Promise<PatientRow[]> {
   const rows = await tx.$queryRaw<
     {
       id: string;
@@ -67,16 +54,7 @@ async function byName(tx: TenantTx, tenantId: string, name: string): Promise<Pat
       birth_year: number | null;
       phone_normalized: string | null;
     }[]
-  >`
-    SELECT id, mrn, identity_status, name_bn, name_en, sex, birth_date, birth_date_precision,
-           birth_year, phone_normalized
-    FROM hms.patient
-    WHERE tenant_id = ${tenantId}::uuid
-      AND (name_en ILIKE ${like} OR name_bn ILIKE ${like}
-           OR name_en OPERATOR(hms.%) ${name} OR name_bn OPERATOR(hms.%) ${name})
-    ORDER BY GREATEST(hms.similarity(name_en, ${name}), hms.similarity(name_bn, ${name})) DESC NULLS LAST,
-             created_at DESC
-    LIMIT ${MAX_SEARCH_RESULTS}`;
+  >`SELECT * FROM hms.search_patients_by_name(${name})`;
   return rows.map((row) =>
     toRow({
       id: row.id,
@@ -98,7 +76,7 @@ export async function findPatients(
   tenantId: string,
   term: SearchTerm,
 ): Promise<PatientRow[]> {
-  if (term.kind === 'NAME') return byName(tx, tenantId, term.name);
+  if (term.kind === 'NAME') return byName(tx, term.name);
   const rows = await tx.patient.findMany({
     where: whereOf(tenantId, term),
     select: COLUMNS,

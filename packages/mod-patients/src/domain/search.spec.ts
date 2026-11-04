@@ -33,8 +33,9 @@ describe('searchTermOf', () => {
     });
   });
 
-  it('refuses a one-letter name', () => {
-    expect(() => searchTermOf('a')).toThrow(DomainError);
+  it('refuses a name shorter than three letters', () => {
+    expect(() => searchTermOf('ab')).toThrow(DomainError);
+    expect(searchTermOf('abc')).toEqual({ kind: 'NAME', name: 'abc' });
   });
 });
 

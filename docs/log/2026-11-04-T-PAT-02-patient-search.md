@@ -26,7 +26,7 @@ The request scope and the hospital's date moved to `application/context.ts`, sha
 
 - **POST, not GET,** like the candidate lookup: a name or phone number never sits in a URL or request log.
 - **A mobile number is tried before an MRN,** because `01700-000001` also has the shape of an MRN with a digit prefix. A real MRN is never a valid mobile number.
-- **Search is more forgiving than duplicate matching** (similarity 0.3 against 0.4), so a misspelt name is still found.
+- **Names are matched by word similarity** (at least 0.4), so a part of a name (`kar`) or a misspelling (`Kareem Ahmd`) finds `Karim Ahmed`, while `Rahim` does not (0.17). Names need at least 3 letters.
 - **Phone in full in results:** the banner shows it (F section 3), and search needs only `patient.record.search`, which every clinical role has.
 
 ## Verification
@@ -54,15 +54,38 @@ The request scope and the hospital's date moved to `application/context.ts`, sha
 
 The same common-name query as `postgres`, which bypasses RLS, uses both GIN trigram indexes and takes 392 ms. The cause: `similarity_op` (`%`) and `texticlike` (`ILIKE`) are not leakproof, and PostgreSQL never uses a non-leakproof operator as an index condition under row-level security.
 
+### Follow-up: name search through a secure function (owner decision 2026-11-04)
+
+The owner chose a secure search function over leaving it slow. Migration `20261104100000_patient_name_search`:
+
+- `hms.search_patients_by_name(text)`, `SECURITY DEFINER`, owned by `hms_migrator`, executable only by `hms_app`. It filters on `hms.current_tenant_id()` itself and takes no hospital parameter, so it returns nothing without a hospital in the session and never another hospital's patients. A test checks all three cases.
+- A read-only policy `patient_search_read FOR SELECT TO hms_migrator`, the same pattern as `hms.user_belongs_elsewhere()` (20261102090000). `hms_app` still sees only its hospital through RLS.
+- GiST trigram indexes replace the GIN ones, for nearest-first ordering (`<<->`): a common name reads 20 rows instead of ranking every match. The term's script picks the column, since across scripts the similarity is always 0.
+
+Same 600,000 patients, as `hms_app`:
+
+| Name searched                   | Before | After  |
+| ------------------------------- | ------ | ------ |
+| `Karim Ahmed` (30,000 share it) | 6.6 s  | 11 ms  |
+| `Nazma`                         | 3 s+   | 4 ms   |
+| `kar` (part of a name)          | 3.1 s  | 15 ms  |
+| `Abul` (for Abdul)              | 3 s+   | 14 ms  |
+| `করিম` (Bangla)                 | 3.5 s  | 7 ms   |
+| No match                        | 3 s+   | 10 ms  |
+| `Kareem Ahmd` (misspelt)        | 3.5 s  | 559 ms |
+
+The migration built the GiST indexes on 600,000 rows in 39 s. After the change: lint and typecheck 41 of 41, all 26 test tasks (API 126, database 28 with the RLS coverage check, mod-patients 23).
+
 ## Known limitations
 
-- **Name search misses NFR-PERF-001 at pilot volume** (above). It is correct, only slow. The options change how ADR-003 is applied to this one query, so they are an owner decision, recorded with the options in the feature's pull request. Phone and MRN search, the most common at the desk, are fast.
+- **A misspelt full name of a very common name** stays near 560 ms: right at the 0.4 threshold the index has to read far before it finds 20. It is the tail of NFR-PERF-001's p95, with synthetic data where 30,000 patients share each name; real names are more varied.
+- **`hms_migrator` can read every hospital's patients** through the new policy. It could already, as the owner of the tables; the policy only makes the function work.
 - **The MRN number part** scans the hospital's rows (110 ms at 600,000); fine now, an index on the reversed MRN if it grows.
-- **A common name with tens of thousands of matches** ranks all of them before taking 20, so even with an index it is near the budget (392 ms). A GiST index with `<->` ordering would avoid that, if the decision above allows indexes.
+- **Duplicate candidates (T-PAT-01)** still do not use the name index under RLS; they stay fast (111 ms) through the phone and birth-year indexes.
 - **No search screen yet;** it comes later in this feature.
 
-Deploy impact: none beyond T-PAT-01 (no migration, no new variable).
+Deploy impact: migration `20261104100000_patient_name_search` (drops and rebuilds the two name indexes, adds a policy and a function; expand-only, safe while the previous version runs). No admin script and no new variable.
 
 ## How to debug
 
-A term found the wrong way: check `matchedBy` in the response, then `searchTermOf` in `domain/search-term.ts`. A slow name search: `EXPLAIN` it as `hms_app` with `app.tenant_id` set; a `Seq Scan on patient` is the RLS limitation above, not a missing index. The volume scripts used for the table are described in this entry; the data was removed after the run.
+A term found the wrong way: check `matchedBy` in the response, then `searchTermOf` in `domain/search-term.ts`. A name not found: compare `hms.word_similarity(term, name)` with the 0.4 threshold set on the function. A slow name search: `EXPLAIN ANALYZE SELECT * FROM hms.search_patients_by_name('...')` as `hms_app` with `app.tenant_id` set; it should show index scans on `patient_name_en_trgm_idx` or `patient_name_bn_trgm_idx`. The volume data was loaded into a throwaway hospital and removed after each run.

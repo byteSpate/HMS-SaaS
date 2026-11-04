@@ -465,9 +465,26 @@ describe('patient registration over HTTP', () => {
       expect((await search(other.session, 'Karim')).body.data?.patients).toEqual([]);
     });
 
+    it('the name search function sees only the session hospital, and nothing without one', async () => {
+      const mine = await hospital();
+      const other = await hospital();
+      await seedPatient(mine.tenantId, { nameEn: 'Karim Ahmed' });
+      const countIn = async (tenantId?: string) => {
+        const query = (tx: PrismaClient | Parameters<Parameters<typeof withTenant>[2]>[0]) =>
+          tx.$queryRaw<{ count: bigint }[]>`
+            SELECT count(*) FROM hms.search_patients_by_name('Karim Ahmed')`;
+        const rows = tenantId ? await withTenant(prisma, { tenantId }, query) : await query(prisma);
+        return Number(rows[0]?.count);
+      };
+      expect(await countIn(mine.tenantId)).toBe(1);
+      expect(await countIn(other.tenantId)).toBe(0);
+      // Fails closed: no hospital in the session means no rows, not every hospital's rows.
+      expect(await countIn()).toBe(0);
+    });
+
     it('refuses a term that is too short to search', async () => {
       const { session } = await hospital();
-      const short = await search(session, 'a');
+      const short = await search(session, 'ab');
       expect(short.status).toBe(422);
       expect(short.body.fields?.map((field) => field.path)).toEqual(['term']);
       expect((await search(session, '   ')).status).toBe(422);

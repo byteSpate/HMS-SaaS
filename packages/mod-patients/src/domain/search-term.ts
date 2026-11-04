@@ -8,10 +8,12 @@ import { normalizedMobile, normalizePhone } from './phone.js';
 const MRN = /^[A-Z0-9]{2,8}-\d+$/;
 const DIGITS = /^\d+$/;
 const MRN_SEQUENCE_WIDTH = 6;
-/** Fewer letters match too many names to be useful. */
-export const MIN_NAME_LENGTH = 2;
-/** Search is more forgiving than duplicate matching: a misspelt name should still be found. */
-export const NAME_SEARCH_SIMILARITY = 0.3;
+/**
+ * A trigram index needs three characters, and two letters match tens of thousands of names
+ * (T-PAT-02 volume check). The similarity threshold of name search lives in
+ * hms.search_patients_by_name.
+ */
+export const MIN_NAME_LENGTH = 3;
 /** UC-PAT-01: up to 20 ranked matches. */
 export const MAX_SEARCH_RESULTS = 20;
 
@@ -39,7 +41,7 @@ export function searchTermOf(raw: string): SearchTerm {
 
   if (Array.from(tidy).length < MIN_NAME_LENGTH) {
     throw new DomainError('VALIDATION_FAILED', 'Request body is invalid', {
-      fields: [{ path: 'term', message: 'Type at least two letters, a phone number or an MRN' }],
+      fields: [{ path: 'term', message: 'Type at least three letters, a phone number or an MRN' }],
     });
   }
   return { kind: 'NAME', name: tidy };
