@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { IdentityAccessModule, loadAuthConfig } from '@hms/mod-identity-access';
+import { PatientsModule } from '@hms/mod-patients';
 import { DatabaseModule, RequestPipelineModule } from '@hms/platform';
 import { AppController } from './app.controller.js';
 import { PoliciesController } from './config/policies.controller.js';
@@ -23,6 +24,7 @@ function requireEnv(name: string): string {
       allowedOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
       ...(process.env.VALKEY_URL ? { valkeyUrl: process.env.VALKEY_URL } : {}),
     }),
+    PatientsModule.forRoot(),
   ],
   controllers: [AppController, HealthController, OperationsController, PoliciesController],
 })

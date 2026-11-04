@@ -32,14 +32,15 @@ model Tenant {
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
   version   Int          @default(1)
 
-  facilities   Facility[]
-  memberships  Membership[]
-  auditEvents  AuditEvent[]
-  roles        Role[]
-  entitlements TenantEntitlement[]
+  facilities      Facility[]
+  memberships     Membership[]
+  auditEvents     AuditEvent[]
+  roles           Role[]
+  entitlements    TenantEntitlement[]
   numberSequences NumberSequence[]
   policyVersions  PolicyVersion[]
   userAccounts    UserAccount[]
+  patients        Patient[]
 
   @@map("tenant")
   @@schema("hms")
@@ -119,30 +120,30 @@ enum EventOutcome {
 // Global login identity: one person may belong to several hospitals (E section 6, ADR-004).
 // Not tenant-scoped, so no RLS. Usernames are stored lower-case (CHECK in the migration).
 model UserAccount {
-  id                 String        @id @default(uuid(7)) @db.Uuid
+  id                       String        @id @default(uuid(7)) @db.Uuid
   // T-ACC-06 (C-099): an account belongs to one hospital. Nullable until a later release.
-  tenantId           String?       @map("tenant_id") @db.Uuid
-  username           String
-  displayName        String        @map("display_name")
-  passwordHash       String        @map("password_hash")
-  status             UserStatus    @default(ACTIVE)
-  failedAttempts     Int           @default(0) @map("failed_attempts")
-  lockedUntil        DateTime?     @map("locked_until") @db.Timestamptz
+  tenantId                 String?       @map("tenant_id") @db.Uuid
+  username                 String
+  displayName              String        @map("display_name")
+  passwordHash             String        @map("password_hash")
+  status                   UserStatus    @default(ACTIVE)
+  failedAttempts           Int           @default(0) @map("failed_attempts")
+  lockedUntil              DateTime?     @map("locked_until") @db.Timestamptz
   // T-ACC-03 (FR-ACC-004): why, when and by whom the account was locked. lockReason is a code
   // (FAILED_LOGINS, ADMIN_ACTION); lockNote is the administrator's reason; lockedByUserId is
   // null when the system locked it after failed logins.
-  lockReason         String?       @map("lock_reason")
-  lockedAt           DateTime?     @map("locked_at") @db.Timestamptz
-  lockNote           String?       @map("lock_note")
-  lockedByUserId     String?       @map("locked_by_user_id") @db.Uuid
+  lockReason               String?       @map("lock_reason")
+  lockedAt                 DateTime?     @map("locked_at") @db.Timestamptz
+  lockNote                 String?       @map("lock_note")
+  lockedByUserId           String?       @map("locked_by_user_id") @db.Uuid
   // T-ACC-05 (FR-ACC-007): a password set by an administrator must be changed at next login.
-  mustChangePassword Boolean       @default(false) @map("must_change_password")
-  passwordChangedAt  DateTime?     @map("password_changed_at") @db.Timestamptz
+  mustChangePassword       Boolean       @default(false) @map("must_change_password")
+  passwordChangedAt        DateTime?     @map("password_changed_at") @db.Timestamptz
   // C-093: when the person asked for a new password; cleared when one is set.
-  passwordResetRequestedAt DateTime? @map("password_reset_requested_at") @db.Timestamptz
-  preferredLang      PreferredLang @default(bn_BD) @map("preferred_lang")
-  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
-  version            Int           @default(1)
+  passwordResetRequestedAt DateTime?     @map("password_reset_requested_at") @db.Timestamptz
+  preferredLang            PreferredLang @default(bn_BD) @map("preferred_lang")
+  createdAt                DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  version                  Int           @default(1)
 
   memberships   Membership[]
   sessions      UserSession[]
@@ -415,5 +416,38 @@ model PolicyVersion {
   @@unique([tenantId, policyKey, versionNo])
   @@index([tenantId, policyKey, effectiveFrom])
   @@map("policy_version")
+  @@schema("hms")
+}
+
+// A patient of one hospital (T-PAT-01, E section 5.1). id and mrn never change. Codes and the
+// birth rules (EXACT date, or YEAR_ESTIMATED from a reported age) are CHECKs in the migration.
+// The trigram name indexes are SQL only, because Prisma cannot express them.
+model Patient {
+  tenantId           String    @map("tenant_id") @db.Uuid
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  mrn                String
+  identityStatus     String    @default("CONFIRMED") @map("identity_status")
+  nameBn             String?   @map("name_bn")
+  nameEn             String?   @map("name_en")
+  sex                String
+  birthDate          DateTime? @map("birth_date") @db.Date
+  birthDatePrecision String    @map("birth_date_precision")
+  birthYear          Int?      @map("birth_year") @db.SmallInt
+  reportedAgeYears   Int?      @map("reported_age_years") @db.SmallInt
+  reportedAgeOn      DateTime? @map("reported_age_on") @db.Date
+  phoneRaw           String?   @map("phone_raw")
+  phoneNormalized    String?   @map("phone_normalized")
+  addressText        String?   @map("address_text")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  createdBy          String    @map("created_by") @db.Uuid
+  version            Int       @default(1)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, mrn])
+  @@index([tenantId, phoneNormalized])
+  @@index([tenantId, birthYear])
+  @@map("patient")
   @@schema("hms")
 }

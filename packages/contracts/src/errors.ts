@@ -35,6 +35,10 @@ export const problemSchema = z.object({
   detail: z.string().optional(),
   correlationId: z.string().optional(),
   fields: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
+  /** A finer cause inside a code, e.g. DUPLICATE_CANDIDATES_PRESENT (T-PAT-01). */
+  reason: z.string().optional(),
+  /** The patients a registration must confirm against (DUPLICATE_CANDIDATES_PRESENT). */
+  candidateIds: z.array(z.string()).optional(),
 });
 
 export type Problem = z.infer<typeof problemSchema>;
