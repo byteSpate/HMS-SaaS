@@ -368,4 +368,57 @@ describe('user administration over HTTP', () => {
     };
     expect(list.users.map((u) => u.userId)).not.toContain(other.staff.id);
   });
+
+  // An account has one password, one second factor and one lock across every hospital it belongs
+  // to, so one hospital's administrator changing them would let them sign in to another (C-094).
+  describe('an account that also belongs to another hospital', () => {
+    async function sharedStaff() {
+      const first = await hospital();
+      const second = await hospital();
+      await seedMembership(prisma, second.tenantId, first.staff.id);
+      return { adminSession: first.adminSession, staff: first.staff };
+    }
+
+    it('refuses a password reset and keeps the old password', async () => {
+      const { adminSession, staff } = await sharedStaff();
+      const res = await call(adminSession, 'POST', `/admin/users/${staff.id}/password`, {
+        temporaryPassword: TEMPORARY,
+        reason: 'Forgot it',
+      });
+      expect(res.status).toBe(403);
+      await expect(client.sessionOf(staff.username, PASSWORD)).resolves.toBeDefined();
+    });
+
+    it('refuses a second factor reset', async () => {
+      const { adminSession, staff } = await sharedStaff();
+      const res = await call(adminSession, 'POST', `/admin/users/${staff.id}/mfa/reset`, {
+        reason: 'Lost phone',
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it('refuses locking the account', async () => {
+      const { adminSession, staff } = await sharedStaff();
+      const res = await call(adminSession, 'POST', `/admin/users/${staff.id}/lock`, {
+        reason: 'Left the hospital',
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it('allows the same reset once the other membership is revoked', async () => {
+      const first = await hospital();
+      const second = await hospital();
+      await seedMembership(prisma, second.tenantId, first.staff.id, 'REVOKED');
+      const res = await call(
+        first.adminSession,
+        'POST',
+        `/admin/users/${first.staff.id}/password`,
+        {
+          temporaryPassword: TEMPORARY,
+          reason: 'Forgot it',
+        },
+      );
+      expect(res.status).toBe(200);
+    });
+  });
 });
