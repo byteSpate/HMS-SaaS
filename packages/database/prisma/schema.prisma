@@ -442,8 +442,9 @@ model Patient {
   createdBy          String    @map("created_by") @db.Uuid
   version            Int       @default(1)
 
-  tenant             Tenant              @relation(fields: [tenantId], references: [id])
-  patientIdentifiers PatientIdentifier[]
+  tenant                   Tenant                   @relation(fields: [tenantId], references: [id])
+  patientIdentifiers       PatientIdentifier[]
+  patientIdentityHistories PatientIdentityHistory[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, mrn])
@@ -472,5 +473,26 @@ model PatientIdentifier {
   @@unique([tenantId, patientId, kind])
   @@index([tenantId, kind, valueHash])
   @@map("patient_identifier")
+  @@schema("hms")
+}
+
+// Previous identity values of a patient, one row per correction (T-PAT-04, FR-PAT-008).
+// Append-only; a previous NID is kept sealed (previousNidCiphertext) and by its last four digits.
+model PatientIdentityHistory {
+  tenantId              String   @map("tenant_id") @db.Uuid
+  id                    String   @id @default(uuid(7)) @db.Uuid
+  patientId             String   @map("patient_id") @db.Uuid
+  version               Int
+  changedFields         String[] @map("changed_fields")
+  previousValues        Json     @map("previous_values")
+  previousNidCiphertext Bytes?   @map("previous_nid_ciphertext")
+  reason                String
+  changedAt             DateTime @default(now()) @map("changed_at") @db.Timestamptz
+  changedBy             String   @map("changed_by") @db.Uuid
+
+  patient Patient @relation(fields: [tenantId, patientId], references: [tenantId, id])
+
+  @@unique([tenantId, patientId, version])
+  @@map("patient_identity_history")
   @@schema("hms")
 }

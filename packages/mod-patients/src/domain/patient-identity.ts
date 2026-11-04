@@ -27,7 +27,8 @@ export interface IdentityFacts extends BirthFacts {
   nid: string | null;
 }
 
-function fieldError(path: string, message: string): DomainError {
+/** A VALIDATION_FAILED for one field, the shape the UI highlights. */
+export function fieldError(path: string, message: string): DomainError {
   return new DomainError('VALIDATION_FAILED', 'Request body is invalid', {
     fields: [{ path, message }],
   });
@@ -41,11 +42,13 @@ export function normalizeName(name: string | undefined): string | null {
 }
 
 /** FR-PAT-006: an exact date when known; otherwise the reported age, its day and an estimated year. */
-export function birthFactsOf(input: IdentityInput, today: string): BirthFacts {
+/** `fieldPrefix` places errors where the field sits in the request, e.g. "changes." (T-PAT-04). */
+export function birthFactsOf(input: IdentityInput, today: string, fieldPrefix = ''): BirthFacts {
   if (input.birthDate !== undefined) {
-    if (input.birthDate > today) throw fieldError('birthDate', 'The birth date is in the future');
+    if (input.birthDate > today)
+      throw fieldError(`${fieldPrefix}birthDate`, 'The birth date is in the future');
     if (yearOf(today) - yearOf(input.birthDate) > OLDEST_AGE_YEARS) {
-      throw fieldError('birthDate', 'The birth date is too far in the past');
+      throw fieldError(`${fieldPrefix}birthDate`, 'The birth date is too far in the past');
     }
     return {
       birthDate: input.birthDate,
@@ -56,7 +59,7 @@ export function birthFactsOf(input: IdentityInput, today: string): BirthFacts {
     };
   }
   if (input.reportedAgeYears === undefined)
-    throw fieldError('birthDate', 'Enter the birth date or the age');
+    throw fieldError(`${fieldPrefix}birthDate`, 'Enter the birth date or the age');
   return {
     birthDate: null,
     birthDatePrecision: 'YEAR_ESTIMATED',

@@ -107,7 +107,7 @@ export interface NewPatient extends IdentityFacts {
 }
 
 /** A DATE column takes a Date at UTC midnight of that day. */
-function dateOnly(isoDate: string | null): Date | null {
+export function dateOnly(isoDate: string | null): Date | null {
   return isoDate === null ? null : new Date(`${isoDate}T00:00:00Z`);
 }
 

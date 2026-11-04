@@ -1,9 +1,10 @@
-// Nest module of the patient registry (T-PAT-01..03; D section 5: mod-patients). Needs the
+// Nest module of the patient registry (T-PAT-01..04; D section 5: mod-patients). Needs the
 // database and request pipeline from the app, and the identity module's guards for its markers.
 import { Module, type DynamicModule } from '@nestjs/common';
 import { systemClock, type Clock } from '@hms/domain-kernel';
 import { PATIENTS_CLOCK } from './application/context.js';
 import { NidRevealService } from './application/nid-reveal.service.js';
+import { PatientIdentityService } from './application/patient-identity.service.js';
 import { PatientRegistrationService } from './application/patient-registration.service.js';
 import { PatientSearchService } from './application/patient-search.service.js';
 import { PatientsController } from './http/patients.controller.js';
@@ -26,6 +27,7 @@ export class PatientsModule {
         PatientRegistrationService,
         PatientSearchService,
         NidRevealService,
+        PatientIdentityService,
         NidVault,
         { provide: NID_MASTER_KEY, useValue: options.nidKey },
         { provide: PATIENTS_CLOCK, useValue: options.clock ?? systemClock },

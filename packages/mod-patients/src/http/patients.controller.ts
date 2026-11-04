@@ -1,10 +1,12 @@
-// /api/v1/patients: search, and register a patient after listing the possible existing patients
-// (T-PAT-01, T-PAT-02; UC-PAT-01; FR-PAT-001..003, -011), and reveal a full NID (T-PAT-03; FR-PAT-007,
-// FR-AUD-003). Search and the candidate lookup are POSTs,
-// not GETs, so names and phone numbers stay out of URLs and request logs (FR-AUD-004, D section 10).
+// /api/v1/patients (UC-PAT-01, UC-PAT-02): search (T-PAT-02), register after listing the possible
+// existing patients (T-PAT-01; FR-PAT-001..003, -011), reveal a full NID (T-PAT-03; FR-PAT-007,
+// FR-AUD-003), and read or correct the identity of a patient (T-PAT-04; FR-PAT-008). Search and the
+// candidate lookup are POSTs, not GETs, so names and phone numbers stay out of URLs and request logs
+// (FR-AUD-004, D section 10).
 import {
   Body,
   Controller,
+  Get,
   Header,
   HttpCode,
   Inject,
@@ -17,23 +19,30 @@ import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import {
   duplicateCandidatesRequestSchema,
   duplicateCandidatesResponseSchema,
+  patientDetailSchema,
   patientSearchRequestSchema,
+  patientVersionSchema,
   patientSearchResponseSchema,
   registeredPatientSchema,
   registerPatientRequestSchema,
   revealedNidSchema,
+  updatePatientIdentityRequestSchema,
   type DuplicateCandidatesRequest,
   type DuplicateCandidatesResponse,
+  type PatientDetail,
   type PatientSearchRequest,
   type PatientSearchResponse,
   type RegisteredPatient,
   type RegisterPatientRequest,
+  type PatientVersion,
   type RevealedNid,
+  type UpdatePatientIdentityRequest,
 } from '@hms/contracts';
 import { DomainError } from '@hms/domain-kernel';
 import { RequirePermission } from '@hms/mod-identity-access';
 import { ApiEndpoint, Idempotent, SESSION_SECURITY, ZodBodyPipe } from '@hms/platform';
 import { NidRevealService } from '../application/nid-reveal.service.js';
+import { PatientIdentityService } from '../application/patient-identity.service.js';
 import { PatientRegistrationService } from '../application/patient-registration.service.js';
 import { PatientSearchService } from '../application/patient-search.service.js';
 
@@ -44,6 +53,12 @@ const ACCESS_ERRORS = [
   'VALIDATION_FAILED',
 ] as const;
 
+/** A malformed ID is NOT_FOUND, like a patient of another hospital. */
+const patientIdPipe = () =>
+  new ParseUUIDPipe({
+    exceptionFactory: () => new DomainError('NOT_FOUND', 'Patient not found'),
+  });
+
 @ApiTags('patients')
 @ApiCookieAuth(SESSION_SECURITY)
 @Controller('patients')
@@ -52,7 +67,47 @@ export class PatientsController {
     @Inject(PatientRegistrationService) private readonly registration: PatientRegistrationService,
     @Inject(PatientSearchService) private readonly finder: PatientSearchService,
     @Inject(NidRevealService) private readonly nids: NidRevealService,
+    @Inject(PatientIdentityService) private readonly identity: PatientIdentityService,
   ) {}
+
+  @Get(':patientId')
+  @RequirePermission('patient.record.search')
+  @ApiParam({ name: 'patientId', format: 'uuid' })
+  @ApiEndpoint({
+    summary: 'Get a patient with the current version',
+    description:
+      'The banner fields with the full birth facts and address, and the version to send with a ' +
+      'correction (SP-03). The NID stays masked.',
+    success: { status: 200, description: 'The patient', schema: patientDetailSchema },
+    errors: ['UNAUTHENTICATED', 'PERMISSION_DENIED', 'ENTITLEMENT_MISSING', 'NOT_FOUND'],
+  })
+  detail(@Param('patientId', patientIdPipe()) patientId: string): Promise<PatientDetail> {
+    return this.identity.detail(patientId);
+  }
+
+  @Post(':patientId/identity')
+  @HttpCode(200)
+  @Idempotent('patient.identity.correct')
+  @RequirePermission('patient.identity.edit')
+  @ApiParam({ name: 'patientId', format: 'uuid' })
+  @ApiEndpoint({
+    summary: 'Correct the identity details of a patient',
+    description:
+      'Only the fields in `changes` change; the MRN and patient ID never do. Needs a reason and ' +
+      'the version the screen showed: another version is STALE_RECORD (SP-03). The previous ' +
+      'values go to the identity history. Needs an Idempotency-Key.',
+    body: updatePatientIdentityRequestSchema,
+    success: { status: 200, description: 'The new version', schema: patientVersionSchema },
+    errors: [...ACCESS_ERRORS, 'NOT_FOUND', 'STALE_RECORD', 'IDEMPOTENCY_KEY_REUSED'],
+    csrf: true,
+  })
+  correct(
+    @Param('patientId', patientIdPipe()) patientId: string,
+    @Body(new ZodBodyPipe(updatePatientIdentityRequestSchema))
+    request: UpdatePatientIdentityRequest,
+  ): Promise<PatientVersion> {
+    return this.identity.correct(patientId, request);
+  }
 
   @Post(':patientId/nid/reveal')
   @HttpCode(200)
@@ -70,15 +125,7 @@ export class PatientsController {
     errors: ['UNAUTHENTICATED', 'PERMISSION_DENIED', 'ENTITLEMENT_MISSING', 'NOT_FOUND'],
     csrf: true,
   })
-  revealNid(
-    @Param(
-      'patientId',
-      new ParseUUIDPipe({
-        exceptionFactory: () => new DomainError('NOT_FOUND', 'Patient not found'),
-      }),
-    )
-    patientId: string,
-  ): Promise<RevealedNid> {
+  revealNid(@Param('patientId', patientIdPipe()) patientId: string): Promise<RevealedNid> {
     return this.nids.reveal(patientId);
   }
 

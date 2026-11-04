@@ -271,6 +271,7 @@ export const en = {
       ENTITLEMENT_MISSING: 'This hospital does not use this module.',
       NOT_FOUND: 'Record not found.',
       INVALID_TRANSITION: 'This record cannot be changed that way in its current state.',
+      STALE_RECORD: 'Someone else changed this record. Reload it to see the latest version.',
       USERNAME_TAKEN: 'This username is already in use. Choose another one.',
       IDEMPOTENCY_KEY_REUSED:
         'This action was already sent with different details. Please start it again.',

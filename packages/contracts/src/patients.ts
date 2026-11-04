@@ -135,3 +135,53 @@ export type PatientSearchResponse = z.infer<typeof patientSearchResponseSchema>;
 /** T-PAT-03 (FR-PAT-007, FR-AUD-003): the unmasked NID, for patient.sensitive.view, audited. */
 export const revealedNidSchema = z.object({ nid: z.string() });
 export type RevealedNid = z.infer<typeof revealedNidSchema>;
+
+/** T-PAT-04 (UC-PAT-02): a patient as the identity screen loads it, with the version to send back. */
+export const patientDetailSchema = patientSummarySchema.extend({
+  birthDate: z.iso.date().nullable(),
+  birthDatePrecision: z.enum(birthDatePrecisions),
+  reportedAgeYears: z.number().int().nullable(),
+  reportedAgeOn: z.iso.date().nullable(),
+  addressText: z.string().nullable(),
+  version: z.number().int().positive(),
+});
+export type PatientDetail = z.infer<typeof patientDetailSchema>;
+
+/**
+ * Only the fields present change; null clears an optional one. Unknown keys, such as `mrn`, are
+ * refused: the MRN and the patient ID never change (FR-PAT-008, UC-PAT-02 D2).
+ */
+const identityChangesSchema = z
+  .strictObject({
+    nameBn: personName.nullable().optional(),
+    nameEn: personName.nullable().optional(),
+    sex: patientSexSchema.optional(),
+    birthDate: z.iso.date().optional(),
+    reportedAgeYears: z.number().int().min(0).max(150).optional(),
+    phone: z.string().trim().min(1).max(30).nullable().optional(),
+    addressText: z.string().trim().min(1).max(500).nullable().optional(),
+    nid: z.string().trim().min(1).max(30).optional(),
+  })
+  .superRefine((changes, context) => {
+    if (changes.birthDate !== undefined && changes.reportedAgeYears !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['reportedAgeYears'],
+        message: 'Give the birth date or the age, not both',
+      });
+    }
+  });
+export type PatientIdentityChanges = z.infer<typeof identityChangesSchema>;
+
+export const updatePatientIdentityRequestSchema = z.strictObject({
+  /** SP-03: the version the screen showed; a different current version is STALE_RECORD. */
+  expectedVersion: z.number().int().positive(),
+  /** FR-PAT-008: every correction states why. */
+  reason: z.string().trim().min(3).max(500),
+  changes: identityChangesSchema,
+});
+export type UpdatePatientIdentityRequest = z.infer<typeof updatePatientIdentityRequestSchema>;
+
+/** The patient after a correction: same ID and MRN, the next version. */
+export const patientVersionSchema = registeredPatientSchema;
+export type PatientVersion = z.infer<typeof patientVersionSchema>;

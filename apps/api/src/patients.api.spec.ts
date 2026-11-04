@@ -578,4 +578,158 @@ describe('patient registration over HTTP', () => {
       expect(((await res.json()) as Problem).fields?.map((field) => field.path)).toEqual(['nid']);
     });
   });
+
+  describe('identity correction (T-PAT-04)', () => {
+    async function registered() {
+      const { tenantId, session } = await hospital();
+      const res = await register(session, { ...salma(), nid: '1234567890' });
+      const { patientId } = (await dataOf(res)) as { patientId: string };
+      const editor = await staffOf(tenantId, [
+        'patient.identity.edit',
+        'patient.record.search',
+        'patient.sensitive.view',
+      ]);
+      return { tenantId, session, editor, patientId };
+    }
+
+    const correct = (session: StaffSession, patientId: string, body: unknown, key = randomUUID()) =>
+      client.call(session, 'POST', `/patients/${patientId}/identity`, body, {
+        'Idempotency-Key': key,
+      });
+    const detail = async (session: StaffSession, patientId: string) =>
+      dataOf(await client.call(session, 'GET', `/patients/${patientId}`));
+
+    it('AT-PAT-010: corrects with a reason, keeps the previous values, MRN unchanged', async () => {
+      const { tenantId, editor, patientId } = await registered();
+      const before = await detail(editor, patientId);
+      expect(before).toMatchObject({ version: 1, nidLast4: '7890', birthDate: '1990-05-14' });
+
+      const res = await correct(editor, patientId, {
+        expectedVersion: 1,
+        reason: 'Spelling on the NID card',
+        changes: { nameEn: 'Salma Akter', phone: '01811000002' },
+      });
+      expect(res.status).toBe(200);
+      expect(await dataOf(res)).toEqual({ patientId, mrn: before.mrn, version: 2 });
+      expect(await detail(editor, patientId)).toMatchObject({
+        nameEn: 'Salma Akter',
+        phone: '01811000002',
+        mrn: before.mrn,
+        version: 2,
+      });
+
+      const [history, audit, outbox] = await withTenant(prisma, { tenantId }, (tx) =>
+        Promise.all([
+          tx.patientIdentityHistory.findMany({ where: { patientId } }),
+          tx.auditEvent.findMany({
+            where: { action: 'patient.identity.changed', targetId: patientId },
+          }),
+          tx.outboxEvent.findMany({
+            where: { eventType: 'PatientIdentityChanged', aggregateId: patientId },
+          }),
+        ]),
+      );
+      expect(history).toEqual([
+        expect.objectContaining({
+          version: 1,
+          changedFields: ['nameEn', 'phone'],
+          previousValues: { nameEn: 'Salma Begum', phone: '01711000001' },
+          reason: 'Spelling on the NID card',
+        }),
+      ]);
+      expect(audit[0]).toMatchObject({ reason: 'Spelling on the NID card' });
+      expect(audit[0]?.details).toMatchObject({ changedFields: 'nameEn,phone', toVersion: 2 });
+      expect(outbox[0]?.payload).toEqual({ patientId, version: 2 });
+    });
+
+    it('SP-03: a stale version is STALE_RECORD and changes nothing', async () => {
+      const { editor, patientId } = await registered();
+      const first = { expectedVersion: 1, reason: 'First fix', changes: { addressText: 'Mirpur' } };
+      expect((await correct(editor, patientId, first)).status).toBe(200);
+      const stale = await correct(editor, patientId, {
+        expectedVersion: 1,
+        reason: 'Second fix',
+        changes: { addressText: 'Dhanmondi' },
+      });
+      expect(stale.status).toBe(409);
+      expect(((await stale.json()) as Problem).code).toBe('STALE_RECORD');
+      expect(await detail(editor, patientId)).toMatchObject({ addressText: 'Mirpur', version: 2 });
+    });
+
+    it('refuses the MRN, a missing reason, no change, and users without the permission', async () => {
+      const { session, editor, patientId } = await registered();
+      const mrn = await correct(editor, patientId, {
+        expectedVersion: 1,
+        reason: 'Try',
+        changes: { mrn: 'MRN-999999' },
+      });
+      expect(mrn.status).toBe(422);
+      const noReason = await correct(editor, patientId, {
+        expectedVersion: 1,
+        changes: { nameEn: 'X Y' },
+      });
+      expect(((await noReason.json()) as Problem).fields?.map((field) => field.path)).toEqual([
+        'reason',
+      ]);
+      const same = await correct(editor, patientId, {
+        expectedVersion: 1,
+        reason: 'Nothing new',
+        changes: { nameEn: 'Salma Begum' },
+      });
+      expect(((await same.json()) as Problem).fields?.map((field) => field.path)).toEqual([
+        'changes',
+      ]);
+      const withoutPermission = await correct(session, patientId, {
+        expectedVersion: 1,
+        reason: 'No right',
+        changes: { nameEn: 'X Y' },
+      });
+      expect(withoutPermission.status).toBe(403);
+      expect(await detail(editor, patientId)).toMatchObject({ version: 1 });
+    });
+
+    it('corrects the NID: the old number stops matching, the history keeps its last four', async () => {
+      const { tenantId, editor, patientId } = await registered();
+      const res = await correct(editor, patientId, {
+        expectedVersion: 1,
+        reason: 'Wrong card scanned',
+        changes: { nid: '9876543210' },
+      });
+      expect(res.status).toBe(200);
+      const reveal = await client.call(editor, 'POST', `/patients/${patientId}/nid/reveal`);
+      expect(await dataOf(reveal)).toEqual({ nid: '9876543210' });
+      const search = async (term: string) =>
+        (await dataOf(await client.call(editor, 'POST', '/patients/search', { term }))).patients;
+      expect(await search('1234567890')).toEqual([]);
+      expect(await search('9876543210')).toHaveLength(1);
+      const [history] = await withTenant(prisma, { tenantId }, (tx) =>
+        tx.patientIdentityHistory.findMany({ where: { patientId } }),
+      );
+      expect(history?.changedFields).toEqual(['nid']);
+      expect(history?.previousValues).toEqual({ nid: { last4: '7890' } });
+      const previous = Buffer.from(history?.previousNidCiphertext ?? []);
+      expect(previous.length).toBeGreaterThan(28);
+      expect(previous.includes(Buffer.from('1234567890'))).toBe(false);
+    });
+
+    it('is idempotent, and another hospital cannot read or correct the patient', async () => {
+      const { editor, patientId } = await registered();
+      const key = randomUUID();
+      const body = { expectedVersion: 1, reason: 'Retry safe', changes: { addressText: 'Uttara' } };
+      const first = await correct(editor, patientId, body, key);
+      const again = await correct(editor, patientId, body, key);
+      expect(again.headers.get('Idempotent-Replay')).toBe('true');
+      expect(await dataOf(again)).toEqual(await dataOf(first));
+      expect(await detail(editor, patientId)).toMatchObject({ version: 2 });
+
+      const other = await hospital();
+      const outsider = await staffOf(other.tenantId, [
+        'patient.identity.edit',
+        'patient.record.search',
+      ]);
+      expect((await client.call(outsider, 'GET', `/patients/${patientId}`)).status).toBe(404);
+      const foreign = await correct(outsider, patientId, { ...body, expectedVersion: 2 });
+      expect(foreign.status).toBe(404);
+    });
+  });
 });
