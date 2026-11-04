@@ -5,6 +5,7 @@ import { withTenant, type PrismaClient, type TenantTx } from '@hms/database';
 import { appendAuditEvent } from '@hms/platform';
 import type { AccountStatus } from '../domain/account-policy.js';
 import type { LockReason, LockState } from '../domain/lockout-policy.js';
+import { assertAccountNotShared } from './shared-account.js';
 
 export interface AdminRef {
   tenantId: string;
@@ -98,6 +99,7 @@ export async function changeLock(
   const { admin, targetUserId } = change;
   return withTenant(prisma, { tenantId: admin.tenantId, userId: admin.userId }, async (tx) => {
     if (!(await isMemberOfHospital(tx, targetUserId))) return 'NOT_FOUND';
+    await assertAccountNotShared(tx, targetUserId);
     const updated = await tx.userAccount.updateMany({
       where: { id: targetUserId, status: { in: [...change.allowedFrom] } },
       data: { ...change.state, version: { increment: 1 } },
