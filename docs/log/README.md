@@ -126,3 +126,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-02 | [T-PRN-01: print and PDF spike](2026-11-02-T-PRN-01-print-pdf.md)                                                                       |
 | 2026-11-02 | [T-ACC-05 follow-up: administrators cannot change an account shared with another hospital](2026-11-02-T-ACC-05-shared-account-guard.md) |
 | 2026-11-02 | [T-ACC-06: one account per hospital](2026-11-02-T-ACC-06-per-hospital-accounts.md)                                                      |
+| 2026-11-04 | [Docs: one pull request per full feature](2026-11-04-docs-pr-per-feature.md)                                                            |

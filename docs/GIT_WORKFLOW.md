@@ -1,6 +1,6 @@
 # Git workflow
 
-Agreed by the product owner on 2026-10-14. Applies to people and AI agents. The short version is in [CLAUDE.md](../CLAUDE.md).
+Agreed by the product owner on 2026-10-14; one pull request per feature since 2026-11-04 (section 4). Applies to people and AI agents. The short version is in [CLAUDE.md](../CLAUDE.md).
 
 ## 1. Branches
 
@@ -8,7 +8,7 @@ Agreed by the product owner on 2026-10-14. Applies to people and AI agents. The 
 | ------------- | --------------------------------------------------------------------------- | ------------------------------------ |
 | `main`        | Deployable code only. Every deploy comes from `main`.                       | Release PRs from `dev`, hotfix PRs   |
 | `dev`         | Integration branch and GitHub default branch. All features land here first. | Squash-merged PRs from work branches |
-| work branches | One per task, created from `dev`, deleted after merge                       | Commits by the author                |
+| work branches | One per feature, created from `dev`, deleted after merge                    | Commits by the author                |
 | `hotfix/*`    | Urgent fix for production, created from `main`                              | Commits by the author                |
 
 Never commit directly to `main` or `dev`.
@@ -16,18 +16,18 @@ Never commit directly to `main` or `dev`.
 ```text
 main  ---o----------------o------------   release PRs (merge commit) + tag vX.Y.Z
           \              ^
-dev   -----o--o--o--o----o---o---------   squash-merged work branches
-            \   ^
-feat/T-ACC-01-login  o o o                one branch per task
+dev   -----o--------------o---o---------   one squash commit per feature
+            \            ^
+feat/PAT-patient-registry  o o o o        one branch per feature, commits per task
 ```
 
 ## 2. Branch names
 
-`<type>/<task-id>-<short-slug>`, lowercase slug with hyphens:
+A feature branch is `feat/<epic>-<short-slug>`, where the epic is the task prefix in G (`PAT`, `SCH`, `BIL`). Other branches are `<type>/<task-id>-<short-slug>`. Slugs are lowercase with hyphens:
 
 | Type       | Use for                             | Example                               |
 | ---------- | ----------------------------------- | ------------------------------------- |
-| `feat`     | A new feature or task from G        | `feat/T-ACC-01-login`                 |
+| `feat`     | A full feature (section 4)          | `feat/PAT-patient-registry`           |
 | `fix`      | A bug fix                           | `fix/T-BIL-04-receipt-total`          |
 | `refactor` | Code change with no behavior change | `refactor/T-PLT-01-idempotency-store` |
 | `test`     | Tests only                          | `test/T-DB-03-two-tenant-fixtures`    |
@@ -35,7 +35,7 @@ feat/T-ACC-01-login  o o o                one branch per task
 | `chore`    | Tooling, CI, dependencies           | `chore/ci-dev-branch`                 |
 | `hotfix`   | Urgent production fix from `main`   | `hotfix/login-500-on-expired-session` |
 
-Use the task ID when there is one. Without one, the slug alone is fine (`docs/git-workflow`).
+Use the task ID when there is one. Without one, the slug alone is fine (`docs/git-workflow`). Branch types other than `feat` and `hotfix` are rare now: small work rides on a feature branch (section 4).
 
 ## 3. Commit messages
 
@@ -57,14 +57,27 @@ Refs: T-ACC-01
 - **Plain ASCII punctuation only** (no em dashes, curly quotes or arrows), same rule as code.
 - **No AI attribution:** no `Co-Authored-By: Claude`, no "Generated with Claude Code". `.claude/settings.json` turns it off.
 
-Small commits on a work branch are fine; they are squashed when the PR merges.
+On a feature branch, each task is one or more commits with that task's `Refs:` footer and its `docs/log/` entry. They are squashed when the PR merges.
 
 ## 4. Pull requests into `dev`
 
-1. Branch from an up-to-date `dev`: `git switch dev && git pull origin dev && git switch -c feat/T-XXX-NN-slug`.
-2. Push the branch to **all three remotes** (section 7) and open the PR on `origin` (byteSpate/HMS-SaaS) with base `dev`.
-3. **PR title** = the future squash commit: `feat(auth): login, sessions and CSRF (T-ACC-01)`.
-4. Fill in the PR template (what, why, tests run, log entry, screenshots for UI).
+### One pull request per full feature (product owner, 2026-11-04)
+
+A pull request is opened only when a **full feature** is implemented, never for a single small task.
+
+- **A full feature** is one capability a user can try from start to finish, with its API, database, permissions, audit, screens and tests. It is usually a group of tasks from one epic in G, for example patient registry (T-PAT-01..04) or practitioners and scheduling (T-PRA-01, T-SCH-01..02). The feature list for a phase is agreed with the product owner before work starts.
+- **Tasks are commits, not pull requests.** All tasks of the feature are built on one branch from `dev`.
+- **Small work gets no pull request of its own:** docs, rule changes, chores, dependency bumps and small fixes ride on the current feature branch, or wait for the next one. If no feature branch is open, keep them on a local branch until one starts.
+- **Checks before each task commit:** CI runs only on pull requests, so run the CI steps locally first: `pnpm format:check`, `pnpm turbo run build lint typecheck`, `pnpm boundaries:check` and `pnpm turbo run test`.
+- **Push the branch to all three remotes** after each task, as a backup (section 7).
+- **Exceptions:** hotfixes into `main` (section 6) and release pull requests (section 5) keep their own pull requests.
+
+### Steps
+
+1. Branch from an up-to-date `dev`: `git switch dev && git pull origin dev && git switch -c feat/<epic>-<slug>`.
+2. Build the feature task by task (commits above), pushing to **all three remotes** (section 7). When the whole feature is done, open the PR on `origin` (byteSpate/HMS-SaaS) with base `dev`.
+3. **PR title** = the future squash commit: `feat(patient): registration, search and identity edit (T-PAT-01..04)`. The squash commit's footer lists every task: `Refs: T-PAT-01, T-PAT-02, T-PAT-03, T-PAT-04`.
+4. Fill in the PR template (what, why, the tasks included, tests run, log entries, screenshots for UI).
 5. **CI must be green** before merging.
 6. **Review:** the other team member reviews. When an AI agent wrote the code, a human reviews it before merge.
 7. **Squash merge**, then delete the branch on all three remotes.

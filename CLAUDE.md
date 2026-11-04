@@ -7,9 +7,10 @@ Hospital ERP sold as SaaS. Read [README.md](README.md) for layout and commands, 
 Full guide: [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md). In short:
 
 - **`main`** = deployable only (release PRs from `dev`, hotfixes). **`dev`** = integration branch. Never commit directly to either.
-- Work branch per task from `dev`: `<type>/<task-id>-<slug>`, e.g. `feat/T-ACC-01-login`. Types: `feat fix refactor test docs chore hotfix`.
+- **One PR per full feature, no PR for a small task** (product owner, 2026-11-04). A feature is one capability a user can try end to end, usually a group of tasks from one epic in G (e.g. T-PAT-01..04). One branch per feature from `dev`: `feat/<epic>-<slug>`, e.g. `feat/PAT-patient-registry`. Each task is one or more commits on it, with its log entry. Docs, chores and small fixes ride on the current or next feature branch. Only hotfixes and releases get their own PRs.
+- CI runs only on PRs, so run the CI steps locally before each task commit (`pnpm format:check`, `pnpm turbo run build lint typecheck`, `pnpm boundaries:check`, `pnpm turbo run test`).
 - Commits: Conventional Commits `type(scope): subject`, imperative, at most 72 characters, footer `Refs: T-XXX-NN`.
-- PR into `dev`, CI green, human review, **squash merge**, delete the branch on all remotes. Releases: PR `dev` -> `main`, merge commit, tag `vX.Y.Z`.
+- Feature done: PR into `dev`, CI green, human review, **squash merge**, delete the branch on all remotes. Releases: PR `dev` -> `main`, merge commit, tag `vX.Y.Z`.
 
 ## Git: always push to all three remotes
 
