@@ -42,7 +42,30 @@ A receptionist can register a patient. While the form is filled in, `POST /api/v
 | `pnpm turbo run test --concurrency=1`                                  | 26 of 26 tasks; API 118, mod-patients 13, domain-kernel 12 |
 | Prettier on the changed files                                          | Clean                                                      |
 
+### Swagger check (follow-up commit)
+
+Tried by hand in Swagger UI (`/docs`) as the demo receptionist, driven by Playwright. It found three gaps, fixed in the same follow-up:
+
+- **No route documented `Idempotency-Key`,** so Swagger had no field for it and every command was refused. `@Idempotent()` now adds the header to the document; `swagger.spec.ts` checks it.
+- **The demo hospital had no modules,** so the demo receptionist got `ENTITLEMENT_MISSING`. `pnpm db:seed:dev` now enables every module, also on an already seeded database.
+- **The seed found "demo" by the username `admin`,** which is no longer unique since C-099. It now finds the hospital by its code.
+
+| Step in Swagger UI                                | Result                                                   |
+| ------------------------------------------------- | -------------------------------------------------------- |
+| `POST /auth/login` (hospital `demo`, `reception`) | 200; CSRF token entered under Authorize                  |
+| Duplicate candidates for a new person             | 200, none                                                |
+| Register                                          | 201, `MRN-000002`                                        |
+| Register again with the same key                  | 201, same patient, `idempotent-replay: true`             |
+| Similar name, no phone, not confirmed             | 422 `DUPLICATE_CANDIDATES_PRESENT` with the candidate ID |
+| Candidates with the phone written `+880 ...`      | 200, reasons `SAME_PHONE`, `SIMILAR_NAME`                |
+| Same, confirmed with the candidate listed         | 201, `MRN-000003`                                        |
+| Invalid phone                                     | 422 `VALIDATION_FAILED`, field `phone`                   |
+| Empty `Idempotency-Key`                           | Swagger refuses to send; the API answers 422 (curl)      |
+
 ## Known limitations
+
+- **Swagger "Try it out" for writes needs the API's own origin** (for example `http://localhost:4100`) in `CORS_ORIGINS`, because the origin check refuses any other (ADR-021). The check above ran with it added for the run only. Whether to list it in `.env.example` is for the project lead, since `/docs` is public on staging (DEPLOYMENT.md section 5).
+- **One field error at a time** for rules the module checks (future birth date, phone format): a body with both shows only the first.
 
 - **Two receptionists registering the same person at the same moment** can both succeed, because a candidate check cannot lock rows that do not exist yet. Merging is out of scope (Q-036).
 - **No screen yet:** the registration and search screens come later in this feature, before its pull request.

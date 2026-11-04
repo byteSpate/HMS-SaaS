@@ -64,6 +64,14 @@ describe('Swagger document', () => {
       expect.arrayContaining(['200', '401', '423', '429']),
     );
     expect(document.components?.securitySchemes).toHaveProperty('csrf');
+    // Commands document their Idempotency-Key, so they can be tried from Swagger (T-PLT-01).
+    const keyOf = (operation?: { parameters?: { name?: string; in?: string }[] }) =>
+      operation?.parameters?.find((parameter) => parameter.name === 'Idempotency-Key');
+    expect(keyOf(document.paths['/api/v1/patients']?.post)).toMatchObject({ in: 'header' });
+    expect(
+      keyOf(document.paths['/api/v1/config/policies/{policyKey}/versions']?.post),
+    ).toMatchObject({ in: 'header' });
+    expect(document.paths['/api/v1/patients/duplicate-candidates']?.post).toBeDefined();
     await app.close();
     // Compiling the whole AppModule takes several seconds on a slow machine.
   }, 30_000);

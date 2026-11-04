@@ -4,10 +4,13 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
-import { createPrismaClient, withTenant } from '@hms/database';
+import { coreModules, moduleCodes } from '@hms/contracts';
+import { createPrismaClient, withTenant, type PrismaClient } from '@hms/database';
 import { createRolesFromTemplates, hashPassword } from '@hms/mod-identity-access';
 
 config({ path: fileURLToPath(new URL('../../../.env', import.meta.url)), quiet: true });
+
+const DEMO_HOSPITAL_CODE = 'demo';
 
 // DEV ONLY credentials, like the values in .env.example. Never used outside a local database.
 /* eslint-disable sonarjs/no-hardcoded-passwords -- synthetic, and requireLocalDatabase guards it */
@@ -33,12 +36,30 @@ function requireLocalDatabase(): string {
   return url;
 }
 
+/**
+ * The demo hospital has every module, so each screen can be tried by hand (FR-SAA-004). Runs on
+ * every seed, so a database seeded before a module existed gets it too.
+ */
+async function enableAllModules(prisma: PrismaClient, tenantId: string): Promise<void> {
+  const modules = moduleCodes.filter((code) => !coreModules.has(code));
+  await withTenant(prisma, { tenantId }, (tx) =>
+    tx.tenantEntitlement.createMany({
+      data: modules.map((moduleCode) => ({ tenantId, moduleCode })),
+      skipDuplicates: true,
+    }),
+  );
+}
+
 async function seed(): Promise<void> {
   const prisma = createPrismaClient(requireLocalDatabase());
   try {
-    const existing = await prisma.userAccount.findFirst({ where: { username: 'admin' } });
-    if (existing) {
-      console.log('Already seeded: user "admin" exists. Nothing changed.');
+    // Usernames are unique per hospital (C-099), so look for the demo hospital itself, by the same
+    // lookup sign-in uses: hms_app cannot read hms.tenant without a hospital context.
+    const [demo] = await prisma.$queryRaw<{ id: string | null }[]>`
+      SELECT hms.tenant_id_for_login(${DEMO_HOSPITAL_CODE}) AS id`;
+    if (demo?.id) {
+      await enableAllModules(prisma, demo.id);
+      console.log('Already seeded: hospital "demo" exists. Made sure every module is enabled.');
       return;
     }
 
@@ -48,7 +69,7 @@ async function seed(): Promise<void> {
 
     await withTenant(prisma, { tenantId }, async (tx) => {
       await tx.tenant.create({
-        data: { id: tenantId, code: 'demo', nameEn: 'Demo Hospital', status: 'ACTIVE' },
+        data: { id: tenantId, code: DEMO_HOSPITAL_CODE, nameEn: 'Demo Hospital', status: 'ACTIVE' },
       });
       const roleIds = await createRolesFromTemplates(tx, tenantId);
       for (const [index, user] of DEMO_USERS.entries()) {
@@ -70,6 +91,7 @@ async function seed(): Promise<void> {
         });
       }
     });
+    await enableAllModules(prisma, tenantId);
 
     console.log(
       'Seeded "Demo Hospital" with the nine template roles. Sign in at /staff with hospital code demo:',

@@ -4,6 +4,7 @@
 // duplicates wait on the record's primary key, then get the finished answer.
 import { createHash } from 'node:crypto';
 import {
+  applyDecorators,
   Inject,
   Injectable,
   SetMetadata,
@@ -12,6 +13,7 @@ import {
   type NestInterceptor,
 } from '@nestjs/common';
 import { ModuleRef, Reflector } from '@nestjs/core';
+import { ApiHeader } from '@nestjs/swagger';
 import {
   withCommandTransaction,
   withTenant,
@@ -28,9 +30,20 @@ const IDEMPOTENT_OPERATION = 'hms:idempotent-operation';
 const KEY_HEADER = 'idempotency-key';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Marks a command route. `operation` names it in the record and in /operations/{key}. */
+/**
+ * Marks a command route. `operation` names it in the record and in /operations/{key}. The header
+ * is documented here, so every command shows it in Swagger and can be tried from there.
+ */
 export const Idempotent = (operation: string): MethodDecorator =>
-  SetMetadata(IDEMPOTENT_OPERATION, operation);
+  applyDecorators(
+    SetMetadata(IDEMPOTENT_OPERATION, operation),
+    ApiHeader({
+      name: 'Idempotency-Key',
+      required: true,
+      description: 'A new UUID per action; send the same one when retrying it (SP-08)',
+      schema: { type: 'string', format: 'uuid' },
+    }),
+  );
 
 interface Scope {
   tenantId: string;
