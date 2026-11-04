@@ -42,7 +42,7 @@ The product owner confirmed that HMS is sold as shared SaaS with tenants. The pl
 
 ## Known limitations
 
-- **Forgotten passwords (C-093, FR-ACC-012)** and administrator password resets were built while one hospital per installation was the plan. Check that a tenant administrator cannot reset an account that also belongs to another tenant before real tenants exist.
+- **Forgotten passwords (C-093, FR-ACC-012)** and administrator password resets were built while one hospital per installation was the plan. The check found a real gap, closed in `2026-11-02-T-ACC-05-shared-account-guard.md`.
 - **Provisioning has no code or task:** FR-SAA-002, the activation checklist (FR-SAA-006), tenant export (FR-SAA-008) and the control plane are requirements only, and plan G lists no provisioning task.
 - **`hms_app` can write `tenant_entitlement`:** the 2026-11-01 grants log expected this to go away with tenant removal. It now needs restricting with provisioning (T-ACC-02 log).
 - **Timeline:** the 20-week estimate is restored as written. It was not re-estimated.
