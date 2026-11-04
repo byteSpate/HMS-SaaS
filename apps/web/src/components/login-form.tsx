@@ -58,7 +58,7 @@ export function LoginForm() {
     login.mutate(parsed.data, {
       onSuccess: (session) => {
         rememberHospitalCode(parsed.data.hospitalCode);
-        router.replace(session.activeMembershipId ? '/' : '/choose-hospital');
+        router.replace(session.activeMembershipId ? '/' : '/login');
       },
       onError: (error) => {
         setFailure(error);

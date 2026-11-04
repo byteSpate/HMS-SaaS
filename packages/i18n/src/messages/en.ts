@@ -246,12 +246,6 @@ export const en = {
       'Someone else changed this patient while you were editing. Reload to see the latest details, then correct again.',
     reload: 'Reload',
   },
-  chooseHospital: {
-    title: 'Choose a hospital',
-    description: 'Your account has access to more than one hospital.',
-    noAccess: 'Your account is not assigned to any hospital yet. Ask your administrator.',
-    continueWith: 'Continue to {name}',
-  },
   nav: {
     label: 'Main navigation',
     home: 'Home',
@@ -264,7 +258,6 @@ export const en = {
   shell: {
     userMenu: 'Account menu',
     signedInAs: 'Signed in as {name}',
-    switchHospital: 'Switch hospital',
     collapseMenu: 'Collapse menu',
     expandMenu: 'Expand menu',
   },

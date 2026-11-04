@@ -180,34 +180,11 @@ export class AuthService {
     }
 
     await clearFailedLogins(this.prisma, user.id);
-    // FR-ACC-002: with exactly one hospital the choice is automatic (UC-ACC-01 A1).
-    const bound = memberships.length === 1 ? (memberships[0] ?? null) : null;
+    // T-ACC-06 (C-099): an account belongs to one hospital, so the session is bound to it at once.
+    const bound = memberships[0] ?? null;
     const issued = await this.startSession(user, memberships, bound, meta);
     await this.authEvent('auth.login.succeeded', 'SUCCEEDED', meta, { userId: user.id });
     return issued;
-  }
-
-  async selectMembership(
-    ctx: AuthContext,
-    membershipId: string,
-    meta: RequestMeta,
-  ): Promise<IssuedSession> {
-    const user = await this.requireUser(ctx.userId);
-    const memberships = await this.activeMemberships(user.id);
-    const chosen = memberships.find((m) => m.id === membershipId);
-    // Another user's or an inactive membership looks the same as a missing one (D section 8.3).
-    if (!chosen) throw new DomainError('NOT_FOUND', 'Membership not found');
-
-    // ADR-004: a new session ID on hospital switch. The old token is revoked and the new
-    // session created in one transaction, so a concurrent logout or switch cannot leave two
-    // valid sessions or revive a logged-out one. The new session keeps the old absolute expiry
-    // (FR-ACC-003, C-032).
-    // A second factor passed in this login stays passed: it proves the user, not the hospital.
-    return this.startSession(user, memberships, chosen, meta, {
-      absoluteLimit: ctx.absoluteExpiresAt,
-      replacing: ctx.tokenHash,
-      mfaVerifiedAt: ctx.mfaVerifiedAt,
-    });
   }
 
   /**

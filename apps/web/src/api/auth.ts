@@ -19,8 +19,6 @@ export const authApi = {
   requestPasswordReset: (body: ForgotPasswordRequest) =>
     apiRequest('/auth/password-reset-requests', { method: 'POST', body }),
   session: () => apiRequest('/auth/session', { parse }),
-  selectMembership: (membershipId: string) =>
-    apiRequest('/auth/session/membership', { method: 'POST', body: { membershipId }, parse }),
   updatePreferences: (preferredLang: 'bn-BD' | 'en') =>
     apiRequest('/auth/preferences', { method: 'PATCH', body: { preferredLang }, parse }),
   logout: () => apiRequest('/auth/logout', { method: 'POST' }),

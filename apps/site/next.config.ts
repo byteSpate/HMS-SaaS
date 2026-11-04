@@ -20,11 +20,12 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
-    return ['/login', '/choose-hospital'].map((path) => ({
-      source: path,
-      destination: `/staff${path}`,
-      permanent: true,
-    }));
+    // The hospital choice screen went with one hospital per account (T-ACC-06): its old bookmark
+    // opens the staff app, which sends a signed-out visitor to sign in.
+    return [
+      { source: '/login', destination: '/staff/login', permanent: true },
+      { source: '/choose-hospital', destination: '/staff', permanent: true },
+    ];
   },
 };
 

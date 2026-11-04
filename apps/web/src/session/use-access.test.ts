@@ -34,11 +34,11 @@ describe('redirectTarget', () => {
 
   it('keeps a signed-in user off the login screen', () => {
     expect(redirectTarget('anonymous', session(HOSPITAL))).toBe('/');
-    expect(redirectTarget('anonymous', session(null))).toBe('/choose-hospital');
+    expect(redirectTarget('anonymous', session(null))).toBeNull();
   });
 
-  it('requires a chosen hospital for the shell', () => {
-    expect(redirectTarget('hospital', session(null))).toBe('/choose-hospital');
+  it('sends a session without a hospital back to login (T-ACC-06)', () => {
+    expect(redirectTarget('hospital', session(null))).toBe('/login');
     expect(redirectTarget('hospital', session(HOSPITAL))).toBeNull();
     expect(redirectTarget('account', session(null))).toBeNull();
   });
@@ -57,8 +57,8 @@ describe('redirectTarget: second factor (T-ACC-04, FR-ACC-006)', () => {
     expect(redirectTarget('hospital', session(HOSPITAL, PASSED))).toBeNull();
   });
 
-  it('asks for a hospital before the second factor', () => {
-    expect(redirectTarget('second-factor', session(null, PENDING))).toBe('/choose-hospital');
+  it('sends a session without a hospital back to login before the second factor', () => {
+    expect(redirectTarget('second-factor', session(null, PENDING))).toBe('/login');
   });
 });
 

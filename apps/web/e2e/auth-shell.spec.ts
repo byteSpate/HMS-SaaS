@@ -5,13 +5,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { messages } from '@hms/i18n';
 import { expect, type Page, test } from '@playwright/test';
-import {
-  HOSPITAL_ONE,
-  HOSPITAL_TWO,
-  installMockApi,
-  newWorld,
-  type MockWorld,
-} from './support/mock-api';
+import { HOSPITAL_ONE, installMockApi, newWorld, type MockWorld } from './support/mock-api';
 
 const bn = messages['bn-BD'];
 const en = messages.en;
@@ -88,26 +82,6 @@ test('a one-hospital user lands on the home screen inside the shell', async ({ p
   await expect(page.getByText(world.displayName).first()).toBeVisible();
   await expect(page.getByText(HOSPITAL_ONE.tenantNameBn as string).first()).toBeVisible();
   await expectNoViolations(page);
-});
-
-test('a user with two hospitals chooses one', async ({ page }) => {
-  const world = newWorld({ memberships: [HOSPITAL_ONE, HOSPITAL_TWO] });
-  const { requests } = await installMockApi(page, world);
-  await page.goto('/staff/login');
-  await signIn(page, world);
-
-  await expect(page).toHaveURL('/staff/choose-hospital');
-  await expect(page.getByRole('heading', { name: bn.chooseHospital.title })).toBeVisible();
-  await expectNoViolations(page);
-
-  // Bangla name missing: the English name is the fallback.
-  await page
-    .getByRole('button', {
-      name: bn.chooseHospital.continueWith.replace('{name}', HOSPITAL_TWO.tenantNameEn as string),
-    })
-    .click();
-  await expect(page).toHaveURL('/staff');
-  expect(requests.some((r) => r.path === '/auth/session/membership')).toBe(true);
 });
 
 test('changing language while signed in is saved with the CSRF token', async ({ page }) => {

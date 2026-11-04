@@ -41,10 +41,13 @@ test('sitemap lists both languages; robots blocks indexing while demo (AT-WEB-04
 });
 
 test('old staff bookmarks redirect under /staff (FR-WEB-ROUTE-002)', async ({ request }) => {
-  for (const path of ['/login', '/choose-hospital']) {
+  for (const [path, target] of [
+    ['/login', '/staff/login'],
+    ['/choose-hospital', '/staff'],
+  ] as const) {
     const response = await request.get(path, { maxRedirects: 0 });
     expect(response.status()).toBe(308);
-    expect(response.headers()['location']).toBe(`/staff${path}`);
+    expect(response.headers()['location']).toBe(target);
   }
 });
 

@@ -12,9 +12,6 @@ export const loginRequestSchema = z.object({
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 
-export const selectMembershipRequestSchema = z.object({ membershipId: z.uuid() });
-export type SelectMembershipRequest = z.infer<typeof selectMembershipRequestSchema>;
-
 export const membershipSummarySchema = z.object({
   id: z.uuid(),
   tenantId: z.uuid(),

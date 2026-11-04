@@ -58,13 +58,6 @@ export const MOCK_RECOVERY_CODES = Array.from({ length: 10 }, (_, index) =>
   `abcd${index}-efgh${index}`.replace(/[01]/g, 'z'),
 );
 
-export const HOSPITAL_TWO: MockMembership = {
-  id: ID(12),
-  tenantId: ID(22),
-  tenantNameEn: 'Green Crescent Clinic',
-  tenantNameBn: null,
-};
-
 export function newWorld(overrides: Partial<MockWorld> = {}): MockWorld {
   return {
     username: 'rahim',
@@ -184,10 +177,6 @@ export async function installMockApi(page: Page, world: MockWorld) {
     if (!signedIn) return reply(route, 401, PROBLEM(401, 'UNAUTHENTICATED'));
 
     if (path === '/auth/session' && request.method() === 'GET') return reply(route, 200, session());
-    if (path === '/auth/session/membership') {
-      activeMembershipId = body.membershipId;
-      return reply(route, 200, session());
-    }
     if (path === '/auth/preferences') {
       world.preferredLang = body.preferredLang;
       return reply(route, 200, session());

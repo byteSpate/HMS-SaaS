@@ -190,12 +190,14 @@ describe('MfaService', () => {
       meta,
     );
     const ctx = (await auth.resolveSession(token))!;
-    const { memberships } = await auth.describeSession(ctx, token);
-    const first = await auth.selectMembership(ctx, memberships[0]!.id, meta);
-    const firstCtx = (await auth.resolveSession(first.token))!;
-    const { issued } = await enrolled(user.id, firstCtx);
+    const { issued } = await enrolled(user.id, ctx);
     const verifiedCtx = (await auth.resolveSession(issued.token))!;
-    const switched = await auth.selectMembership(verifiedCtx, memberships[0]!.id, meta);
-    expect((await auth.resolveSession(switched.token))?.mfaVerifiedAt).not.toBeNull();
+    // A password change rotates the session; the second factor passed stays passed.
+    const rotated = await auth.changePassword(
+      verifiedCtx,
+      { currentPassword: PASSWORD, newPassword: 'a brand new passphrase 2026' },
+      meta,
+    );
+    expect((await auth.resolveSession(rotated.token))?.mfaVerifiedAt).not.toBeNull();
   });
 });

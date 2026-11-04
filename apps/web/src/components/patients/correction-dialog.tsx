@@ -2,11 +2,7 @@
 // SCR-03 identity correction (T-PAT-04; UC-PAT-02; FR-PAT-008; SP-03). Prefilled with the current
 // values; only what the user changed is sent, with a reason and the version the screen showed. If
 // someone else saved first, the API answers STALE_RECORD and the dialog offers to reload.
-import {
-  patientSexes,
-  type PatientDetail,
-  type PatientSex,
-} from '@hms/contracts';
+import { patientSexes, type PatientDetail, type PatientSex } from '@hms/contracts';
 import {
   Alert,
   Button,

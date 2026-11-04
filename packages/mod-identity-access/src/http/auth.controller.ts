@@ -8,13 +8,11 @@ import {
   changePasswordRequestSchema,
   forgotPasswordRequestSchema,
   loginRequestSchema,
-  selectMembershipRequestSchema,
   sessionResponseSchema,
   updatePreferencesRequestSchema,
   type ChangePasswordRequest,
   type ForgotPasswordRequest,
   type LoginRequest,
-  type SelectMembershipRequest,
   type SessionResponse,
   type UpdatePreferencesRequest,
 } from '@hms/contracts';
@@ -109,27 +107,6 @@ export class AuthController {
   })
   session(@Req() request: AuthenticatedRequest): Promise<SessionResponse> {
     return this.auth.describeSession(getAuthContext(request), getSessionToken(request));
-  }
-
-  @AllowWithoutTenant()
-  @Post('session/membership')
-  @HttpCode(200)
-  @ApiEndpoint({
-    summary: 'Choose or switch hospital',
-    description: 'Replaces the session with one bound to the chosen membership (new cookie).',
-    body: selectMembershipRequestSchema,
-    success: SESSION,
-    errors: ['VALIDATION_FAILED', 'UNAUTHENTICATED', 'CSRF_TOKEN_INVALID', 'NOT_FOUND'],
-    csrf: true,
-  })
-  async selectMembership(
-    @Body(new ZodBodyPipe(selectMembershipRequestSchema)) body: SelectMembershipRequest,
-    @Req() request: AuthenticatedRequest,
-    @Res({ passthrough: true }) response: Response,
-  ): Promise<SessionResponse> {
-    const ctx = getAuthContext(request);
-    const issued = await this.auth.selectMembership(ctx, body.membershipId, metaOf(request));
-    return this.issue(response, issued);
   }
 
   @AllowWithoutTenant()

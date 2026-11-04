@@ -31,9 +31,11 @@ export function redirectTarget(required: AccessLevel, session: SessionData): str
   const needsSecondFactor = session.mfa.required && !session.mfa.verified;
   if (required === 'account') return null;
   // FR-ACC-007: a temporary password set by an administrator is replaced before anything else,
-  // even before choosing a hospital (the API refuses guarded routes until then).
+  // (the API refuses guarded routes until then).
   if (session.passwordChangeRequired) return '/change-password';
-  if (session.activeMembershipId === null) return '/choose-hospital';
+  // T-ACC-06 (C-099): sign-in binds the session to the account's one hospital, so a session
+  // without one is not expected; it goes back to the login screen and stays there.
+  if (session.activeMembershipId === null) return required === 'anonymous' ? null : '/login';
   if (required === 'second-factor') return needsSecondFactor ? null : '/';
   if (needsSecondFactor) return '/mfa';
   return required === 'anonymous' ? '/' : null;

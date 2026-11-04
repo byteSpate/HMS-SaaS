@@ -71,10 +71,6 @@ export function useSessionActions() {
     mutationFn: (body: LoginRequest) => authApi.login(body),
     onSuccess: keep,
   });
-  const selectMembership = useMutation({
-    mutationFn: (membershipId: string) => authApi.selectMembership(membershipId),
-    onSuccess: keep,
-  });
   const updateLanguage = useMutation({
     mutationFn: (preferredLang: 'bn-BD' | 'en') => authApi.updatePreferences(preferredLang),
     onSuccess: keep,
@@ -102,7 +98,6 @@ export function useSessionActions() {
 
   return {
     login,
-    selectMembership,
     updateLanguage,
     logout,
     forget,

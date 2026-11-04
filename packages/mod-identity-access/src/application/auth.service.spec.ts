@@ -200,22 +200,17 @@ describe('AuthService', () => {
     await expectCode(login(user.username), 'MEMBERSHIP_NOT_ACTIVE');
   });
 
-  it('old token is rejected after selectMembership (rotation)', async () => {
+  // Rotation is tested through the step-up after the second factor, the rotation that remains
+  // since hospital switching went with one hospital per account (T-ACC-06).
+  it('old token is rejected after the session is rotated', async () => {
     const user = await userWithHospitals(1);
     const first = await login(user.username);
+    expect(first.session.activeMembershipId).toBe(user.memberships[0]);
     const ctx = await service.resolveSession(first.token);
-    const second = await service.selectMembership(ctx!, user.memberships[0]!, meta);
+    const second = await service.rotateAfterSecondFactor(ctx!, meta);
     expect(second.session.activeMembershipId).toBe(user.memberships[0]);
     expect(await service.resolveSession(first.token)).toBeNull();
     expect((await service.resolveSession(second.token))?.membershipId).toBe(user.memberships[0]);
-  });
-
-  it("selecting another user's membership is NOT_FOUND", async () => {
-    const user = await userWithHospitals(1);
-    const other = await userWithHospitals(1);
-    const { token } = await login(user.username);
-    const ctx = await service.resolveSession(token);
-    await expectCode(service.selectMembership(ctx!, other.memberships[0]!, meta), 'NOT_FOUND');
   });
 
   it('expires after 60 idle minutes and allows a fresh login (FR-ACC-005)', async () => {
@@ -258,12 +253,12 @@ describe('AuthService', () => {
     expect(await service.resolveSession(token)).toBeNull();
   });
 
-  it('keeps the original absolute expiry when switching hospital', async () => {
+  it('keeps the original absolute expiry when the session is rotated', async () => {
     const user = await userWithHospitals(1);
     const first = await login(user.username);
     clock.advanceBy(30 * 60_000);
     const ctx = await service.resolveSession(first.token);
-    const second = await service.selectMembership(ctx!, user.memberships[0]!, meta);
+    const second = await service.rotateAfterSecondFactor(ctx!, meta);
     expect(second.session.absoluteExpiresAt).toBe(first.session.absoluteExpiresAt);
   });
 
@@ -289,27 +284,24 @@ describe('AuthService', () => {
     const activeSessions = (userId: string) =>
       prisma.userSession.count({ where: { userId, revokedAt: null } });
 
-    it('creates only one session when two hospital switches run at once', async () => {
+    it('creates only one session when two rotations run at once', async () => {
       const user = await userWithHospitals(1);
       const { token } = await login(user.username);
       const ctx = (await service.resolveSession(token))!;
       const results = await Promise.allSettled([
-        service.selectMembership(ctx, user.memberships[0]!, meta),
-        service.selectMembership(ctx, user.memberships[0]!, meta),
+        service.rotateAfterSecondFactor(ctx, meta),
+        service.rotateAfterSecondFactor(ctx, meta),
       ]);
       expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
       expect(await activeSessions(user.id)).toBe(1);
     });
 
-    it('does not create a session when a switch finishes after logout', async () => {
+    it('does not create a session when a rotation finishes after logout', async () => {
       const user = await userWithHospitals(1);
       const { token } = await login(user.username);
       const ctx = (await service.resolveSession(token))!;
       await service.logout(ctx, meta);
-      await expectCode(
-        service.selectMembership(ctx, user.memberships[0]!, meta),
-        'UNAUTHENTICATED',
-      );
+      await expectCode(service.rotateAfterSecondFactor(ctx, meta), 'UNAUTHENTICATED');
       expect(await activeSessions(user.id)).toBe(0);
     });
 

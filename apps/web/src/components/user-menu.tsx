@@ -1,6 +1,6 @@
 'use client';
-// Account menu in the top bar: switch hospital (only when the user has more than one) and sign
-// out. Signing out is confirmed by the server before the screen changes, so a failed request
+// Account menu in the top bar: change password and sign out (one hospital per account, T-ACC-06).
+// Signing out is confirmed by the server before the screen changes, so a failed request
 // never looks like a completed logout on a shared workstation. Implements: T-UI-02, FR-ACC-004.
 import type { SessionResponse } from '@hms/contracts';
 import { Button, Icon, Menu, useToast } from '@hms/ui';
@@ -17,15 +17,6 @@ export function UserMenu({ session }: { session: SessionResponse }) {
   const { logout } = useSessionActions();
 
   const items = [
-    ...(session.memberships.length > 1
-      ? [
-          {
-            id: 'switch-hospital',
-            label: t('shell.switchHospital'),
-            onSelect: () => router.push('/choose-hospital'),
-          },
-        ]
-      : []),
     // T-ACC-05 (FR-ACC-007): anyone may change their own password at any time.
     {
       id: 'change-password',
