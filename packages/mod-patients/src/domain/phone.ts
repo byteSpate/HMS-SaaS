@@ -13,9 +13,14 @@ function asciiDigits(text: string): string {
   }).join('');
 }
 
+/** A typed number without separators and with ASCII digits; shared by phone and NID numbers. */
+export function digitsOf(raw: string): string {
+  return asciiDigits(raw).replace(SEPARATORS, '');
+}
+
 /** The FR-PAT-003 form of any input, valid or not. */
 export function normalizePhone(raw: string): string {
-  const digits = asciiDigits(raw).replace(SEPARATORS, '');
+  const digits = digitsOf(raw);
   if (digits.startsWith('+880')) return `0${digits.slice(4)}`;
   if (digits.startsWith('880')) return `0${digits.slice(3)}`;
   return digits;

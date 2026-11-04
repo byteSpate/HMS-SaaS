@@ -14,7 +14,13 @@ export interface PatientRow {
   birthDatePrecision: string;
   birthYear: number | null;
   phoneNormalized: string | null;
+  /** FR-PAT-007: the visible part of the NID, or null when none is recorded. */
+  nidLast4: string | null;
 }
+
+/** A search term, with an NID already turned into its lookup hash by the vault. */
+export type PatientQuery =
+  Exclude<SearchTerm, { kind: 'NID' }> | { kind: 'NID_HASH'; hash: Buffer };
 
 const COLUMNS = {
   id: true,
@@ -29,10 +35,14 @@ const COLUMNS = {
   phoneNormalized: true,
 } as const;
 
-type StoredRow = Omit<PatientRow, 'birthDate'> & { birthDate: Date | null };
+type StoredRow = Omit<PatientRow, 'birthDate' | 'nidLast4'> & { birthDate: Date | null };
 
 function toRow(stored: StoredRow): PatientRow {
-  return { ...stored, birthDate: stored.birthDate?.toISOString().slice(0, 10) ?? null };
+  return {
+    ...stored,
+    birthDate: stored.birthDate?.toISOString().slice(0, 10) ?? null,
+    nidLast4: null,
+  };
 }
 
 /**
@@ -74,26 +84,52 @@ async function byName(tx: TenantTx, name: string): Promise<PatientRow[]> {
 export async function findPatients(
   tx: TenantTx,
   tenantId: string,
-  term: SearchTerm,
+  query: PatientQuery,
 ): Promise<PatientRow[]> {
-  if (term.kind === 'NAME') return byName(tx, term.name);
-  const rows = await tx.patient.findMany({
-    where: whereOf(tenantId, term),
-    select: COLUMNS,
-    orderBy: { createdAt: 'desc' },
-    take: MAX_SEARCH_RESULTS,
-  });
-  return rows.map(toRow);
+  const rows =
+    query.kind === 'NAME'
+      ? await byName(tx, query.name)
+      : (
+          await tx.patient.findMany({
+            where: whereOf(tenantId, query),
+            select: COLUMNS,
+            orderBy: { createdAt: 'desc' },
+            take: MAX_SEARCH_RESULTS,
+          })
+        ).map(toRow);
+  return withVisibleNids(tx, tenantId, rows);
 }
 
-/** Exact MRN and phone use their btree indexes; the MRN number part needs a suffix match. */
-function whereOf(tenantId: string, term: Exclude<SearchTerm, { kind: 'NAME' }>) {
-  switch (term.kind) {
+/** One indexed lookup for the visible NID digits of the rows found. */
+async function withVisibleNids(
+  tx: TenantTx,
+  tenantId: string,
+  rows: PatientRow[],
+): Promise<PatientRow[]> {
+  if (rows.length === 0) return rows;
+  const visible = await tx.patientIdentifier.findMany({
+    where: { tenantId, kind: 'NID', patientId: { in: rows.map((row) => row.id) } },
+    select: { patientId: true, valueLast4: true },
+  });
+  const last4 = new Map(visible.map((entry) => [entry.patientId, entry.valueLast4]));
+  return rows.map((row) => ({ ...row, nidLast4: last4.get(row.id) ?? null }));
+}
+
+/**
+ * Exact MRN, phone and NID hash use their btree indexes; the MRN number part needs a suffix match.
+ */
+function whereOf(tenantId: string, query: Exclude<PatientQuery, { kind: 'NAME' }>) {
+  switch (query.kind) {
     case 'MRN':
-      return { tenantId, mrn: term.mrn };
+      return { tenantId, mrn: query.mrn };
     case 'PHONE':
-      return { tenantId, phoneNormalized: term.phone };
+      return { tenantId, phoneNormalized: query.phone };
+    case 'NID_HASH':
+      return {
+        tenantId,
+        patientIdentifiers: { some: { kind: 'NID', valueHash: new Uint8Array(query.hash) } },
+      };
     case 'MRN_NUMBER':
-      return { tenantId, mrn: { endsWith: term.mrnSuffix } };
+      return { tenantId, mrn: { endsWith: query.mrnSuffix } };
   }
 }

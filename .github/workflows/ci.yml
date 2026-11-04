@@ -44,6 +44,7 @@ jobs:
       RELAY_DATABASE_URL: postgresql://hms_relay:dev_relay@localhost:5432/hms?schema=hms
       CSRF_SECRET: ci-only-csrf-secret-0123456789abcdef
       MFA_ENCRYPTION_KEY: Y2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2M= # CI only: 32 bytes of 'c'
+      NID_ENCRYPTION_KEY: ZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWU= # CI only: 32 bytes of 'e'
       CORS_ORIGINS: http://localhost:3100
       TZ: UTC
     steps:

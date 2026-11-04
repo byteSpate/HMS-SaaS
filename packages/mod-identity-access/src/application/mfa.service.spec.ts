@@ -1,4 +1,4 @@
-import { createRateLimiterFactory } from '@hms/platform';
+import { createRateLimiterFactory, openSecret } from '@hms/platform';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPrismaClient, type PrismaClient } from '@hms/database';
 import { DomainError, fixedClock, type FixedClock } from '@hms/domain-kernel';
@@ -11,7 +11,6 @@ import {
 } from '@hms/testkit';
 import { findMfa } from '../infrastructure/mfa.repository.js';
 import { hashPassword } from '../infrastructure/password-hasher.js';
-import { openSecret } from '../infrastructure/secret-box.js';
 import { timeStep, totpAt } from '../infrastructure/totp.js';
 import { DEFAULT_LOGIN_RATE_LIMITS, type AuthConfig } from './auth.config.js';
 import { AuthService, type AuthContext } from './auth.service.js';

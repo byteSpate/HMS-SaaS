@@ -50,7 +50,7 @@ const clock = fixedClock(new Date('2026-11-04T06:00:00Z'));
       clock,
       { allowedOrigins: [WEB] },
     ),
-    PatientsModule.forRoot({ clock }),
+    PatientsModule.forRoot({ clock, nidKey: Buffer.alloc(32, 9) }),
   ],
 })
 class PatientsTestModule {}
@@ -488,6 +488,94 @@ describe('patient registration over HTTP', () => {
       expect(short.status).toBe(422);
       expect(short.body.fields?.map((field) => field.path)).toEqual(['term']);
       expect((await search(session, '   ')).status).toBe(422);
+    });
+  });
+
+  describe('NID (T-PAT-03)', () => {
+    const NID = '1234567890';
+    const withNid = () => ({ ...salma(), nid: '123 456 7890' });
+    const reveal = (session: StaffSession, patientId: string) =>
+      client.call(session, 'POST', `/patients/${patientId}/nid/reveal`);
+
+    it('AT-PAT-009: stores the NID sealed and shows only its last four digits', async () => {
+      const { tenantId, session } = await hospital();
+      const res = await register(session, withNid());
+      expect(res.status).toBe(201);
+      const { patientId } = (await dataOf(res)) as { patientId: string };
+
+      const stored = await withTenant(prisma, { tenantId }, (tx) =>
+        tx.patientIdentifier.findUniqueOrThrow({
+          where: { tenantId_patientId_kind: { tenantId, patientId, kind: 'NID' } },
+        }),
+      );
+      expect(stored.valueLast4).toBe('7890');
+      expect(Buffer.from(stored.valueCiphertext).includes(Buffer.from(NID))).toBe(false);
+
+      const found = await client.call(session, 'POST', '/patients/search', { term: '1234567890' });
+      const text = await found.text();
+      expect(text).not.toContain(NID);
+      const body = JSON.parse(text) as { data: { matchedBy: string; patients: unknown[] } };
+      expect(body.data.matchedBy).toBe('NID');
+      expect(body.data.patients).toEqual([
+        expect.objectContaining({ patientId, nidLast4: '7890' }),
+      ]);
+    });
+
+    it('reveals the full NID only with patient.sensitive.view, and audits it', async () => {
+      const { tenantId, session } = await hospital();
+      const { patientId } = (await dataOf(await register(session, withNid()))) as {
+        patientId: string;
+      };
+
+      const refused = await reveal(session, patientId);
+      expect(refused.status).toBe(403);
+      expect(await refused.text()).not.toContain(NID);
+
+      const viewer = await staffOf(tenantId, ['patient.sensitive.view']);
+      const shown = await reveal(viewer, patientId);
+      expect(shown.status).toBe(200);
+      expect(shown.headers.get('cache-control')).toBe('no-store');
+      expect(await dataOf(shown)).toEqual({ nid: NID });
+      const audit = await withTenant(prisma, { tenantId }, (tx) =>
+        tx.auditEvent.findMany({ where: { action: 'patient.nid.revealed', targetId: patientId } }),
+      );
+      expect(audit).toHaveLength(1);
+      expect(JSON.stringify(audit[0])).not.toContain(NID);
+    });
+
+    it('answers NOT_FOUND without an NID, for another hospital, and for a bad ID', async () => {
+      const mine = await hospital();
+      const other = await hospital();
+      const viewer = await staffOf(mine.tenantId, ['patient.sensitive.view']);
+      const plain = (await dataOf(await register(mine.session, salma()))) as { patientId: string };
+      expect((await reveal(viewer, plain.patientId)).status).toBe(404);
+      const theirs = (await dataOf(await register(other.session, withNid()))) as {
+        patientId: string;
+      };
+      expect((await reveal(viewer, theirs.patientId)).status).toBe(404);
+      expect((await reveal(viewer, 'not-a-uuid')).status).toBe(404);
+    });
+
+    it('FR-PAT-011: the same NID is a duplicate candidate', async () => {
+      const { session } = await hospital();
+      const first = (await dataOf(await register(session, withNid()))) as { patientId: string };
+      const res = await candidates(session, {
+        nameEn: 'Someone Different',
+        sex: 'MALE',
+        reportedAgeYears: 70,
+        phone: null,
+        nid: '1234-567-890',
+      });
+      expect((await dataOf(res)).candidates).toEqual([
+        expect.objectContaining({ patientId: first.patientId, reasons: ['SAME_NID'] }),
+      ]);
+    });
+
+    it('refuses an NID that is not 10, 13 or 17 digits', async () => {
+      const { session } = await hospital();
+      const res = await register(session, { ...salma(), nid: '12345' });
+      expect(res.status).toBe(422);
+      expect(((await res.json()) as Problem).fields?.map((field) => field.path)).toEqual(['nid']);
     });
   });
 });

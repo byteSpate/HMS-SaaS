@@ -442,12 +442,35 @@ model Patient {
   createdBy          String    @map("created_by") @db.Uuid
   version            Int       @default(1)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  patientIdentifiers PatientIdentifier[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, mrn])
   @@index([tenantId, phoneNormalized])
   @@index([tenantId, birthYear])
   @@map("patient")
+  @@schema("hms")
+}
+
+// An identity document of a patient (T-PAT-03, E section 5.2). The value is sealed by the API
+// (AES-256-GCM, NID_ENCRYPTION_KEY) and found by its keyed hash; only the last four characters
+// are stored readable, for masked display (FR-PAT-007). Kinds are a CHECK in the migration.
+model PatientIdentifier {
+  tenantId        String   @map("tenant_id") @db.Uuid
+  id              String   @id @default(uuid(7)) @db.Uuid
+  patientId       String   @map("patient_id") @db.Uuid
+  kind            String
+  valueCiphertext Bytes    @map("value_ciphertext")
+  valueHash       Bytes    @map("value_hash")
+  valueLast4      String   @map("value_last4")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy       String   @map("created_by") @db.Uuid
+
+  patient Patient @relation(fields: [tenantId, patientId], references: [tenantId, id])
+
+  @@unique([tenantId, patientId, kind])
+  @@index([tenantId, kind, valueHash])
+  @@map("patient_identifier")
   @@schema("hms")
 }

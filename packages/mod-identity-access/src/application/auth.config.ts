@@ -1,10 +1,15 @@
 // Login settings. Defaults are the C-032 decisions; per-hospital overrides (CP-12) come with
 // policy versions (T-PLT-05). Lockout and login rate limits: T-ACC-03, NFR-SEC-005. Second
 // factor (TOTP): T-ACC-04, FR-ACC-006.
-import type { RateLimitRule } from '@hms/platform';
+
 import type { LockoutPolicy } from '../domain/lockout-policy.js';
-import { parseMfaKey } from '../infrastructure/secret-box.js';
+import { parseEncryptionKey, type RateLimitRule } from '@hms/platform';
 import type { SessionTimeouts } from '../domain/session-policy.js';
+
+/** The TOTP secret key (T-ACC-04); a missing or short key stops the API at start. */
+export function parseMfaKey(base64: string): Buffer {
+  return parseEncryptionKey('MFA_ENCRYPTION_KEY', base64);
+}
 
 export interface LoginRateLimits {
   perIp: RateLimitRule;

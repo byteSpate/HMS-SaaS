@@ -20,6 +20,8 @@ const identityFields = {
   birthDate: z.iso.date().optional(),
   reportedAgeYears: z.number().int().min(0).max(150).optional(),
   phone: z.string().trim().min(1).max(30).nullable(),
+  /** T-PAT-03: optional national ID, sealed by the API and never returned in full here. */
+  nid: z.string().trim().min(1).max(30).optional(),
 };
 
 const identityObject = z.object(identityFields);
@@ -68,7 +70,7 @@ export const registerPatientRequestSchema = z
 export type RegisterPatientRequest = z.infer<typeof registerPatientRequestSchema>;
 
 /** FR-PAT-011: each candidate says why it matched. */
-export const candidateReasons = ['SAME_PHONE', 'SIMILAR_NAME'] as const;
+export const candidateReasons = ['SAME_PHONE', 'SAME_NID', 'SIMILAR_NAME'] as const;
 
 export const duplicateCandidateSchema = z.object({
   patientId: z.uuid(),
@@ -118,12 +120,18 @@ export const patientSummarySchema = z.object({
   /** True when the age comes from a reported age (FR-PAT-006). */
   ageEstimated: z.boolean(),
   phone: z.string().nullable(),
+  /** FR-PAT-007: only the last four digits; the full NID needs patient.sensitive.view. */
+  nidLast4: z.string().nullable(),
 });
 export type PatientSummary = z.infer<typeof patientSummarySchema>;
 
 export const patientSearchResponseSchema = z.object({
   /** How the term was read, so the screen can say "Matched by phone". */
-  matchedBy: z.enum(['MRN', 'PHONE', 'NAME']),
+  matchedBy: z.enum(['MRN', 'PHONE', 'NID', 'NAME']),
   patients: z.array(patientSummarySchema),
 });
 export type PatientSearchResponse = z.infer<typeof patientSearchResponseSchema>;
+
+/** T-PAT-03 (FR-PAT-007, FR-AUD-003): the unmasked NID, for patient.sensitive.view, audited. */
+export const revealedNidSchema = z.object({ nid: z.string() });
+export type RevealedNid = z.infer<typeof revealedNidSchema>;

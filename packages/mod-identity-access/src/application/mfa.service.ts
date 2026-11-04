@@ -5,7 +5,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { MfaEnrolmentResponse, MfaVerifyRequest } from '@hms/contracts';
 import type { PrismaClient } from '@hms/database';
 import { DomainError, type Clock } from '@hms/domain-kernel';
-import { PRISMA } from '@hms/platform';
+import { openSecret, PRISMA, sealSecret } from '@hms/platform';
 import { appendAuthEvent, findUserById } from '../infrastructure/identity.repository.js';
 import {
   consumeRecoveryCode,
@@ -15,7 +15,6 @@ import {
   savePendingMfa,
 } from '../infrastructure/mfa.repository.js';
 import { hashRecoveryCode, newRecoveryCodes } from '../infrastructure/recovery-codes.js';
-import { openSecret, sealSecret } from '../infrastructure/secret-box.js';
 import { matchTotp, newTotpSecret, otpauthUri, toBase32 } from '../infrastructure/totp.js';
 import { AUTH_CONFIG, CLOCK, type AuthConfig } from './auth.config.js';
 import {

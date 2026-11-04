@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { IdentityAccessModule, loadAuthConfig } from '@hms/mod-identity-access';
 import { PatientsModule } from '@hms/mod-patients';
-import { DatabaseModule, RequestPipelineModule } from '@hms/platform';
+import { DatabaseModule, parseEncryptionKey, RequestPipelineModule } from '@hms/platform';
 import { AppController } from './app.controller.js';
 import { PoliciesController } from './config/policies.controller.js';
 import { HealthController } from './health/health.controller.js';
@@ -24,7 +24,10 @@ function requireEnv(name: string): string {
       allowedOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
       ...(process.env.VALKEY_URL ? { valkeyUrl: process.env.VALKEY_URL } : {}),
     }),
-    PatientsModule.forRoot(),
+    // Required: national IDs are sealed with it (T-PAT-03), so a missing key stops the start.
+    PatientsModule.forRoot({
+      nidKey: parseEncryptionKey('NID_ENCRYPTION_KEY', process.env.NID_ENCRYPTION_KEY ?? ''),
+    }),
   ],
   controllers: [AppController, HealthController, OperationsController, PoliciesController],
 })

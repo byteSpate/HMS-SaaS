@@ -1,6 +1,8 @@
 // How a search term is read (T-PAT-02; UC-PAT-01 step 1; FR-PAT-003, FR-I18N-003). One box takes an
-// MRN, a mobile number in any spelling, the number part of an MRN, or a name in either script.
+// MRN, a mobile number in any spelling, a national ID (T-PAT-03), the number part of an MRN, or a
+// name in either script.
 import { DomainError } from '@hms/domain-kernel';
+import { normalizedNid } from './nid.js';
 import { normalizeName } from './patient-identity.js';
 import { normalizedMobile, normalizePhone } from './phone.js';
 
@@ -20,6 +22,7 @@ export const MAX_SEARCH_RESULTS = 20;
 export type SearchTerm =
   | { kind: 'MRN'; mrn: string }
   | { kind: 'PHONE'; phone: string }
+  | { kind: 'NID'; nid: string }
   /** Digits that are not a mobile number: the number part of an MRN, e.g. "123" for SMH-000123. */
   | { kind: 'MRN_NUMBER'; mrnSuffix: string }
   | { kind: 'NAME'; name: string };
@@ -33,6 +36,10 @@ export function searchTermOf(raw: string): SearchTerm {
   const tidy = normalizeName(raw) ?? '';
   const upper = tidy.toUpperCase();
   if (MRN.test(upper)) return { kind: 'MRN', mrn: upper };
+
+  // After the mobile number: an 11-digit mobile is never an NID length (10, 13 or 17).
+  const nid = normalizedNid(raw);
+  if (nid !== null) return { kind: 'NID', nid };
 
   const digits = normalizePhone(raw);
   if (DIGITS.test(digits)) {

@@ -2,6 +2,7 @@
 // gives the hospital's date, and gets either the facts to store or a field error.
 import type { PatientIdentityInput } from '@hms/contracts';
 import { DomainError, yearOf } from '@hms/domain-kernel';
+import { normalizedNid } from './nid.js';
 import { normalizedMobile } from './phone.js';
 
 const OLDEST_AGE_YEARS = 150;
@@ -22,6 +23,8 @@ export interface IdentityFacts extends BirthFacts {
   nameEn: string | null;
   phoneRaw: string | null;
   phoneNormalized: string | null;
+  /** T-PAT-03: digits only; the API seals it before it reaches the database. */
+  nid: string | null;
 }
 
 function fieldError(path: string, message: string): DomainError {
@@ -74,11 +77,17 @@ export function identityFactsOf(input: IdentityInput, today: string): IdentityFa
     phoneNormalized = normalizedMobile(input.phone);
     if (phoneNormalized === null) throw fieldError('phone', 'Enter an 11-digit mobile number');
   }
+  let nid: string | null = null;
+  if (input.nid !== undefined) {
+    nid = normalizedNid(input.nid);
+    if (nid === null) throw fieldError('nid', 'Enter the NID: 10, 13 or 17 digits');
+  }
   return {
     nameBn,
     nameEn,
     phoneRaw: input.phone,
     phoneNormalized,
+    nid,
     ...birthFactsOf(input, today),
   };
 }

@@ -40,7 +40,7 @@ jobs:
           - name: api
             dockerfile: docker/Dockerfile.nest
             build-args: --build-arg APP=api
-            smoke: 4100 /health CSRF_SECRET=ci-only-csrf-secret-0123456789abcdef MFA_ENCRYPTION_KEY=Y2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2M= DATABASE_URL=postgresql://hms_app:unused@127.0.0.1:1/hms CORS_ORIGINS=http://localhost:3100
+            smoke: 4100 /health CSRF_SECRET=ci-only-csrf-secret-0123456789abcdef MFA_ENCRYPTION_KEY=Y2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2M= NID_ENCRYPTION_KEY=ZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWU= DATABASE_URL=postgresql://hms_app:unused@127.0.0.1:1/hms CORS_ORIGINS=http://localhost:3100
           # The worker serves no HTTP, so it is built and scanned only.
           - name: worker
             dockerfile: docker/Dockerfile.nest

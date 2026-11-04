@@ -1,7 +1,18 @@
 // /api/v1/patients: search, and register a patient after listing the possible existing patients
-// (T-PAT-01, T-PAT-02; UC-PAT-01; FR-PAT-001..003, -011). Search and the candidate lookup are POSTs,
+// (T-PAT-01, T-PAT-02; UC-PAT-01; FR-PAT-001..003, -011), and reveal a full NID (T-PAT-03; FR-PAT-007,
+// FR-AUD-003). Search and the candidate lookup are POSTs,
 // not GETs, so names and phone numbers stay out of URLs and request logs (FR-AUD-004, D section 10).
-import { Body, Controller, HttpCode, Inject, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Header,
+  HttpCode,
+  Inject,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
+import { ApiParam } from '@nestjs/swagger';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import {
   duplicateCandidatesRequestSchema,
@@ -10,15 +21,19 @@ import {
   patientSearchResponseSchema,
   registeredPatientSchema,
   registerPatientRequestSchema,
+  revealedNidSchema,
   type DuplicateCandidatesRequest,
   type DuplicateCandidatesResponse,
   type PatientSearchRequest,
   type PatientSearchResponse,
   type RegisteredPatient,
   type RegisterPatientRequest,
+  type RevealedNid,
 } from '@hms/contracts';
+import { DomainError } from '@hms/domain-kernel';
 import { RequirePermission } from '@hms/mod-identity-access';
 import { ApiEndpoint, Idempotent, SESSION_SECURITY, ZodBodyPipe } from '@hms/platform';
+import { NidRevealService } from '../application/nid-reveal.service.js';
 import { PatientRegistrationService } from '../application/patient-registration.service.js';
 import { PatientSearchService } from '../application/patient-search.service.js';
 
@@ -36,7 +51,36 @@ export class PatientsController {
   constructor(
     @Inject(PatientRegistrationService) private readonly registration: PatientRegistrationService,
     @Inject(PatientSearchService) private readonly finder: PatientSearchService,
+    @Inject(NidRevealService) private readonly nids: NidRevealService,
   ) {}
+
+  @Post(':patientId/nid/reveal')
+  @HttpCode(200)
+  @RequirePermission('patient.sensitive.view')
+  // The full number must not stay in a browser or proxy cache.
+  @Header('Cache-Control', 'no-store')
+  @ApiParam({ name: 'patientId', format: 'uuid' })
+  @ApiEndpoint({
+    summary: 'Show the full NID of a patient',
+    description:
+      'Lists show only the last four digits (FR-PAT-007). This returns the full number and ' +
+      'writes the audit event patient.nid.revealed (FR-AUD-003). NOT_FOUND when no NID is ' +
+      'recorded, or the patient is not in this hospital.',
+    success: { status: 200, description: 'The NID', schema: revealedNidSchema },
+    errors: ['UNAUTHENTICATED', 'PERMISSION_DENIED', 'ENTITLEMENT_MISSING', 'NOT_FOUND'],
+    csrf: true,
+  })
+  revealNid(
+    @Param(
+      'patientId',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new DomainError('NOT_FOUND', 'Patient not found'),
+      }),
+    )
+    patientId: string,
+  ): Promise<RevealedNid> {
+    return this.nids.reveal(patientId);
+  }
 
   @Post('search')
   @HttpCode(200)

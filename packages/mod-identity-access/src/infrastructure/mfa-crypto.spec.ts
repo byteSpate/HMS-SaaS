@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { parseMfaKey } from '../application/auth.config.js';
 import { hashRecoveryCode, newRecoveryCodes, normalizeRecoveryCode } from './recovery-codes.js';
-import { openSecret, parseMfaKey, sealSecret } from './secret-box.js';
 import { matchTotp, otpauthUri, timeStep, toBase32, totpAt } from './totp.js';
 
 // RFC 6238 appendix B, SHA-1 secret; the RFC prints 8 digits, a 6-digit code is the last six.
@@ -36,25 +36,8 @@ describe('TOTP (RFC 6238)', () => {
   });
 });
 
-describe('secret box (AES-256-GCM)', () => {
-  const key = randomBytes(32);
-
-  it('round-trips a secret and never stores it in the clear', () => {
-    const secret = randomBytes(20);
-    const sealed = sealSecret(key, secret);
-    expect(sealed.includes(secret)).toBe(false);
-    expect(openSecret(key, sealed).equals(secret)).toBe(true);
-  });
-
-  it('refuses a tampered value or the wrong key', () => {
-    const sealed = sealSecret(key, randomBytes(20));
-    const tampered = Buffer.from(sealed);
-    tampered[tampered.length - 1] = (tampered[tampered.length - 1] ?? 0) ^ 1;
-    expect(() => openSecret(key, tampered)).toThrow();
-    expect(() => openSecret(randomBytes(32), sealed)).toThrow();
-  });
-
-  it('accepts only a 32-byte base64 key', () => {
+describe('MFA key', () => {
+  it('accepts only a 32-byte base64 key and names MFA_ENCRYPTION_KEY', () => {
     expect(parseMfaKey(randomBytes(32).toString('base64'))).toHaveLength(32);
     expect(() => parseMfaKey('short')).toThrow(/MFA_ENCRYPTION_KEY/);
   });
