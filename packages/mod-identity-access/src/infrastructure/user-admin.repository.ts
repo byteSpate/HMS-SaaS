@@ -6,6 +6,7 @@ import { withTenant, type PrismaClient, type TenantTx } from '@hms/database';
 import { appendAuditEvent } from '@hms/platform';
 import type { AccountStatus } from '../domain/account-policy.js';
 import type { AdminRef } from './account-lock.repository.js';
+import { assertAccountNotShared } from './shared-account.js';
 
 export interface AdminUserRow {
   userId: string;
@@ -174,6 +175,7 @@ export async function resetPassword(
 ): Promise<boolean> {
   return scoped(prisma, admin, async (tx) => {
     if (!(await membershipOf(tx, targetUserId))) return false;
+    await assertAccountNotShared(tx, targetUserId);
     await tx.userAccount.update({
       where: { id: targetUserId },
       data: {
@@ -286,6 +288,7 @@ export async function resetMfa(
 ): Promise<ResetMfaResult> {
   return scoped(prisma, admin, async (tx) => {
     if (!(await membershipOf(tx, targetUserId))) return 'NOT_FOUND';
+    await assertAccountNotShared(tx, targetUserId);
     const removed = await tx.userMfa.deleteMany({ where: { userId: targetUserId } });
     if (removed.count === 0) return 'NOT_ENROLLED';
     await tx.userMfaRecoveryCode.deleteMany({ where: { userId: targetUserId } });
