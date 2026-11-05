@@ -61,3 +61,5 @@ Deploy impact: **new required variable `NID_ENCRYPTION_KEY`** (32 bytes base64, 
 ## How to debug
 
 `NID_ENCRYPTION_KEY must be 32 bytes in base64` at start: the variable is missing or wrong. A reveal that fails with an authentication error from GCM: the key changed since the NID was stored. NID search finds nothing for a known patient: check that the number normalizes to the same digits (`normalizedNid`) and that the key is the one used at registration. A `403` on reveal: the user lacks `patient.sensitive.view`; the refusal is in the audit as `authz.access.denied`.
+
+**CI fix (PR #53, 2026-11-05):** the first CI run failed `route-markers.spec.ts` and `swagger.spec.ts` in `@hms/api` with `NID_ENCRYPTION_KEY must be 32 bytes in base64`. CI set the variable, but turbo's strict env mode passes a task only the variables in its `passThroughEnv`, and `turbo.json` listed `MFA_ENCRYPTION_KEY` but not `NID_ENCRYPTION_KEY`. Locally the tests read the root `.env` through `apps/api/vitest.config.ts`, so the gap did not show. A new variable that the API reads at start must be added in three places: `.env.example`, `ci.yml` and `turbo.json` (`test.passThroughEnv`).

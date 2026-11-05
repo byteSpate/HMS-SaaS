@@ -23,6 +23,7 @@
         "RELAY_DATABASE_URL",
         "CSRF_SECRET",
         "MFA_ENCRYPTION_KEY",
+        "NID_ENCRYPTION_KEY",
         "CORS_ORIGINS"
       ]
     },
