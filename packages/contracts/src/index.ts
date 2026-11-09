@@ -10,5 +10,6 @@ export * from './operations.js';
 export * from './patients.js';
 export * from './permissions.js';
 export * from './policies.js';
+export * from './practitioners.js';
 export * from './user-admin.js';
 export * from './website.js';

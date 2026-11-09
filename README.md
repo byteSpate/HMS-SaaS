@@ -42,19 +42,19 @@ pnpm --filter @hms/web exec playwright install chromium
 
 ## Everyday commands
 
-| Command                        | What it does                                                                                                                           |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm dev`                     | Run every app with hot reload; open `http://localhost:3000` (site) and `http://localhost:3000/staff` (staff app) through the dev proxy |
-| `pnpm build`                   | Build everything                                                                                                                       |
-| `pnpm test`                    | Vitest unit tests in every package                                                                                                     |
-| `pnpm test:e2e`                | Playwright browser tests                                                                                                               |
-| `pnpm lint` / `pnpm typecheck` | ESLint (incl. SonarJS rules) / TypeScript                                                                                              |
-| `pnpm boundaries:check`        | Package dependency rules                                                                                                               |
-| `pnpm format`                  | Prettier                                                                                                                               |
-| `pnpm db:migrate`              | Create/apply a migration after editing `schema.prisma`                                                                                 |
-| `pnpm db:studio`               | Browse the local database                                                                                                              |
-| `pnpm db:seed:dev`             | Demo hospital with the template roles; users `admin` / `Admin-dev-2026` and `reception` / `Reception-dev-2026` (local database only)   |
-| `pnpm services:down`           | Stop Postgres + Valkey (data is kept in Docker volumes)                                                                                |
+| Command                        | What it does                                                                                                                                                                                                         |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                     | Run every app with hot reload; open `http://localhost:3000` (site) and `http://localhost:3000/staff` (staff app) through the dev proxy                                                                               |
+| `pnpm build`                   | Build everything                                                                                                                                                                                                     |
+| `pnpm test`                    | Vitest unit tests in every package                                                                                                                                                                                   |
+| `pnpm test:e2e`                | Playwright browser tests                                                                                                                                                                                             |
+| `pnpm lint` / `pnpm typecheck` | ESLint (incl. SonarJS rules) / TypeScript                                                                                                                                                                            |
+| `pnpm boundaries:check`        | Package dependency rules                                                                                                                                                                                             |
+| `pnpm format`                  | Prettier                                                                                                                                                                                                             |
+| `pnpm db:migrate`              | Create/apply a migration after editing `schema.prisma`                                                                                                                                                               |
+| `pnpm db:studio`               | Browse the local database                                                                                                                                                                                            |
+| `pnpm db:seed:dev`             | Demo hospital with the template roles; users `admin` / `Admin-dev-2026` and `reception` / `Reception-dev-2026` locally; a shared database needs `SEED_ADMIN_PASSWORD` and `SEED_RECEPTION_PASSWORD` (12+ characters) |
+| `pnpm services:down`           | Stop Postgres + Valkey (data is kept in Docker volumes)                                                                                                                                                              |
 
 ## Decisions made at scaffold
 

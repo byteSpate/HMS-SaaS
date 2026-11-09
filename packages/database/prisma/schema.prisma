@@ -41,6 +41,7 @@ model Tenant {
   policyVersions  PolicyVersion[]
   userAccounts    UserAccount[]
   patients        Patient[]
+  practitioners   Practitioner[]
 
   @@map("tenant")
   @@schema("hms")
@@ -451,6 +452,32 @@ model Patient {
   @@index([tenantId, phoneNormalized])
   @@index([tenantId, birthYear])
   @@map("patient")
+  @@schema("hms")
+}
+
+// A practitioner: a professional identity, not an employee record (T-PRA-01; FR-PRA-001..003;
+// E section 5.1). Names may repeat across practitioners. Name and blank-text CHECKs and the
+// column-level UPDATE grant are in the migration. No delete: `active` is turned off instead.
+model Practitioner {
+  tenantId       String   @map("tenant_id") @db.Uuid
+  id             String   @id @default(uuid(7)) @db.Uuid
+  nameBn         String?  @map("name_bn")
+  nameEn         String?  @map("name_en")
+  degrees        String?
+  specialty      String?
+  phone          String?
+  registrationNo String?  @map("registration_no")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy      String   @map("created_by") @db.Uuid
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  updatedBy      String   @map("updated_by") @db.Uuid
+  version        Int      @default(1)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@map("practitioner")
   @@schema("hms")
 }
 
