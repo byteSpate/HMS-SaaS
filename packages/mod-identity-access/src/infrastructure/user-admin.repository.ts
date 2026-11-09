@@ -44,7 +44,7 @@ export function auditAdminChange(
   tx: TenantTx,
   admin: AdminRef,
   action: string,
-  targetType: 'user_account' | 'membership' | 'role',
+  targetType: 'user_account' | 'membership' | 'role' | 'department',
   targetId: string,
   note: AuditNote,
 ): Promise<void> {

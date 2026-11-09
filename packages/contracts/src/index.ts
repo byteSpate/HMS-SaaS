@@ -3,6 +3,7 @@
 export * from './account-lock.js';
 export * from './audit.js';
 export * from './auth.js';
+export * from './departments.js';
 export * from './envelope.js';
 export * from './errors.js';
 export * from './health.js';

@@ -134,3 +134,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-04 | [T-UI-03 (patient part): front desk and patient record screens](2026-11-04-T-UI-03-patient-screens.md)                                  |
 | 2026-11-04 | [T-ACC-06 follow-up: remove the hospital choice](2026-11-04-T-ACC-06-remove-hospital-choice.md)                                         |
 | 2026-11-08 | [T-PRA-01: practitioner master](2026-11-08-T-PRA-01-practitioner-master.md)                                                             |
+| 2026-11-09 | [T-PRA-02: department master](2026-11-09-T-PRA-02-department-master.md)                                                                 |

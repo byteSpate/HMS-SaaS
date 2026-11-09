@@ -1,22 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { changedPractitionerFields, practitionerValuesOf, tidyText } from './practitioner.js';
+import { changedPractitionerFields, practitionerValuesOf } from './practitioner.js';
 
-// Practitioner values (T-PRA-01; FR-PRA-001). Names are synthetic (AS-009).
+// Practitioner values (T-PRA-01; FR-PRA-001). Names are synthetic (AS-009). The text tidying
+// itself is tested with tidyText in @hms/domain-kernel.
 describe('practitioner values', () => {
-  it('tidies spaces and treats blank as not recorded', () => {
-    expect(tidyText('  Dr.   Karim  Uddin ')).toBe('Dr. Karim Uddin');
-    expect(tidyText('   ')).toBeNull();
-    expect(tidyText(undefined)).toBeNull();
-    expect(tidyText(null)).toBeNull();
-  });
-
-  it('stores Bangla in NFC, so the same name typed two ways compares equal', () => {
-    // KA + E sign + AA sign, as some keyboards type it, is KA + O sign in NFC.
-    const typedInParts = String.fromCharCode(0x0995, 0x09c7, 0x09be);
-    const composed = String.fromCharCode(0x0995, 0x09cb);
-    expect(tidyText(typedInParts)).toBe(composed);
-  });
-
   it('fills every field, absent ones as null', () => {
     expect(practitionerValuesOf({ nameEn: 'Karim Uddin', specialty: ' Medicine ' })).toEqual({
       nameBn: null,

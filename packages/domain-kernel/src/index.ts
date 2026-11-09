@@ -3,3 +3,4 @@ export * from './business-number.js';
 export * from './calendar-date.js';
 export * from './clock.js';
 export * from './domain-error.js';
+export * from './text.js';

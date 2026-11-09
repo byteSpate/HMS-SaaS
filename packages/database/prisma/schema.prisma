@@ -69,13 +69,21 @@ model Facility {
   @@schema("hms")
 }
 
+// A department of a facility (T-PRA-02; FR-CFG-001). Code format, a name in one script at least,
+// and the column UPDATE grant are in the migration SQL.
 model Department {
-  tenantId   String  @map("tenant_id") @db.Uuid
-  id         String  @id @default(uuid(7)) @db.Uuid
-  facilityId String  @map("facility_id") @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  id         String   @id @default(uuid(7)) @db.Uuid
+  facilityId String   @map("facility_id") @db.Uuid
   code       String
-  nameEn     String? @map("name_en")
-  nameBn     String? @map("name_bn")
+  nameEn     String?  @map("name_en")
+  nameBn     String?  @map("name_bn")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy  String   @map("created_by") @db.Uuid
+  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  updatedBy  String   @map("updated_by") @db.Uuid
+  version    Int      @default(1)
 
   facility Facility @relation(fields: [tenantId, facilityId], references: [tenantId, id])
 

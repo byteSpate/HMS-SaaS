@@ -1,7 +1,7 @@
 // Identity facts of a new patient (T-PAT-01; FR-PAT-005, -006, -009; C-034). Pure rules: the caller
 // gives the hospital's date, and gets either the facts to store or a field error.
 import type { PatientIdentityInput } from '@hms/contracts';
-import { DomainError, yearOf } from '@hms/domain-kernel';
+import { DomainError, tidyText, yearOf } from '@hms/domain-kernel';
 import { normalizedNid } from './nid.js';
 import { normalizedMobile } from './phone.js';
 
@@ -36,9 +36,7 @@ export function fieldError(path: string, message: string): DomainError {
 
 /** FR-PAT-009: stored as entered, in NFC, with spaces tidied, so equal names compare equal. */
 export function normalizeName(name: string | undefined): string | null {
-  if (name === undefined) return null;
-  const tidy = name.normalize('NFC').trim().replace(/\s+/g, ' ');
-  return tidy.length > 0 ? tidy : null;
+  return tidyText(name);
 }
 
 /** FR-PAT-006: an exact date when known; otherwise the reported age, its day and an estimated year. */

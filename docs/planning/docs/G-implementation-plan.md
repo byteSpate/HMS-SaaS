@@ -108,7 +108,8 @@ Each task lists requirement IDs, dependencies, blocking questions and its key ac
 | **T-PAT-03** NID storage and reveal | Masking, audited reveal, encryption decision | FR-PAT-007, FR-AUD-003 | T-PAT-01 | — | AT-PAT-009 |
 | **T-PAT-04** Identity edit | UC-PAT-02 with history | FR-PAT-008 | T-PAT-01 | Q-036 (who may edit: synthetic template) | AT-PAT-010 |
 | **T-PRA-01** Practitioner master | Create/edit; immediate availability | FR-PRA-001..003 | T-ACC-02 | — | AT-PRA-001 |
-| **T-SCH-01** Schedules | Session creation and publication | FR-SCH-002 | T-PRA-01 | Q-037 | AT-SCH-001 |
+| **T-PRA-02** Department master (added 2026-11-09, owner decision) | Create/edit/deactivate departments with a code unique per hospital and bn/en names; then the optional department on practitioners | FR-CFG-001, FR-I18N-006, FR-PRA-001 (department) | T-ACC-02, T-PRA-01 | — | Department API and browser tests; no AT- ID yet |
+| **T-SCH-01** Schedules | Session creation and publication | FR-SCH-002 | T-PRA-01, T-PRA-02 | Q-037 | AT-SCH-001 |
 | **T-SCH-02** Book, reschedule, cancel | UC-SCH-01/02 with capacity | FR-SCH-001..006 | T-SCH-01, T-PAT-01 | Q-037 | AT-SCH-002..006 |
 | **T-BIL-01** Catalogue and price lists | Service items, price list versions, doctor fee items; publish | FR-CFG-001, -002, FR-BIL-007 | T-PLT-05 | Q-038 | AT-CFG-002, AT-BIL-002 |
 | **T-BIL-02** Charge interface and invoices | `PostCharge`, invoice creation rules, totals | FR-BIL-001, -006, -008, -009, -031, -033 | T-BIL-01 | — | AT-BIL-001, -009, -010, -021, -022 |

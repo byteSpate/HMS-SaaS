@@ -7,7 +7,13 @@ import type { IconName } from '@hms/ui';
 
 // Full catalog keys, so the unused-key check can see them as literals.
 export type NavLabelKey =
-  'nav.home' | 'nav.patients' | 'nav.practitioners' | 'nav.users' | 'nav.roles' | 'nav.audit';
+  | 'nav.home'
+  | 'nav.patients'
+  | 'nav.practitioners'
+  | 'nav.departments'
+  | 'nav.users'
+  | 'nav.roles'
+  | 'nav.audit';
 
 export interface NavDefinition {
   id: string;
@@ -35,6 +41,14 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/admin/practitioners',
     icon: 'stethoscope',
     requires: 'practitioner.manage',
+  },
+  // T-PRA-02: the department master, hospital configuration.
+  {
+    id: 'departments',
+    labelKey: 'nav.departments',
+    href: '/admin/departments',
+    icon: 'hospital-building',
+    requires: 'admin.config.publish',
   },
   // T-ACC-05 (SCR-22): hospital administration.
   {

@@ -109,7 +109,15 @@ describe('tenant isolation (RLS + withTenant)', () => {
     await expect(
       withTenant(prisma, { tenantId: a.tenantId }, (tx) =>
         tx.department.create({
-          data: { tenantId: a.tenantId, facilityId: b.facilityId, code: 'OPD' },
+          // Valid except for the facility, so the foreign key is what refuses it.
+          data: {
+            tenantId: a.tenantId,
+            facilityId: b.facilityId,
+            code: 'OPD',
+            nameEn: 'Outpatients',
+            createdBy: randomUUID(),
+            updatedBy: randomUUID(),
+          },
         }),
       ),
     ).rejects.toThrow(/foreign key/i);

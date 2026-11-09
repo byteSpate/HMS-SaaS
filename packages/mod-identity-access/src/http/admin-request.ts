@@ -37,7 +37,7 @@ export function adminOf(request: AdminRequest): AdminRef {
 }
 
 /** A malformed ID is NOT_FOUND, like any other record the administrator cannot see. */
-export function idPipe(what: 'User' | 'Role'): ParseUUIDPipe {
+export function idPipe(what: 'User' | 'Role' | 'Department'): ParseUUIDPipe {
   return new ParseUUIDPipe({
     exceptionFactory: () => new DomainError('NOT_FOUND', `${what} not found`),
   });

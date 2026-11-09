@@ -1,5 +1,6 @@
 // Practitioner values as stored (T-PRA-01; FR-PRA-001): text tidied the same way as patient names,
 // so equal entries compare equal, and the list of fields an edit changed, for the audit event.
+import { tidyText } from '@hms/domain-kernel';
 
 /** The fields an administrator types, after tidying. */
 export interface PractitionerValues {
@@ -21,13 +22,6 @@ export const PRACTITIONER_FIELDS = [
   'phone',
   'registrationNo',
 ] as const satisfies readonly (keyof PractitionerValues)[];
-
-/** NFC with spaces tidied; blank becomes null, so "not recorded" has one spelling. */
-export function tidyText(value: string | null | undefined): string | null {
-  if (value === undefined || value === null) return null;
-  const tidy = value.normalize('NFC').trim().replace(/\s+/g, ' ');
-  return tidy.length > 0 ? tidy : null;
-}
 
 export function practitionerValuesOf(input: PractitionerInput): PractitionerValues {
   return {

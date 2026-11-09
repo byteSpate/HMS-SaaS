@@ -7,6 +7,7 @@ import { systemClock, type Clock } from '@hms/domain-kernel';
 import { AccountLockService } from './application/account-lock.service.js';
 import { AUTH_CONFIG, CLOCK, type AuthConfig } from './application/auth.config.js';
 import { AuthService } from './application/auth.service.js';
+import { DepartmentAdminService } from './application/department-admin.service.js';
 import { LOGIN_THROTTLE, LoginThrottle } from './application/login-throttle.js';
 import { MfaService } from './application/mfa.service.js';
 import { RoleAdminService } from './application/role-admin.service.js';
@@ -14,6 +15,7 @@ import { UserAdminService } from './application/user-admin.service.js';
 import { AccountLockController } from './http/account-lock.controller.js';
 import { AuditController } from './http/audit.controller.js';
 import { AuthController } from './http/auth.controller.js';
+import { DepartmentAdminController } from './http/department-admin.controller.js';
 import { MfaController } from './http/mfa.controller.js';
 import { RoleAdminController } from './http/role-admin.controller.js';
 import { UserAdminController } from './http/user-admin.controller.js';
@@ -60,6 +62,7 @@ export class IdentityAccessModule {
         AuditController,
         UserAdminController,
         RoleAdminController,
+        DepartmentAdminController,
       ],
       providers: [
         AuthService,
@@ -67,6 +70,7 @@ export class IdentityAccessModule {
         AccountLockService,
         UserAdminService,
         RoleAdminService,
+        DepartmentAdminService,
         { provide: AUTH_CONFIG, useValue: config },
         {
           provide: RATE_LIMITERS,

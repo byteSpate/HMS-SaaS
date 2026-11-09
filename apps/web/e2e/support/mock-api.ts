@@ -6,6 +6,7 @@ import { auditEventSchema, sessionResponseSchema, type SessionResponse } from '@
 import type { Page, Route } from '@playwright/test';
 import { createAdminStore } from './mock-admin';
 import { createPatientStore } from './mock-patients';
+import { createDepartmentStore } from './mock-departments';
 import { createPractitionerStore } from './mock-practitioners';
 
 const WEB_ORIGIN = 'http://localhost:3100';
@@ -115,6 +116,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
   const admin = createAdminStore();
   const patients = createPatientStore();
   const practitioners = createPractitionerStore();
+  const departments = createDepartmentStore();
 
   function session(): SessionResponse {
     const now = Date.now();
@@ -194,7 +196,8 @@ export async function installMockApi(page: Page, world: MockWorld) {
     const moduleAnswer =
       admin.answer(request.method(), path, body as never) ??
       patients.answer(request.method(), path, body as never) ??
-      practitioners.answer(request.method(), path, body);
+      practitioners.answer(request.method(), path, body) ??
+      departments.answer(request.method(), path, body);
     if (moduleAnswer) return reply(route, moduleAnswer.status, moduleAnswer.body);
     return reply(route, 404, PROBLEM(404, 'NOT_FOUND'));
   });
@@ -247,5 +250,5 @@ export async function installMockApi(page: Page, world: MockWorld) {
     return reply(route, 200, session());
   }
 
-  return { requests, admin, patients, practitioners };
+  return { requests, admin, patients, practitioners, departments };
 }
