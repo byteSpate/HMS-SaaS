@@ -27,7 +27,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { configureApp } from './http/configure-app.js';
 
 // Practitioner master over real HTTP against PostgreSQL (T-PRA-01; FR-PRA-001..003; AT-PRA-001;
-// SP-03; FR-AUD-001). Names are synthetic (AS-009).
+// SP-03; FR-AUD-001; T-PRA-02 department). Names are synthetic (AS-009).
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required');
 
@@ -69,6 +69,7 @@ function formOf(practitioner: Practitioner) {
     specialty: practitioner.specialty,
     phone: practitioner.phone,
     registrationNo: practitioner.registrationNo,
+    departmentId: practitioner.department?.departmentId ?? null,
     active: practitioner.active,
   };
 }
@@ -110,7 +111,7 @@ describe('practitioner master over HTTP', () => {
   async function hospital() {
     const tenantId = await seedTenant(prisma);
     await seedEntitlements(prisma, tenantId, ['patients']);
-    const admin = await staffOf(tenantId, ['practitioner.manage']);
+    const admin = await staffOf(tenantId, ['practitioner.manage', 'admin.config.publish']);
     return { tenantId, admin };
   }
 
@@ -279,6 +280,84 @@ describe('practitioner master over HTTP', () => {
     const admin = await staffOf(noModule, ['practitioner.manage']);
     const missing = await create(admin, karim());
     expect(((await missing.json()) as Problem).code).toBe('ENTITLEMENT_MISSING');
+  });
+
+  async function department(session: StaffSession, code: string): Promise<string> {
+    const res = await client.call(session, 'POST', '/admin/departments', { code, nameEn: code });
+    expect(res.status).toBe(201);
+    return ((await dataOf(res)) as { departmentId: string }).departmentId;
+  }
+
+  it('T-PRA-02: gives a practitioner a department, shown in the list and audited', async () => {
+    const { tenantId, admin } = await hospital();
+    const medicine = await department(admin, 'MED');
+    const practitioner = await created(admin, { ...karim(), departmentId: medicine });
+    expect(practitioner.department).toMatchObject({ departmentId: medicine, code: 'MED' });
+
+    const cardiology = await department(admin, 'CARD');
+    const res = await update(admin, practitioner.practitionerId, {
+      ...formOf(practitioner),
+      departmentId: cardiology,
+      expectedVersion: 1,
+    });
+    expect(res.status).toBe(200);
+    expect(((await dataOf(res)) as Practitioner).department?.code).toBe('CARD');
+    const [listed] = await list(admin);
+    expect(listed?.department?.code).toBe('CARD');
+
+    const audit = await withTenant(prisma, { tenantId }, (tx) =>
+      tx.auditEvent.findFirstOrThrow({
+        where: { action: 'practitioner.changed', targetId: practitioner.practitionerId },
+      }),
+    );
+    expect(audit.details).toMatchObject({ changedFields: 'departmentId' });
+  });
+
+  it('T-PRA-02: offers only active departments and refuses an inactive or foreign one', async () => {
+    const { admin } = await hospital();
+    const medicine = await department(admin, 'MED');
+    const surgery = await department(admin, 'SURG');
+    const assigned = await created(admin, { ...karim(), departmentId: surgery });
+    const deactivate = await client.call(admin, 'PUT', `/admin/departments/${surgery}`, {
+      code: 'SURG',
+      nameEn: 'SURG',
+      active: false,
+      expectedVersion: 1,
+    });
+    expect(deactivate.status).toBe(200);
+
+    const choices = await client.call(admin, 'GET', '/practitioners/department-choices');
+    const offered = ((await dataOf(choices)) as { departments: { departmentId: string }[] })
+      .departments;
+    expect(offered.map((choice) => choice.departmentId)).toEqual([medicine]);
+
+    const inactive = await create(admin, { ...karim(), departmentId: surgery });
+    expect(inactive.status).toBe(422);
+    expect(((await inactive.json()) as Problem).fields?.map((field) => field.path)).toEqual([
+      'departmentId',
+    ]);
+    const other = await hospital();
+    const foreign = await create(admin, {
+      ...karim(),
+      departmentId: await department(other.admin, 'MED'),
+    });
+    expect(foreign.status).toBe(422);
+
+    // A department deactivated after it was chosen stays while other fields change.
+    const kept = await update(admin, assigned.practitionerId, {
+      ...formOf(assigned),
+      specialty: 'General surgery',
+      expectedVersion: 1,
+    });
+    expect(kept.status).toBe(200);
+    expect(((await dataOf(kept)) as Practitioner).department?.code).toBe('SURG');
+  });
+
+  it('the department picker needs practitioner.manage', async () => {
+    const { tenantId } = await hospital();
+    const receptionist = await staffOf(tenantId, ['patient.record.search']);
+    const denied = await client.call(receptionist, 'GET', '/practitioners/department-choices');
+    expect(denied.status).toBe(403);
   });
 
   it('the app cannot delete a practitioner or rewrite who created it', async () => {

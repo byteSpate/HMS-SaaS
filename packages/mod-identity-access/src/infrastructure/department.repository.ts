@@ -1,6 +1,6 @@
 // Department rows in PostgreSQL (T-PRA-02; FR-CFG-001; E section 4). Every function runs in the
 // caller's withTenant() transaction, so RLS limits it to one hospital (ADR-003).
-import type { DepartmentRecord } from '@hms/contracts';
+import type { DepartmentChoice, DepartmentRecord } from '@hms/contracts';
 import type { TenantTx } from '@hms/database';
 import type { DepartmentValues } from '../domain/department.js';
 
@@ -38,6 +38,30 @@ export async function hospitalFacilityId(tx: TenantTx, tenantId: string): Promis
     select: { id: true },
   });
   return created.id;
+}
+
+const CHOICE = { id: true, code: true, nameBn: true, nameEn: true } as const;
+
+/**
+ * The active departments as choices for other modules' forms (a practitioner's department,
+ * T-PRA-02 part 2), by code. Exported from the package, so only this module reads the table.
+ */
+export async function listDepartmentChoices(tx: TenantTx): Promise<DepartmentChoice[]> {
+  const rows = await tx.department.findMany({
+    where: { active: true },
+    select: CHOICE,
+    orderBy: { code: 'asc' },
+  });
+  return rows.map(({ id, ...rest }) => ({ departmentId: id, ...rest }));
+}
+
+/** Whether a department of the caller's hospital exists and is active, so it may be chosen. */
+export async function isSelectableDepartment(tx: TenantTx, departmentId: string): Promise<boolean> {
+  const row = await tx.department.findFirst({
+    where: { id: departmentId, active: true },
+    select: { id: true },
+  });
+  return row !== null;
 }
 
 /** Active first, then by code, the order lists and pickers show. */

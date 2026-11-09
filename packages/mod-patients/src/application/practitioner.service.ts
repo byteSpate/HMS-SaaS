@@ -1,21 +1,25 @@
 // Practitioner master (T-PRA-01; FR-PRA-001..003; FR-AUD-001; SP-03). Create, edit and list a
-// hospital's practitioners. Each change is one transaction with its audit event and an outbox
-// event; the outbox event is what a future picker cache listens to (FR-PRA-002). Lists read the
-// table directly today, so a saved practitioner shows in every list on the next request.
+// hospital's practitioners, with an optional department (T-PRA-02). Each change is one
+// transaction with its audit event and an outbox event; the outbox event is what a future picker
+// cache listens to (FR-PRA-002). Lists read the table directly today, so a saved practitioner
+// shows in every list on the next request.
 import { Inject, Injectable } from '@nestjs/common';
 import type {
   CreatePractitionerRequest,
+  DepartmentChoiceList,
   Practitioner,
   PractitionerList,
   UpdatePractitionerRequest,
 } from '@hms/contracts';
 import { withTenant, type PrismaClient, type TenantTx } from '@hms/database';
 import { DomainError, type Clock } from '@hms/domain-kernel';
+import { isSelectableDepartment, listDepartmentChoices } from '@hms/mod-identity-access';
 import { appendAuditEvent, appendOutboxEvent, PRISMA } from '@hms/platform';
 import { fieldError } from '../domain/patient-identity.js';
 import { changedPractitionerFields, practitionerValuesOf } from '../domain/practitioner.js';
 import {
   findPractitioner,
+  findStoredPractitioner,
   insertPractitioner,
   listPractitioners,
   updatePractitioner,
@@ -23,6 +27,16 @@ import {
 import { PATIENTS_CLOCK, requestScope, type Scope } from './context.js';
 
 const notFound = () => new DomainError('NOT_FOUND', 'Practitioner not found');
+/**
+ * FR-PRA-001: a chosen department must be an active one of this hospital (RLS hides the others).
+ * Keeping a department that was deactivated after it was chosen is not a new choice.
+ */
+async function assertSelectable(tx: TenantTx, departmentId: string | null): Promise<void> {
+  if (departmentId !== null && !(await isSelectableDepartment(tx, departmentId))) {
+    throw fieldError('departmentId', 'Choose an active department of this hospital');
+  }
+}
+
 const stale = (currentVersion: number) =>
   new DomainError('STALE_RECORD', 'Someone else changed this practitioner; reload it', {
     currentVersion,
@@ -59,6 +73,12 @@ export class PractitionerService {
     return { practitioners: await withTenant(this.prisma, scope, listPractitioners) };
   }
 
+  /** The active departments for the practitioner form's picker. */
+  async departmentChoices(): Promise<DepartmentChoiceList> {
+    const scope = requestScope();
+    return { departments: await withTenant(this.prisma, scope, listDepartmentChoices) };
+  }
+
   async detail(practitionerId: string): Promise<Practitioner> {
     const scope = requestScope();
     const found = await withTenant(this.prisma, scope, (tx) =>
@@ -73,6 +93,7 @@ export class PractitionerService {
     const scope = requestScope();
     const values = practitionerValuesOf(request);
     return withTenant(this.prisma, scope, async (tx) => {
+      await assertSelectable(tx, values.departmentId);
       const created = await insertPractitioner(tx, scope, values);
       await auditChange(tx, scope, {
         action: 'practitioner.created',
@@ -94,7 +115,7 @@ export class PractitionerService {
     const scope = requestScope();
     const next = { ...practitionerValuesOf(request), active: request.active };
     return withTenant(this.prisma, scope, async (tx) => {
-      const stored = await findPractitioner(tx, practitionerId);
+      const stored = await findStoredPractitioner(tx, practitionerId);
       if (!stored) throw notFound();
       if (stored.version !== request.expectedVersion) throw stale(stored.version);
 
@@ -102,6 +123,7 @@ export class PractitionerService {
       if (changed.length === 0) {
         throw fieldError('nameEn', 'Nothing differs from the current values');
       }
+      if (changed.includes('departmentId')) await assertSelectable(tx, next.departmentId);
       const target = {
         practitionerId,
         expectedVersion: request.expectedVersion,
@@ -125,7 +147,9 @@ export class PractitionerService {
         aggregateId: practitionerId,
         payload: { practitionerId, version },
       });
-      return { practitionerId, ...next, version };
+      const saved = await findPractitioner(tx, practitionerId);
+      if (!saved) throw notFound();
+      return saved;
     });
   }
 }

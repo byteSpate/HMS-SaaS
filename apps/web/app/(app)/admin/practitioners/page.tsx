@@ -1,7 +1,7 @@
 'use client';
 // Practitioners (T-PRA-01; FR-PRA-001..003): the hospital's doctors as a table, active ones first,
 // with their degrees, specialty and registration number, which tell two doctors with the same
-// name apart. Add or edit one in a dialog. practitioner.manage; the API enforces it.
+// name apart, and their department (T-PRA-02). Add or edit one in a dialog. practitioner.manage; the API enforces it.
 import { Alert, Button, IconButton, PageLayout, Skeleton, StatusBadge } from '@hms/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
@@ -16,7 +16,10 @@ import {
   TABLE_FRAME,
 } from '../../../../src/components/admin/admin-table';
 import { PractitionerDialog } from '../../../../src/components/practitioners/practitioner-dialog';
-import { practitionerName } from '../../../../src/components/practitioners/practitioner-form';
+import {
+  departmentLabel,
+  practitionerName,
+} from '../../../../src/components/practitioners/practitioner-form';
 import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
 
 /** The add dialog, or the edit dialog for one practitioner. */
@@ -63,6 +66,9 @@ export default function PractitionersPage() {
                   {t('practitioners.columnSpecialty')}
                 </th>
                 <th scope="col" className={`${HEAD_CELL} text-start`}>
+                  {t('practitioners.columnDepartment')}
+                </th>
+                <th scope="col" className={`${HEAD_CELL} text-start`}>
                   {t('practitioners.columnRegistration')}
                 </th>
                 <th scope="col" className={`${HEAD_CELL} text-start`}>
@@ -91,6 +97,9 @@ export default function PractitionersPage() {
                       {practitioner.degrees ? (
                         <p className="text-[0.6875rem] text-text-muted">{practitioner.degrees}</p>
                       ) : null}
+                    </td>
+                    <td className={CELL}>
+                      {practitioner.department ? departmentLabel(practitioner.department) : '-'}
                     </td>
                     <td className={CELL}>{practitioner.registrationNo ?? '-'}</td>
                     <td className={CELL}>

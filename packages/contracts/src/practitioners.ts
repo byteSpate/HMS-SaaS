@@ -1,8 +1,10 @@
 // Practitioner master contracts (T-PRA-01; FR-PRA-001..003; E section 5.1). A practitioner is a
 // professional identity: names in Bangla and English, degrees, specialty, contact and an optional
-// registration number. Two practitioners may share a name; these fields tell them apart. The
-// department and the link to a user account come later (owner decision 2026-11-08, option A).
+// registration number, and an optional department (T-PRA-02 part 2). Two practitioners may share
+// a name; these fields tell them apart. The link to a user account comes later (owner decision
+// 2026-11-08, option A).
 import { z } from 'zod';
+import { departmentChoiceSchema } from './departments.js';
 
 const shortText = (max: number) => z.string().trim().min(1).max(max);
 
@@ -14,6 +16,8 @@ const practitionerFields = {
   specialty: shortText(200).nullable().optional(),
   phone: shortText(30).nullable().optional(),
   registrationNo: shortText(50).nullable().optional(),
+  /** An active department of the hospital, or null for none. */
+  departmentId: z.uuid().nullable().optional(),
 };
 
 type PractitionerFields = z.infer<z.ZodObject<typeof practitionerFields>>;
@@ -56,6 +60,7 @@ export const practitionerSchema = z.strictObject({
   specialty: z.string().nullable(),
   phone: z.string().nullable(),
   registrationNo: z.string().nullable(),
+  department: departmentChoiceSchema.nullable(),
   active: z.boolean(),
   version: z.number().int(),
 });

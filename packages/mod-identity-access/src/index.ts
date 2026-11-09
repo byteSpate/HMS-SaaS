@@ -12,6 +12,10 @@ export { AllowWithoutTenant, Public, RequirePermission } from './http/decorators
 export { getAuthContext, type AuthenticatedRequest } from './http/request-context.js';
 export { findRoutesWithoutMarker } from './http/route-markers.js';
 export { SESSION_COOKIE } from './http/session-cookie.js';
+export {
+  isSelectableDepartment,
+  listDepartmentChoices,
+} from './infrastructure/department.repository.js';
 export { IdentityAccessModule, type IdentityAccessOptions } from './identity-access.module.js';
 export { hashPassword } from './infrastructure/password-hasher.js';
 export { createRolesFromTemplates } from './infrastructure/role-templates.repository.js';

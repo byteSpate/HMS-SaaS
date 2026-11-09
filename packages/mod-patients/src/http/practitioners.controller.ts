@@ -1,6 +1,7 @@
 // /api/v1/practitioners (T-PRA-01; FR-PRA-001..003): the hospital administrator lists, adds and
 // edits practitioners. Every route needs practitioner.manage; the scheduling picker gets its own
-// read route with the scheduling permissions (T-SCH-01).
+// read route with the scheduling permissions (T-SCH-01). The department picker (T-PRA-02) is here,
+// so choosing a department does not need the right to manage departments.
 import {
   Body,
   Controller,
@@ -15,10 +16,12 @@ import {
 import { ApiCookieAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 import {
   createPractitionerRequestSchema,
+  departmentChoiceListSchema,
   practitionerListSchema,
   practitionerSchema,
   updatePractitionerRequestSchema,
   type CreatePractitionerRequest,
+  type DepartmentChoiceList,
   type Practitioner,
   type PractitionerList,
   type UpdatePractitionerRequest,
@@ -52,6 +55,25 @@ export class PractitionersController {
   })
   list(): Promise<PractitionerList> {
     return this.practitioners.list();
+  }
+
+  // Declared before ':practitionerId', so the path is not read as an ID.
+  @Get('department-choices')
+  @RequirePermission('practitioner.manage')
+  @ApiEndpoint({
+    summary: 'List the departments a practitioner can be given',
+    description:
+      'The active departments of the hospital, by code (T-PRA-02). Managing departments needs ' +
+      'admin.config.publish; choosing one for a practitioner needs only practitioner.manage.',
+    success: {
+      status: 200,
+      description: 'The active departments',
+      schema: departmentChoiceListSchema,
+    },
+    errors: ACCESS_ERRORS,
+  })
+  departmentChoices(): Promise<DepartmentChoiceList> {
+    return this.practitioners.departmentChoices();
   }
 
   @Get(':practitionerId')

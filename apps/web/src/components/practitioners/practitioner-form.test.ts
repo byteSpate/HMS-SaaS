@@ -1,6 +1,13 @@
 import type { Practitioner } from '@hms/contracts';
 import { describe, expect, it } from 'vitest';
-import { differsFrom, fieldsOf, formOf, hasName, practitionerName } from './practitioner-form';
+import {
+  departmentOptions,
+  differsFrom,
+  fieldsOf,
+  formOf,
+  hasName,
+  practitionerName,
+} from './practitioner-form';
 
 // The practitioner dialog's form rules (T-PRA-01; FR-PRA-001). Names are synthetic (AS-009).
 const nasrin: Practitioner = {
@@ -11,8 +18,23 @@ const nasrin: Practitioner = {
   specialty: 'Paediatrics',
   phone: null,
   registrationNo: null,
+  department: null,
   active: true,
   version: 3,
+};
+
+const medicine = {
+  departmentId: '0199e0b0-0000-7000-8000-000000000601',
+  code: 'MED',
+  nameBn: null,
+  nameEn: 'Medicine',
+};
+const surgery = {
+  ...medicine,
+  departmentId: '0199e0b0-0000-7000-8000-000000000602',
+  code: 'SURG',
+  nameEn: null,
+  nameBn: 'x',
 };
 
 describe('practitioner form', () => {
@@ -24,6 +46,7 @@ describe('practitioner form', () => {
       specialty: '',
       phone: '',
       registrationNo: '',
+      departmentId: '',
       active: true,
     });
   });
@@ -44,6 +67,28 @@ describe('practitioner form', () => {
     expect(differsFrom(nasrin, { ...formOf(nasrin), specialty: 'Paediatrics ' })).toBe(false);
     expect(differsFrom(nasrin, { ...formOf(nasrin), active: false })).toBe(true);
     expect(differsFrom(nasrin, { ...formOf(nasrin), degrees: '' })).toBe(true);
+    expect(differsFrom(nasrin, { ...formOf(nasrin), departmentId: medicine.departmentId })).toBe(
+      true,
+    );
+  });
+
+  it('sends the chosen department, or null for none', () => {
+    expect(fieldsOf(formOf(nasrin)).departmentId).toBeNull();
+    expect(fieldsOf({ ...formOf(nasrin), departmentId: medicine.departmentId }).departmentId).toBe(
+      medicine.departmentId,
+    );
+  });
+
+  it('offers none and the active departments, keeping a deactivated current one', () => {
+    expect(departmentOptions([medicine], null, 'None')).toEqual([
+      { value: '', label: 'None' },
+      { value: medicine.departmentId, label: 'MED - Medicine' },
+    ]);
+    expect(departmentOptions([medicine], surgery, 'None').map((option) => option.label)).toEqual([
+      'None',
+      'MED - Medicine',
+      'SURG - x',
+    ]);
   });
 
   it('shows the English name, else the Bangla one', () => {

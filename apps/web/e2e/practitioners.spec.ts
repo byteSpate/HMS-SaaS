@@ -45,15 +45,23 @@ test('AT-PRA-001: adds a second practitioner with the same name; the list shows 
   await expect(save).toBeDisabled();
   await dialog.getByLabel(bn.practitioners.nameEn).fill('Nasrin Akter');
   await dialog.getByLabel(bn.practitioners.specialty).fill('Gynaecology');
+  // T-PRA-02: the department picker offers the hospital's active departments.
+  await dialog.getByLabel(bn.practitioners.department).selectOption({ label: 'MED - Medicine' });
   await save.click();
 
-  await expect(page.getByText(bn.practitioners.added)).toBeVisible();
+  // The toast text is also in the screen reader's live region.
+  await expect(page.getByText(bn.practitioners.added).first()).toBeVisible();
   await expect(page.getByText('Nasrin Akter')).toHaveCount(2);
   await expect(page.getByText('Gynaecology')).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'MED - Medicine' })).toBeVisible();
   const created = requests.find((r) => r.method === 'POST' && r.path === '/practitioners');
   expect(created?.idempotencyKey).toBeTruthy();
   expect(created?.csrf).toBeTruthy();
-  expect(created?.body).toMatchObject({ nameEn: 'Nasrin Akter', specialty: 'Gynaecology' });
+  expect(created?.body).toMatchObject({
+    nameEn: 'Nasrin Akter',
+    specialty: 'Gynaecology',
+    departmentId: '0199e0b0-0000-7000-8000-000000000601',
+  });
 });
 
 test('deactivates a practitioner with the version the screen showed', async ({ page }) => {
@@ -67,7 +75,7 @@ test('deactivates a practitioner with the version the screen showed', async ({ p
   await dialog.getByLabel(bn.practitioners.activeLabel).uncheck();
   await dialog.getByRole('button', { name: bn.practitioners.save }).click();
 
-  await expect(page.getByText(bn.practitioners.saved)).toBeVisible();
+  await expect(page.getByText(bn.practitioners.saved).first()).toBeVisible();
   await expect(page.getByText(bn.practitioners.statusInactive)).toBeVisible();
   const edit = requests.find((r) => r.method === 'PUT');
   expect(edit?.body).toMatchObject({ active: false, expectedVersion: 1, nameEn: 'Nasrin Akter' });

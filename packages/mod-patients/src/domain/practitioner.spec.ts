@@ -12,6 +12,7 @@ describe('practitioner values', () => {
       specialty: 'Medicine',
       phone: null,
       registrationNo: null,
+      departmentId: null,
     });
   });
 

@@ -85,7 +85,8 @@ model Department {
   updatedBy  String   @map("updated_by") @db.Uuid
   version    Int      @default(1)
 
-  facility Facility @relation(fields: [tenantId, facilityId], references: [tenantId, id])
+  facility      Facility       @relation(fields: [tenantId, facilityId], references: [tenantId, id])
+  practitioners Practitioner[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, facilityId, code])
@@ -475,6 +476,7 @@ model Practitioner {
   specialty      String?
   phone          String?
   registrationNo String?  @map("registration_no")
+  departmentId   String?  @map("department_id") @db.Uuid
   active         Boolean  @default(true)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
   createdBy      String   @map("created_by") @db.Uuid
@@ -482,9 +484,11 @@ model Practitioner {
   updatedBy      String   @map("updated_by") @db.Uuid
   version        Int      @default(1)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  department Department? @relation(fields: [tenantId, departmentId], references: [tenantId, id])
 
   @@unique([tenantId, id])
+  @@index([tenantId, departmentId])
   @@map("practitioner")
   @@schema("hms")
 }

@@ -17,8 +17,8 @@ export const DEPARTMENT_FIELDS = [
 
 export function departmentValuesOf(input: {
   code: string;
-  nameBn?: string | null | undefined;
-  nameEn?: string | null | undefined;
+  nameBn?: string | null;
+  nameEn?: string | null;
 }): DepartmentValues {
   return { code: input.code, nameBn: tidyText(input.nameBn), nameEn: tidyText(input.nameEn) };
 }

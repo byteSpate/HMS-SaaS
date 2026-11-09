@@ -60,6 +60,24 @@ export const departmentRecordSchema = z.strictObject({
 });
 export type DepartmentRecord = z.infer<typeof departmentRecordSchema>;
 
+/**
+ * A department as a choice in another record's form, and as shown on that record (a
+ * practitioner's department, T-PRA-02 part 2): enough to name it, nothing to edit.
+ */
+export const departmentChoiceSchema = z.strictObject({
+  departmentId: z.uuid(),
+  code: z.string(),
+  nameBn: z.string().nullable(),
+  nameEn: z.string().nullable(),
+});
+export type DepartmentChoice = z.infer<typeof departmentChoiceSchema>;
+
+/** The active departments, by code, for a form's department picker. */
+export const departmentChoiceListSchema = z.strictObject({
+  departments: z.array(departmentChoiceSchema),
+});
+export type DepartmentChoiceList = z.infer<typeof departmentChoiceListSchema>;
+
 export const departmentListSchema = z.strictObject({
   departments: z.array(departmentRecordSchema),
 });
