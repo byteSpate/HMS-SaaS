@@ -65,7 +65,7 @@
 | Next visit | (UI label only) | Familiar term for a follow-up appointment (C-018). Stored as `appointment`. | পরবর্তী ভিজিট |
 | Visit / encounter | `visit` | An actual attendance: OPD consultation, direct diagnostic, emergency. Created at check-in or arrival. | ভিজিট |
 | Check-in | `CheckInAppointment` command | Converts a booking into an attended visit. | চেক-ইন / উপস্থিতি নিশ্চিত |
-| Serial number (queue) | `visit.queue_number` | The patient's order number in the doctor's queue for a session. Rules OPEN (Q-037). | সিরিয়াল নম্বর |
+| Serial number (queue) | `visit.queue_number` | The patient's order number in the doctor's queue for a session, given in check-in order; walk-ins join the same queue (C-035, answering Q-037). | সিরিয়াল নম্বর |
 | Service order | `service_order` | A request for consultation, test, imaging, procedure or other service. | সেবা অর্ডার |
 | Direct diagnostic order | `order.source = RECEPTION_DIRECT` | A test ordered by reception without consultation, allowed only for tests configured as directly orderable (C-006, FR-ORD-001). | সরাসরি পরীক্ষা |
 | Clinical document | `clinical_document` (+ versions) | Consultation note or other signed clinical record. Corrected by amendment. | ক্লিনিক্যাল নোট |

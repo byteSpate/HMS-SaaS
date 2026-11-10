@@ -35,7 +35,7 @@
 | BO-01 | BW-01 | FR-PAT-002 | C-024 | patients | `RegisterPatient`; `number_sequence` | `patient.record.register` | AT-PAT-005, -006, UAT-REC-003 | RG-2 | Specified-interim (Q-034, Q-035) |
 | BO-01 | BW-01 | FR-PAT-003 | SRC-P02 | patients | `SearchPatients`; `phone_normalized` | `patient.record.search` | AT-PAT-007, UAT-REC-001 | RG-2 | Specified |
 | BO-01 | BW-08 | FR-PAT-004 | Identity agreements | patients | `RegisterTemporaryPatient` | `patient.record.register` | AT-PAT-008 | RG-2 | Specified-interim (Q-036: link deferred) |
-| BO-01 | BW-03 | FR-SCH-001..004 | C-007, SRC-O01 | scheduling | `BookAppointment` …; `appointment`, `schedule_session` | `scheduling.*` | AT-SCH-001..006, UAT-REC-005 | RG-2 | Specified-interim (Q-037) |
+| BO-01 | BW-03 | FR-SCH-001..004 | C-007, SRC-O01 | scheduling | `BookAppointment` …; `appointment`, `schedule_session` | `scheduling.*` | AT-SCH-001..006, UAT-REC-005 | RG-2 | Specified (Q-037 answered by C-035) |
 | BO-01 | BW-01 | FR-VIS-001, -002 | C-006, C-007 | clinical | `CheckInAppointment`, `CreateVisit`; `visit` | `visit.*` | AT-VIS-001..005, UAT-REC-006/007 | RG-2 | Specified |
 | BO-02 | BW-01 | FR-BIL-001 | C-008 | billing | `IssueVisitInvoices`, `PostCharge`; `invoice` partial uniques | `billing.invoice.issue` | AT-BIL-001, UAT-CSH-002 | RG-2 | Specified |
 | BO-02 | BW-01 | FR-BIL-002 | C-009 | billing | `RecordPayment` | `billing.payment.record` | AT-BIL-003 | RG-2 | Specified |

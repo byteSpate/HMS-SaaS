@@ -18,6 +18,7 @@
     "@hms/domain-kernel": "workspace:*",
     "@hms/mod-identity-access": "workspace:*",
     "@hms/mod-patients": "workspace:*",
+    "@hms/mod-scheduling": "workspace:*",
     "@hms/platform": "workspace:*",
     "@nestjs/common": "12.3.2",
     "@nestjs/core": "12.3.2",

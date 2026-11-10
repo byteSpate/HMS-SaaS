@@ -41,7 +41,8 @@ model Tenant {
   policyVersions  PolicyVersion[]
   userAccounts    UserAccount[]
   patients        Patient[]
-  practitioners   Practitioner[]
+  practitioners    Practitioner[]
+  scheduleSessions ScheduleSession[]
 
   @@map("tenant")
   @@schema("hms")
@@ -60,8 +61,9 @@ model Facility {
   timezone String  @default("Asia/Dhaka")
   version  Int     @default(1)
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id])
-  departments Department[]
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  departments      Department[]
+  scheduleSessions ScheduleSession[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -484,12 +486,45 @@ model Practitioner {
   updatedBy      String   @map("updated_by") @db.Uuid
   version        Int      @default(1)
 
-  tenant     Tenant      @relation(fields: [tenantId], references: [id])
-  department Department? @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  department       Department?       @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  scheduleSessions ScheduleSession[]
 
   @@unique([tenantId, id])
   @@index([tenantId, departmentId])
   @@map("practitioner")
+  @@schema("hms")
+}
+
+// One sitting of a practitioner on one hospital date (T-SCH-01; FR-SCH-002; C-035; E section 5.3).
+// Fixed capacity, no overbooking: the booked_count CHECK, the status CHECK and the column UPDATE
+// grant are in the migration. No delete: a session is cancelled.
+model ScheduleSession {
+  tenantId       String   @map("tenant_id") @db.Uuid
+  id             String   @id @default(uuid(7)) @db.Uuid
+  practitionerId String   @map("practitioner_id") @db.Uuid
+  facilityId     String   @map("facility_id") @db.Uuid
+  sessionDate    DateTime @map("session_date") @db.Date
+  startsAt       DateTime @map("starts_at") @db.Timestamptz
+  endsAt         DateTime @map("ends_at") @db.Timestamptz
+  capacity       Int
+  bookedCount    Int      @default(0) @map("booked_count")
+  /// DRAFT, PUBLISHED or CANCELLED (CHECK in the migration).
+  status         String   @default("DRAFT")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy      String   @map("created_by") @db.Uuid
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  updatedBy      String   @map("updated_by") @db.Uuid
+  version        Int      @default(1)
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  practitioner Practitioner @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
+  facility     Facility     @relation(fields: [tenantId, facilityId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@index([tenantId, sessionDate])
+  @@index([tenantId, practitionerId, sessionDate])
+  @@map("schedule_session")
   @@schema("hms")
 }
 

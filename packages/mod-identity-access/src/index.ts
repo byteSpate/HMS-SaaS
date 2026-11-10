@@ -13,6 +13,7 @@ export { getAuthContext, type AuthenticatedRequest } from './http/request-contex
 export { findRoutesWithoutMarker } from './http/route-markers.js';
 export { SESSION_COOKIE } from './http/session-cookie.js';
 export {
+  hospitalFacilityId,
   isSelectableDepartment,
   listDepartmentChoices,
 } from './infrastructure/department.repository.js';

@@ -136,3 +136,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-08 | [T-PRA-01: practitioner master](2026-11-08-T-PRA-01-practitioner-master.md)                                                             |
 | 2026-11-09 | [T-PRA-02: department master](2026-11-09-T-PRA-02-department-master.md)                                                                 |
 | 2026-11-09 | [T-PRA-02 part 2: a practitioner's department](2026-11-09-T-PRA-02-practitioner-department.md)                                          |
+| 2026-11-10 | [T-SCH-01: schedule sessions](2026-11-10-T-SCH-01-schedule-sessions.md)                                                                 |

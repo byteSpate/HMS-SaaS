@@ -46,6 +46,18 @@ export function formatDate(
   return toLocaleDigits(`${p.day}-${p.month}-${p.year}`, locale);
 }
 
+/**
+ * The facility's calendar date at `input` as YYYY-MM-DD, with Western digits: the value of a date
+ * input or an API query, not text to show (T-SCH-01, the week a schedule screen starts on).
+ */
+export function isoDateIn(
+  input: Date | string,
+  { timeZone = DEFAULT_TIME_ZONE }: DateFormatOptions = {},
+): string {
+  const p = partsOf(input, timeZone);
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
 export function formatDateTime(
   input: Date | string,
   locale: Locale,

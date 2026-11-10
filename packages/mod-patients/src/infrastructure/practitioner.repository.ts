@@ -1,7 +1,7 @@
 // Practitioner rows in PostgreSQL (T-PRA-01, T-PRA-02; E section 5.1). Every function runs in the
 // caller's withTenant() transaction, so RLS limits it to one hospital (ADR-003). The department is
 // read through the row's foreign key, which RLS also limits to the hospital.
-import type { Practitioner } from '@hms/contracts';
+import type { Practitioner, PractitionerChoice } from '@hms/contracts';
 import type { TenantTx } from '@hms/database';
 import type { PractitionerValues } from '../domain/practitioner.js';
 
@@ -63,6 +63,52 @@ function toStored(row: Row): StoredPractitioner {
     active: row.active,
     version: row.version,
   };
+}
+
+const CHOICE = {
+  id: true,
+  nameBn: true,
+  nameEn: true,
+  specialty: true,
+  department: { select: { id: true, code: true, nameBn: true, nameEn: true } },
+} as const;
+
+/**
+ * The active practitioners as choices for other modules' forms (a schedule session's doctor,
+ * T-SCH-01), by name. Exported from the package, so only this module reads the table.
+ */
+export async function listPractitionerChoices(tx: TenantTx): Promise<PractitionerChoice[]> {
+  const rows = await tx.practitioner.findMany({
+    where: { active: true },
+    select: CHOICE,
+    orderBy: [{ nameEn: 'asc' }, { nameBn: 'asc' }, { id: 'asc' }],
+  });
+  return rows.map((row) => ({
+    practitionerId: row.id,
+    nameBn: row.nameBn,
+    nameEn: row.nameEn,
+    specialty: row.specialty,
+    department: row.department
+      ? {
+          departmentId: row.department.id,
+          code: row.department.code,
+          nameBn: row.department.nameBn,
+          nameEn: row.department.nameEn,
+        }
+      : null,
+  }));
+}
+
+/** Whether a practitioner of the caller's hospital exists and is active, so it may be scheduled. */
+export async function isSchedulablePractitioner(
+  tx: TenantTx,
+  practitionerId: string,
+): Promise<boolean> {
+  const row = await tx.practitioner.findFirst({
+    where: { id: practitionerId, active: true },
+    select: { id: true },
+  });
+  return row !== null;
 }
 
 /** Active first, then by name, so a long list shows the doctors in use at the top. */

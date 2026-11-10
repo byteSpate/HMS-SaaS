@@ -227,6 +227,9 @@ importers:
       '@hms/mod-patients':
         specifier: workspace:*
         version: link:../../packages/mod-patients
+      '@hms/mod-scheduling':
+        specifier: workspace:*
+        version: link:../../packages/mod-scheduling
       '@hms/platform':
         specifier: workspace:*
         version: link:../../packages/platform
@@ -596,6 +599,37 @@ importers:
       '@hms/mod-identity-access':
         specifier: workspace:*
         version: link:../mod-identity-access
+      '@hms/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@nestjs/common':
+        specifier: 12.3.2
+        version: 12.3.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
+      '@nestjs/swagger':
+        specifier: 12.0.2
+        version: 12.0.2(@nestjs/common@12.3.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(@nestjs/core@12.3.2)(reflect-metadata@0.2.2)(typescript@6.0.3)
+    devDependencies:
+      '@hms/config-typescript':
+        specifier: workspace:*
+        version: link:../config-typescript
+
+  packages/mod-scheduling:
+    dependencies:
+      '@hms/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@hms/database':
+        specifier: workspace:*
+        version: link:../database
+      '@hms/domain-kernel':
+        specifier: workspace:*
+        version: link:../domain-kernel
+      '@hms/mod-identity-access':
+        specifier: workspace:*
+        version: link:../mod-identity-access
+      '@hms/mod-patients':
+        specifier: workspace:*
+        version: link:../mod-patients
       '@hms/platform':
         specifier: workspace:*
         version: link:../platform

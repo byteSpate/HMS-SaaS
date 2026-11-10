@@ -15,7 +15,7 @@ export {
   type CurrencySymbol,
   type MoneyFormatOptions,
 } from './numbers.js';
-export { formatDate, formatDateTime, type DateFormatOptions } from './dates.js';
+export { formatDate, formatDateTime, isoDateIn, type DateFormatOptions } from './dates.js';
 export type { Messages } from './messages/en.js';
 export type { SiteMessages } from './messages/site/en.js';
 

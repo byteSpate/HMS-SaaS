@@ -36,8 +36,8 @@ Receptionist, doctor (books a next visit), hospital administrator (masters, iden
 | FR-PRA-003 | A practitioner record is a professional identity. It may link to one user account and, later, one employee record. None of these links grants a permission. | CONFIRMED (v0.3 FINANCE_HR) | I | v0.3 |
 | FR-SCH-001 | An appointment (booking) shall not count as attendance. No visit exists until check-in. | CONFIRMED | T | C-007 |
 | FR-SCH-002 | Staff shall create schedules (practitioner, department, weekday/time sessions, slot length or session capacity) and book, reschedule and cancel appointments. Rescheduling creates a new appointment linked to the previous one, which is marked `RESCHEDULED`. Cancellation keeps the record with reason and actor. | SOURCE-DERIVED | T | SRC-O01 |
-| FR-SCH-003 | Booking shall enforce session capacity (CP-11) under concurrent requests. When the last slot is taken, other bookers get `CAPACITY_FULL`. | SOURCE-DERIVED (rules OPEN: Q-037) | T | SRC-O01 |
-| FR-SCH-004 | Check-in shall assign a queue (serial) number for the practitioner session per CP-11. | PROPOSED (Q-037) | T | — |
+| FR-SCH-003 | Booking shall enforce session capacity (CP-11) under concurrent requests. When the last slot is taken, other bookers get `CAPACITY_FULL`. | SOURCE-DERIVED (rules: C-035) | T | SRC-O01 |
+| FR-SCH-004 | Check-in shall assign a queue (serial) number for the practitioner session per CP-11. | PROPOSED (rules: C-035) | T | — |
 | FR-SCH-005 | Staff may mark a past-due appointment `NO_SHOW`. No visit or invoice is created. | PROPOSED | T | — |
 | FR-SCH-006 | A doctor or receptionist may book a **next visit** (follow-up appointment) from the visit screen. The UI labels it "Next visit (appointment)" (C-018, CX-008). | CONFIRMED | U | C-018 |
 | FR-VIS-001 | The system shall support three visit kinds: `OPD_CONSULTATION` (walk-in or from appointment), `DIAGNOSTIC` (direct, no consultation) and `EMERGENCY` (C10). A diagnostic visit succeeds without any consultation. | CONFIRMED | T | C-006 |

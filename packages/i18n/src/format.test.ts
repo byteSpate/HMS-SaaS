@@ -7,6 +7,7 @@ import {
   formatMoney,
   formatNumber,
   groupLakhCrore,
+  isoDateIn,
   toLocaleDigits,
 } from './index.js';
 
@@ -98,6 +99,11 @@ describe('dates', () => {
 
   it('honors another facility time zone', () => {
     expect(formatDateTime(instant, 'en', { timeZone: 'UTC' })).toBe('03-11-2026 20:30');
+  });
+
+  it('gives the facility calendar date as YYYY-MM-DD for forms and queries (T-SCH-01)', () => {
+    expect(isoDateIn(instant)).toBe('2026-11-04');
+    expect(isoDateIn(instant, { timeZone: 'UTC' })).toBe('2026-11-03');
   });
 
   it('rejects an invalid date', () => {
