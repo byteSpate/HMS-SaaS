@@ -48,6 +48,10 @@ model Tenant {
   priceLists       PriceListVersion[]
   priceListItems   PriceListItem[]
 
+  invoices     Invoice[]
+  charges      Charge[]
+  invoiceLines InvoiceLine[]
+
   @@map("tenant")
   @@schema("hms")
 }
@@ -463,6 +467,9 @@ model Patient {
   patientIdentityHistories PatientIdentityHistory[]
   appointments             Appointment[]
 
+  invoices Invoice[]
+  charges  Charge[]
+
   @@unique([tenantId, id])
   @@unique([tenantId, mrn])
   @@index([tenantId, phoneNormalized])
@@ -495,6 +502,8 @@ model Practitioner {
   department       Department?       @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   scheduleSessions ScheduleSession[]
   priceListItems   PriceListItem[]
+
+  charges Charge[]
 
   @@unique([tenantId, id])
   @@index([tenantId, departmentId])
@@ -627,6 +636,8 @@ model ServiceItem {
   tenant         Tenant          @relation(fields: [tenantId], references: [id])
   priceListItems PriceListItem[]
 
+  charges Charge[]
+
   @@unique([tenantId, id])
   @@unique([tenantId, code])
   @@map("service_item")
@@ -655,6 +666,8 @@ model PriceListVersion {
   tenant Tenant          @relation(fields: [tenantId], references: [id])
   items  PriceListItem[]
 
+  charges Charge[]
+
   @@unique([tenantId, id])
   @@unique([tenantId, versionNo])
   @@map("price_list_version")
@@ -680,5 +693,99 @@ model PriceListItem {
   @@unique([tenantId, id])
   @@index([tenantId, priceListVersionId])
   @@map("price_list_item")
+  @@schema("hms")
+}
+
+// An invoice of a visit (T-BIL-02; FR-BIL-001, FR-BIL-008; C-008; E section 5.4): the doctor's fee
+// on a DOCTOR_FEE invoice, services on the visit's SERVICE invoice. total and paid are projections
+// kept in the transaction that changes the lines; status is derived from them. visit_id gets its
+// foreign key with the visit table (T-VIS-01). CHECKs and partial unique indexes are in SQL.
+model Invoice {
+  tenantId  String   @map("tenant_id") @db.Uuid
+  id        String   @id @default(uuid(7)) @db.Uuid
+  number    String
+  /// DOCTOR_FEE or SERVICE (CHECK in the migration).
+  type      String
+  patientId String   @map("patient_id") @db.Uuid
+  visitId   String   @map("visit_id") @db.Uuid
+  currency  String   @default("BDT") @db.Char(3)
+  /// ISSUED, PARTIALLY_PAID, PAID or CANCELLED (CHECK in the migration).
+  status    String   @default("ISSUED")
+  total     Decimal  @default(0) @db.Decimal(18, 2)
+  paid      Decimal  @default(0) @db.Decimal(18, 2)
+  issuedAt  DateTime @default(now()) @map("issued_at") @db.Timestamptz
+  issuedBy  String   @map("issued_by") @db.Uuid
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  version   Int      @default(1)
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id])
+  patient Patient       @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  lines   InvoiceLine[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, number])
+  @@index([tenantId, patientId])
+  @@map("invoice")
+  @@schema("hms")
+}
+
+// One priced posting from another module (T-BIL-02; FR-BIL-006, FR-BIL-033; FPR-09; ADR-009):
+// unique by its source reference, append-only, and keeping the price list version that priced it.
+model Charge {
+  tenantId           String   @map("tenant_id") @db.Uuid
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  patientId          String   @map("patient_id") @db.Uuid
+  visitId            String   @map("visit_id") @db.Uuid
+  serviceItemId      String   @map("service_item_id") @db.Uuid
+  practitionerId     String?  @map("practitioner_id") @db.Uuid
+  sourceModule       String   @map("source_module")
+  sourceType         String   @map("source_type")
+  sourceId           String   @map("source_id")
+  sourceEvent        String   @map("source_event")
+  quantity           Decimal  @db.Decimal(14, 3)
+  unitPrice          Decimal  @map("unit_price") @db.Decimal(18, 2)
+  amount             Decimal  @db.Decimal(18, 2)
+  priceListVersionId String   @map("price_list_version_id") @db.Uuid
+  serviceTime        DateTime @map("service_time") @db.Timestamptz
+  postedAt           DateTime @default(now()) @map("posted_at") @db.Timestamptz
+  postedBy           String   @map("posted_by") @db.Uuid
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  patient          Patient          @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  serviceItem      ServiceItem      @relation(fields: [tenantId, serviceItemId], references: [tenantId, id])
+  practitioner     Practitioner?    @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
+  priceListVersion PriceListVersion @relation(fields: [tenantId, priceListVersionId], references: [tenantId, id])
+  line             InvoiceLine?
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, sourceModule, sourceType, sourceId, sourceEvent], map: "charge_source_reference_key")
+  @@map("charge")
+  @@schema("hms")
+}
+
+// One line of an invoice, exactly one per charge (T-BIL-02; E section 3.2). Amount allocation and
+// payment eligibility come with payments (T-BIL-04).
+model InvoiceLine {
+  tenantId  String   @map("tenant_id") @db.Uuid
+  id        String   @id @default(uuid(7)) @db.Uuid
+  invoiceId String   @map("invoice_id") @db.Uuid
+  chargeId  String   @map("charge_id") @db.Uuid
+  lineNo    Int      @map("line_no")
+  /// MEDICINE or NON_MEDICINE (SRC-B03; CHECK in the migration).
+  category  String
+  netAmount Decimal  @map("net_amount") @db.Decimal(18, 2)
+  /// ACTIVE, CANCELLED or REVERSED (CHECK in the migration).
+  status    String   @default("ACTIVE")
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  version   Int      @default(1)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  invoice Invoice @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
+  charge  Charge  @relation(fields: [tenantId, chargeId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, chargeId])
+  @@unique([tenantId, invoiceId, lineNo])
+  @@map("invoice_line")
   @@schema("hms")
 }

@@ -8,6 +8,7 @@ export * from './departments.js';
 export * from './envelope.js';
 export * from './errors.js';
 export * from './health.js';
+export * from './invoices.js';
 export * from './operations.js';
 export * from './patients.js';
 export * from './permissions.js';
