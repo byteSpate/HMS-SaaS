@@ -339,6 +339,21 @@ export const en = {
     effectiveDate: 'Date',
     dateInvalid: 'Choose a date after today',
   },
+  checkIn: {
+    button: 'Check in',
+    title: 'Check in the patient',
+    hint: 'Check in when the patient has arrived. This opens the visit, gives the serial number and issues the doctor fee invoice.',
+    confirm: 'Check in',
+    doneTitle: 'Checked in',
+    done: 'Patient checked in',
+    serial: 'Serial number',
+    invoice: 'Doctor fee invoice {number}',
+    newPatientFee: 'new patient fee',
+    followUpFee: 'follow-up fee',
+    due: 'Due {amount}',
+    feeMissing:
+      'No doctor fee is set for this doctor, so no invoice was issued. Ask the administrator to set the fee.',
+  },
   departments: {
     title: 'Departments',
     description:

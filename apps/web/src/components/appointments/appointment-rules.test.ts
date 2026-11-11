@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../api/errors';
 import {
   canChange,
+  canCheckIn,
   canMarkNoShow,
   hasCancelReason,
   isCapacityFull,
@@ -68,6 +69,12 @@ describe('appointment rules', () => {
     expect(canMarkNoShow(appointment, after)).toBe(true);
     expect(canMarkNoShow(appointment, before)).toBe(false);
     expect(canMarkNoShow({ ...appointment, status: 'CHECKED_IN' }, after)).toBe(false);
+  });
+
+  it('UC-VIS-01: checks in a booked appointment on its session date only', () => {
+    expect(canCheckIn(appointment, before)).toBe(true);
+    expect(canCheckIn(appointment, new Date('2026-11-13T04:00:00Z'))).toBe(false);
+    expect(canCheckIn({ ...appointment, status: 'CHECKED_IN' }, before)).toBe(false);
   });
 
   it('needs a cancellation reason of at least three characters', () => {

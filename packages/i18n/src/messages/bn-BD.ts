@@ -342,6 +342,20 @@ export const bnBD: Messages = {
     effectiveDate: 'তারিখ',
     dateInvalid: 'আজকের পরের একটি তারিখ বেছে নিন',
   },
+  checkIn: {
+    button: 'চেক-ইন',
+    title: 'রোগীর চেক-ইন',
+    hint: 'রোগী এসে পৌঁছালে চেক-ইন করুন। এতে ভিজিট খোলা হবে, সিরিয়াল নম্বর দেওয়া হবে এবং ডাক্তারের ফি-র ইনভয়েস হবে।',
+    confirm: 'চেক-ইন করুন',
+    doneTitle: 'চেক-ইন হয়েছে',
+    done: 'রোগীর চেক-ইন হয়েছে',
+    serial: 'সিরিয়াল নম্বর',
+    invoice: 'ডাক্তারের ফি-র ইনভয়েস {number}',
+    newPatientFee: 'নতুন রোগীর ফি',
+    followUpFee: 'ফলো-আপ ফি',
+    due: 'বাকি {amount}',
+    feeMissing: 'এই ডাক্তারের কোনো ফি ঠিক করা নেই, তাই ইনভয়েস হয়নি। অ্যাডমিনকে ফি ঠিক করতে বলুন।',
+  },
   departments: {
     title: 'বিভাগ',
     description:

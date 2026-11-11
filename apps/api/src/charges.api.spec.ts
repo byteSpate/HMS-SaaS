@@ -9,6 +9,7 @@ import { BillingModule, postCharge, type PostChargeRequest } from '@hms/mod-bill
 import {
   DEFAULT_LOGIN_RATE_LIMITS,
   hashPassword,
+  hospitalFacilityId,
   IdentityAccessModule,
 } from '@hms/mod-identity-access';
 import { PatientsModule } from '@hms/mod-patients';
@@ -144,7 +145,24 @@ describe('charges and invoices', () => {
     })) as { patientId: string };
     const scope = { tenantId, userId: admin.userId, correlationId: randomUUID() };
 
-    const feeFor = (practitionerId: string, visitId = randomUUID()): PostChargeRequest => ({
+    // A consultation visit to charge, as check-in creates one (T-VIS-01 adds the foreign key).
+    const newVisit = (practitionerId: string) =>
+      withTenant(prisma, { tenantId }, async (tx) => {
+        const visit = await tx.visit.create({
+          data: {
+            tenantId,
+            facilityId: await hospitalFacilityId(tx, tenantId),
+            patientId: patient.patientId,
+            kind: 'OPD_CONSULTATION',
+            attendingPractitionerId: practitionerId,
+            arrivedAt: clock.now(),
+            createdBy: admin.userId,
+          },
+          select: { id: true },
+        });
+        return visit.id;
+      });
+    const feeFor = (practitionerId: string, visitId: string): PostChargeRequest => ({
       source: { module: 'clinical', type: 'visit', id: visitId, event: 'CHECKED_IN' },
       patientId: patient.patientId,
       visitId,
@@ -155,7 +173,7 @@ describe('charges and invoices', () => {
     });
     const post = (request: PostChargeRequest) =>
       withTenant(prisma, { tenantId }, (tx) => postCharge(tx, scope, request, clock.now()));
-    return { tenantId, admin, cashier, doctor, unpriced, feeFor, post };
+    return { tenantId, admin, cashier, doctor, unpriced, feeFor, newVisit, post };
   }
 
   const codeOf = async (promise: Promise<unknown>) => {
@@ -168,8 +186,8 @@ describe('charges and invoices', () => {
   };
 
   it('C-008, FR-BIL-007: issues the doctor fee on its own invoice at the published price', async () => {
-    const { cashier, doctor, feeFor, post } = await hospital();
-    const request = feeFor(doctor.practitionerId);
+    const { cashier, doctor, feeFor, newVisit, post } = await hospital();
+    const request = feeFor(doctor.practitionerId, await newVisit(doctor.practitionerId));
     const posted = await post(request);
     expect(posted.replayed).toBe(false);
 
@@ -204,8 +222,8 @@ describe('charges and invoices', () => {
   });
 
   it('AT-BIL-009, AT-BIL-010: a repeated source returns the first charge; other content is refused', async () => {
-    const { tenantId, doctor, feeFor, post } = await hospital();
-    const request = feeFor(doctor.practitionerId);
+    const { tenantId, doctor, feeFor, newVisit, post } = await hospital();
+    const request = feeFor(doctor.practitionerId, await newVisit(doctor.practitionerId));
     const first = await post(request);
     const again = await post(request);
     expect(again).toEqual({ ...first, replayed: true });
@@ -218,8 +236,8 @@ describe('charges and invoices', () => {
   });
 
   it('FR-BIL-010 A1: an item without a price in force is POLICY_NOT_CONFIGURED, no invoice', async () => {
-    const { tenantId, unpriced, feeFor, post } = await hospital();
-    const request = feeFor(unpriced.practitionerId);
+    const { tenantId, unpriced, feeFor, newVisit, post } = await hospital();
+    const request = feeFor(unpriced.practitionerId, await newVisit(unpriced.practitionerId));
     expect(await codeOf(post(request))).toBe('POLICY_NOT_CONFIGURED');
     const invoices = await withTenant(prisma, { tenantId }, (tx) =>
       tx.invoice.count({ where: { visitId: request.visitId } }),
@@ -228,13 +246,13 @@ describe('charges and invoices', () => {
   });
 
   it('AT-CFG-002: a charge keeps its price after a new version is published', async () => {
-    const { cashier, admin, doctor, feeFor, post } = await hospital();
-    const before = feeFor(doctor.practitionerId);
+    const { cashier, admin, doctor, feeFor, newVisit, post } = await hospital();
+    const before = feeFor(doctor.practitionerId, await newVisit(doctor.practitionerId));
     await post(before);
     clock.advanceBy(HALF_HOUR);
     try {
       await publishFees(admin.session, [[doctor.practitionerId, '650.00']]);
-      const after = feeFor(doctor.practitionerId);
+      const after = feeFor(doctor.practitionerId, await newVisit(doctor.practitionerId));
       const posted = await post(after);
       const read = async (invoiceId: string) =>
         (await dataOf(
@@ -251,8 +269,8 @@ describe('charges and invoices', () => {
   });
 
   it('FR-BIL-031, AT-BIL-022: concurrent postings to one invoice keep the total equal to the lines', async () => {
-    const { tenantId, doctor, feeFor, post } = await hospital();
-    const visitId = randomUUID();
+    const { tenantId, doctor, feeFor, newVisit, post } = await hospital();
+    const visitId = await newVisit(doctor.practitionerId);
     const requests = Array.from({ length: 6 }, (_, index) => ({
       ...feeFor(doctor.practitionerId, visitId),
       source: { module: 'test', type: 'posting', id: `${visitId}:${index}`, event: 'POSTED' },
@@ -282,8 +300,8 @@ describe('charges and invoices', () => {
   });
 
   it("needs billing.invoice.issue and hides another hospital's invoices", async () => {
-    const { tenantId, doctor, feeFor, post } = await hospital();
-    const posted = await post(feeFor(doctor.practitionerId));
+    const { tenantId, doctor, feeFor, newVisit, post } = await hospital();
+    const posted = await post(feeFor(doctor.practitionerId, await newVisit(doctor.practitionerId)));
     const reception = await staffOf(tenantId, ['patient.record.search']);
     const denied = await client.call(
       reception.session,

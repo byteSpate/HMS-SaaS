@@ -64,3 +64,20 @@ export function diffDoctorFees(
     return [{ practitionerId, change: 'REMOVED', before: old, after: null }];
   });
 }
+
+const DAY_MS = 86_400_000;
+const dayNumber = (isoDate: string) => Date.parse(`${isoDate}T00:00:00Z`) / DAY_MS;
+
+/**
+ * C-041: a return to the same doctor within that doctor's follow-up window, counted in hospital
+ * calendar days from the patient's last consultation with the doctor, is charged the follow-up
+ * fee. A first consultation is always a new-patient fee.
+ */
+export function isFollowUp(
+  lastConsultationDate: string | null,
+  visitDate: string,
+  followUpDays: number,
+): boolean {
+  if (!lastConsultationDate) return false;
+  return dayNumber(visitDate) - dayNumber(lastConsultationDate) <= followUpDays;
+}

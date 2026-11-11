@@ -1,15 +1,18 @@
-// In-memory stand-in for the appointment endpoints (T-SCH-02), answering with payloads that satisfy
-// the shared contracts. It shares the session list of mock-schedule-sessions.ts and the patients
-// of mock-patients.ts, and keeps their booked counts. The real behaviour (RLS, races, audit,
-// version checks) is covered by apps/api/src/appointments.api.spec.ts. Names are synthetic.
+// In-memory stand-in for the appointment and check-in endpoints (T-SCH-02, T-VIS-01), answering
+// with payloads that satisfy the shared contracts. It shares the session list of
+// mock-schedule-sessions.ts and the patients of mock-patients.ts, and keeps their booked counts.
+// The real behaviour (RLS, races, audit, version checks, the visit and its invoice) is covered by
+// apps/api/src/appointments.api.spec.ts and check-in.api.spec.ts. Names are synthetic.
 import {
   appointmentListSchema,
   appointmentSchema,
   bookAppointmentRequestSchema,
+  checkInRequestSchema,
   cancelAppointmentRequestSchema,
   markNoShowRequestSchema,
   rescheduleAppointmentRequestSchema,
   scheduleSessionListSchema,
+  visitCheckInSchema,
   type Appointment,
   type PatientDetail,
   type ScheduleSession,
@@ -31,7 +34,13 @@ export function createAppointmentStore(sessions: ScheduleSession[], patients: Pa
   let next = 901;
   const appointments: Appointment[] = [];
   /** Set by a test to act as another receptionist who took the last place first (AT-SCH-003). */
-  const state = { lastPlaceTakenElsewhere: false };
+  const state = {
+    lastPlaceTakenElsewhere: false,
+    /** The doctor's new-patient fee at check-in; null for none configured (UC-VIS-01 A1). */
+    doctorFee: '500.00' as string | null,
+  };
+  const lastQueueNumber = new Map<string, number>();
+  let invoices = 0;
 
   const sessionIndex = (sessionId: string) =>
     sessions.findIndex((row) => row.sessionId === sessionId);
@@ -120,6 +129,50 @@ export function createAppointmentStore(sessions: ScheduleSession[], patients: Pa
     return { status: 200, body: updated };
   }
 
+  /** T-VIS-01: the appointment CHECKED_IN, the next serial number, the doctor fee if set. */
+  function checkIn(body: unknown): AppointmentAnswer {
+    const request = checkInRequestSchema.safeParse(body);
+    if (!request.success) return problem(422, 'VALIDATION_FAILED');
+    const index = appointments.findIndex((row) => row.appointmentId === request.data.appointmentId);
+    const stored = appointments[index];
+    if (!stored) return problem(404, 'NOT_FOUND');
+    if (stored.version !== request.data.expectedVersion) return problem(409, 'STALE_RECORD');
+    if (stored.status !== 'BOOKED') return problem(409, 'INVALID_TRANSITION');
+    appointments[index] = { ...stored, status: 'CHECKED_IN', version: stored.version + 1 };
+    const queueNumber = (lastQueueNumber.get(stored.session.sessionId) ?? 0) + 1;
+    lastQueueNumber.set(stored.session.sessionId, queueNumber);
+    const fee = state.doctorFee;
+    const doctorFee = fee
+      ? {
+          status: 'ISSUED',
+          followUp: false,
+          invoice: {
+            invoiceId: ID(980 + invoices),
+            number: `INV-${String(++invoices).padStart(6, '0')}`,
+            type: 'DOCTOR_FEE',
+            status: 'ISSUED',
+            total: fee,
+            paid: '0.00',
+            balance: fee,
+          },
+        }
+      : { status: 'POLICY_NOT_CONFIGURED' };
+    return {
+      status: 201,
+      body: visitCheckInSchema.parse({
+        visitId: ID(950 + queueNumber),
+        appointmentId: stored.appointmentId,
+        patientId: stored.patient.patientId,
+        kind: 'OPD_CONSULTATION',
+        status: 'OPEN',
+        practitioner: stored.session.practitioner,
+        queueNumber,
+        arrivedAt: new Date().toISOString(),
+        doctorFee,
+      }),
+    };
+  }
+
   function answer(
     method: string,
     path: string,
@@ -150,6 +203,7 @@ export function createAppointmentStore(sessions: ScheduleSession[], patients: Pa
       if (!request.success) return problem(422, 'VALIDATION_FAILED');
       return place(request.data.patientId, request.data.sessionId, null);
     }
+    if (path === '/visits/check-in' && method === 'POST') return checkIn(body);
     const match = /^\/appointments\/([0-9a-f-]+)\/(cancel|no-show|reschedule)$/.exec(path);
     if (match?.[1] && match[2] && method === 'POST') return change(match[1], match[2], body);
     return null;

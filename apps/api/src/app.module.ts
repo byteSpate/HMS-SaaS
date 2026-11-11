@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BillingModule } from '@hms/mod-billing';
+import { ClinicalModule } from '@hms/mod-clinical';
 import { IdentityAccessModule, loadAuthConfig } from '@hms/mod-identity-access';
 import { PatientsModule } from '@hms/mod-patients';
 import { SchedulingModule } from '@hms/mod-scheduling';
@@ -32,6 +33,7 @@ function requireEnv(name: string): string {
     }),
     SchedulingModule.forRoot(),
     BillingModule.forRoot(),
+    ClinicalModule.forRoot(),
   ],
   controllers: [AppController, HealthController, OperationsController, PoliciesController],
 })

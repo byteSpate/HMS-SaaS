@@ -22,9 +22,14 @@ async function signIn(page: Page, world: MockWorld) {
   await expect(page).toHaveURL(/\/staff$/);
 }
 
-/** A published session tomorrow (hospital date), so it has not ended whatever the time now. */
-function tomorrowSession(n: number, times: { start: string; end: string }, booked = 0) {
-  const date = isoDateIn(new Date(Date.now() + 86_400_000));
+/** A published session on a hospital date this many days from today. */
+function sessionOn(
+  daysFromToday: number,
+  n: number,
+  times: { start: string; end: string },
+  booked = 0,
+) {
+  const date = isoDateIn(new Date(Date.now() + daysFromToday * 86_400_000));
   const at = (time: string) => new Date(`${date}T${time}:00+06:00`).toISOString();
   const session: ScheduleSession = {
     sessionId: `0199e0b0-0000-7000-8000-${String(850 + n).padStart(12, '0')}`,
@@ -48,7 +53,12 @@ function tomorrowSession(n: number, times: { start: string; end: string }, booke
   return session;
 }
 
+/** A published session tomorrow (hospital date), so it has not ended whatever the time now. */
+const tomorrowSession = (n: number, times: { start: string; end: string }, booked = 0) =>
+  sessionOn(1, n, times, booked);
+
 const BOOKER = ['patient.record.search', 'scheduling.appointment.book'];
+const RECEPTION = [...BOOKER, 'visit.checkin'];
 
 async function openRecord(page: Page) {
   await page.goto(`/staff/patients/${KARIM}`);
@@ -177,4 +187,50 @@ test("the schedules page shows a session's patients", async ({ page }) => {
   const list = page.getByRole('dialog');
   await expect(list.getByText('Karim Ahmed')).toBeVisible();
   await expect(list.getByText(bn.appointments.statusBOOKED)).toBeVisible();
+});
+
+test("checks in today's booking: the serial number and the doctor fee due", async ({ page }) => {
+  const world = newWorld({ permissions: RECEPTION });
+  const { requests, scheduleSessions } = await installMockApi(page, world);
+  // All day, so it is still open for booking whenever the test runs.
+  scheduleSessions.sessions.push(sessionOn(0, 5, { start: '00:00', end: '23:59' }));
+  await signIn(page, world);
+  await openRecord(page);
+  await page.getByRole('button', { name: bn.appointments.book }).click();
+  const book = await chooseSession(page, toLocaleDigits('00:00', 'bn-BD'));
+  await book.getByRole('button', { name: bn.appointments.confirmBook }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+
+  await page.getByRole('button', { name: new RegExp(bn.checkIn.button) }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText(bn.checkIn.hint)).toBeVisible();
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+  await dialog.getByRole('button', { name: bn.checkIn.confirm }).click();
+  await expect(dialog.getByText(bn.checkIn.serial)).toBeVisible();
+  await expect(dialog.getByText(toLocaleDigits('1', 'bn-BD'), { exact: true })).toBeVisible();
+  await expect(dialog).toContainText('INV-000001');
+  await expect(dialog).toContainText(toLocaleDigits('500.00', 'bn-BD'));
+  const sent = requests.find((request) => request.path === '/visits/check-in');
+  expect(sent?.idempotencyKey).toBeTruthy();
+  await dialog.getByRole('button', { name: bn.common.close }).last().click();
+  await expect(page.getByRole('button', { name: new RegExp(bn.checkIn.button) })).toBeHidden();
+});
+
+test('without a doctor fee the check-in still succeeds and says so', async ({ page }) => {
+  const world = newWorld({ permissions: RECEPTION });
+  const { scheduleSessions, appointments } = await installMockApi(page, world);
+  appointments.state.doctorFee = null;
+  scheduleSessions.sessions.push(sessionOn(0, 6, { start: '00:00', end: '23:59' }));
+  await signIn(page, world);
+  await openRecord(page);
+  await page.getByRole('button', { name: bn.appointments.book }).click();
+  const book = await chooseSession(page, toLocaleDigits('00:00', 'bn-BD'));
+  await book.getByRole('button', { name: bn.appointments.confirmBook }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+
+  await page.getByRole('button', { name: new RegExp(bn.checkIn.button) }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: bn.checkIn.confirm }).click();
+  await expect(dialog.getByText(bn.checkIn.feeMissing)).toBeVisible();
 });

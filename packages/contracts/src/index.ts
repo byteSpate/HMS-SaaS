@@ -17,4 +17,5 @@ export * from './practitioners.js';
 export * from './price-lists.js';
 export * from './schedule-sessions.js';
 export * from './user-admin.js';
+export * from './visits.js';
 export * from './website.js';

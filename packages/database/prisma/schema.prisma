@@ -52,6 +52,8 @@ model Tenant {
   charges      Charge[]
   invoiceLines InvoiceLine[]
 
+  visits Visit[]
+
   @@map("tenant")
   @@schema("hms")
 }
@@ -72,6 +74,8 @@ model Facility {
   tenant           Tenant            @relation(fields: [tenantId], references: [id])
   departments      Department[]
   scheduleSessions ScheduleSession[]
+
+  visits Visit[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -97,6 +101,8 @@ model Department {
 
   facility      Facility       @relation(fields: [tenantId, facilityId], references: [tenantId, id])
   practitioners Practitioner[]
+
+  visits Visit[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, facilityId, code])
@@ -470,6 +476,8 @@ model Patient {
   invoices Invoice[]
   charges  Charge[]
 
+  visits Visit[]
+
   @@unique([tenantId, id])
   @@unique([tenantId, mrn])
   @@index([tenantId, phoneNormalized])
@@ -505,6 +513,8 @@ model Practitioner {
 
   charges Charge[]
 
+  visits Visit[]
+
   @@unique([tenantId, id])
   @@index([tenantId, departmentId])
   @@map("practitioner")
@@ -515,27 +525,30 @@ model Practitioner {
 // Fixed capacity, no overbooking: the booked_count CHECK, the status CHECK and the column UPDATE
 // grant are in the migration. No delete: a session is cancelled.
 model ScheduleSession {
-  tenantId       String   @map("tenant_id") @db.Uuid
-  id             String   @id @default(uuid(7)) @db.Uuid
-  practitionerId String   @map("practitioner_id") @db.Uuid
-  facilityId     String   @map("facility_id") @db.Uuid
-  sessionDate    DateTime @map("session_date") @db.Date
-  startsAt       DateTime @map("starts_at") @db.Timestamptz
-  endsAt         DateTime @map("ends_at") @db.Timestamptz
-  capacity       Int
-  bookedCount    Int      @default(0) @map("booked_count")
+  tenantId        String   @map("tenant_id") @db.Uuid
+  id              String   @id @default(uuid(7)) @db.Uuid
+  practitionerId  String   @map("practitioner_id") @db.Uuid
+  facilityId      String   @map("facility_id") @db.Uuid
+  sessionDate     DateTime @map("session_date") @db.Date
+  startsAt        DateTime @map("starts_at") @db.Timestamptz
+  endsAt          DateTime @map("ends_at") @db.Timestamptz
+  capacity        Int
+  bookedCount     Int      @default(0) @map("booked_count")
+  lastQueueNumber Int      @default(0) @map("last_queue_number")
   /// DRAFT, PUBLISHED or CANCELLED (CHECK in the migration).
-  status         String   @default("DRAFT")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  createdBy      String   @map("created_by") @db.Uuid
-  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz
-  updatedBy      String   @map("updated_by") @db.Uuid
-  version        Int      @default(1)
+  status          String   @default("DRAFT")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy       String   @map("created_by") @db.Uuid
+  updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  updatedBy       String   @map("updated_by") @db.Uuid
+  version         Int      @default(1)
 
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   practitioner Practitioner  @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
   facility     Facility      @relation(fields: [tenantId, facilityId], references: [tenantId, id])
   appointments Appointment[]
+
+  visits Visit[]
 
   @@unique([tenantId, id])
   @@index([tenantId, sessionDate])
@@ -567,6 +580,8 @@ model Appointment {
   scheduleSession ScheduleSession @relation(fields: [tenantId, scheduleSessionId], references: [tenantId, id])
   rescheduledFrom Appointment?    @relation("Rescheduled", fields: [tenantId, rescheduledFromId], references: [tenantId, id])
   rescheduledTo   Appointment?    @relation("Rescheduled")
+
+  visit Visit?
 
   @@unique([tenantId, id])
   @@unique([tenantId, rescheduledFromId])
@@ -722,6 +737,8 @@ model Invoice {
   patient Patient       @relation(fields: [tenantId, patientId], references: [tenantId, id])
   lines   InvoiceLine[]
 
+  visit Visit @relation(fields: [tenantId, visitId], references: [tenantId, id])
+
   @@unique([tenantId, id])
   @@unique([tenantId, number])
   @@index([tenantId, patientId])
@@ -757,6 +774,8 @@ model Charge {
   priceListVersion PriceListVersion @relation(fields: [tenantId, priceListVersionId], references: [tenantId, id])
   line             InvoiceLine?
 
+  visit Visit @relation(fields: [tenantId, visitId], references: [tenantId, id])
+
   @@unique([tenantId, id])
   @@unique([tenantId, sourceModule, sourceType, sourceId, sourceEvent], map: "charge_source_reference_key")
   @@map("charge")
@@ -787,5 +806,44 @@ model InvoiceLine {
   @@unique([tenantId, chargeId])
   @@unique([tenantId, invoiceId, lineNo])
   @@map("invoice_line")
+  @@schema("hms")
+}
+
+// A patient's attendance (T-VIS-01; FR-VIS-001..004; C-006, C-007; E section 5.3; mod-clinical).
+// Check-in of an appointment creates exactly one OPD_CONSULTATION visit with the session's next
+// serial number (C-035). Kind, status and serial-number CHECKs are in the migration.
+model Visit {
+  tenantId                String   @map("tenant_id") @db.Uuid
+  id                      String   @id @default(uuid(7)) @db.Uuid
+  facilityId              String   @map("facility_id") @db.Uuid
+  departmentId            String?  @map("department_id") @db.Uuid
+  patientId               String   @map("patient_id") @db.Uuid
+  /// OPD_CONSULTATION, DIAGNOSTIC or EMERGENCY (CHECK in the migration).
+  kind                    String
+  /// OPEN, COMPLETED or CANCELLED (CHECK in the migration).
+  status                  String   @default("OPEN")
+  attendingPractitionerId String?  @map("attending_practitioner_id") @db.Uuid
+  appointmentId           String?  @map("appointment_id") @db.Uuid
+  scheduleSessionId       String?  @map("schedule_session_id") @db.Uuid
+  queueNumber             Int?     @map("queue_number")
+  arrivedAt               DateTime @default(now()) @map("arrived_at") @db.Timestamptz
+  createdBy               String   @map("created_by") @db.Uuid
+  updatedAt               DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  version                 Int      @default(1)
+
+  tenant                Tenant           @relation(fields: [tenantId], references: [id])
+  facility              Facility         @relation(fields: [tenantId, facilityId], references: [tenantId, id])
+  department            Department?      @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  patient               Patient          @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  attendingPractitioner Practitioner?    @relation(fields: [tenantId, attendingPractitionerId], references: [tenantId, id])
+  appointment           Appointment?     @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
+  scheduleSession       ScheduleSession? @relation(fields: [tenantId, scheduleSessionId], references: [tenantId, id])
+  invoices              Invoice[]
+  charges               Charge[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, appointmentId])
+  @@index([tenantId, patientId, arrivedAt(sort: Desc)], map: "visit_patient_idx")
+  @@map("visit")
   @@schema("hms")
 }

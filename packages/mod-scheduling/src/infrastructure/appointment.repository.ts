@@ -68,6 +68,9 @@ export interface StoredAppointment {
   patientId: string;
   sessionId: string;
   sessionEndsAt: Date;
+  /** The session's hospital date, YYYY-MM-DD (check-in happens on it, UC-VIS-01). */
+  sessionDate: string;
+  practitionerId: string;
 }
 
 /** A session's bookings in booking order, or a patient's appointments in session order. */
@@ -106,7 +109,7 @@ export async function findStoredAppointment(
       version: true,
       patientId: true,
       scheduleSessionId: true,
-      scheduleSession: { select: { endsAt: true } },
+      scheduleSession: { select: { endsAt: true, sessionDate: true, practitionerId: true } },
     },
   });
   return row
@@ -116,6 +119,8 @@ export async function findStoredAppointment(
         patientId: row.patientId,
         sessionId: row.scheduleSessionId,
         sessionEndsAt: row.scheduleSession.endsAt,
+        sessionDate: dateOf(row.scheduleSession.sessionDate),
+        practitionerId: row.scheduleSession.practitionerId,
       }
     : null;
 }

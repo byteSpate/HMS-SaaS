@@ -236,3 +236,16 @@ export async function updateSessionStatus(
   });
   return result.count;
 }
+
+/**
+ * C-035, FR-SCH-004: the next serial number of the session, in check-in order. One UPDATE ...
+ * RETURNING raises the counter, so two check-ins at once get different numbers.
+ */
+export async function takeQueueNumber(tx: TenantTx, sessionId: string): Promise<number> {
+  const row = await tx.scheduleSession.update({
+    where: { id: sessionId },
+    data: { lastQueueNumber: { increment: 1 } },
+    select: { lastQueueNumber: true },
+  });
+  return row.lastQueueNumber;
+}

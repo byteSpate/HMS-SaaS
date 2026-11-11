@@ -2,6 +2,7 @@
 // tested without rendering. They mirror the API's rules, which still decide every request.
 import type { Appointment, ScheduleSession } from '@hms/contracts';
 import { ApiError } from '../../api/errors';
+import { hospitalToday } from '../schedules/session-form';
 
 /** C-035: a session never takes more than its capacity. */
 export function placesLeft(session: ScheduleSession): number {
@@ -19,6 +20,11 @@ export function canChange(appointment: Appointment, now: Date): boolean {
 /** FR-SCH-005: a booking whose session has ended. */
 export function canMarkNoShow(appointment: Appointment, now: Date): boolean {
   return appointment.status === 'BOOKED' && ended(appointment, now);
+}
+
+/** UC-VIS-01: a booked appointment is checked in on its session's hospital date (T-VIS-01). */
+export function canCheckIn(appointment: Appointment, now: Date): boolean {
+  return appointment.status === 'BOOKED' && appointment.session.sessionDate === hospitalToday(now);
 }
 
 /** The same minimum as the contract: three characters after trimming. */

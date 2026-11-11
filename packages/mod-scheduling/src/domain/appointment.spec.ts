@@ -1,6 +1,6 @@
 import { DomainError } from '@hms/domain-kernel';
 import { describe, expect, it } from 'vitest';
-import { assertBookable, nextAppointmentStatus } from './appointment.js';
+import { assertBookable, assertCheckIn, nextAppointmentStatus } from './appointment.js';
 
 // Appointment rules (T-SCH-02; FR-SCH-001..005; UC-SCH-01/02; AT-SCH-004..006). "Now" is 10:00 in
 // Dhaka on 2026-11-12 (04:00 UTC).
@@ -73,5 +73,25 @@ describe('appointment status', () => {
         );
       }
     }
+  });
+});
+
+describe('checking in (T-VIS-01; UC-VIS-01)', () => {
+  it('checks in a booked appointment on its session date', () => {
+    expect(failureOf(() => assertCheckIn('BOOKED', '2026-11-12', '2026-11-12'))).toBeUndefined();
+  });
+
+  it('refuses a cancelled, no-show or already checked-in appointment (D1)', () => {
+    for (const status of ['CANCELLED', 'NO_SHOW', 'CHECKED_IN', 'RESCHEDULED'] as const) {
+      expect(failureOf(() => assertCheckIn(status, '2026-11-12', '2026-11-12'))?.code).toBe(
+        'INVALID_TRANSITION',
+      );
+    }
+  });
+
+  it('refuses another day than the session date', () => {
+    expect(failureOf(() => assertCheckIn('BOOKED', '2026-11-13', '2026-11-12'))?.code).toBe(
+      'INVALID_TRANSITION',
+    );
   });
 });

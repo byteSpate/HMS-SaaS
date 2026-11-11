@@ -17,6 +17,12 @@ export function assertBookable(session: { status: SessionStatus; endsAt: Date },
   }
 }
 
+export const appointmentNotFound = () => new DomainError('NOT_FOUND', 'Appointment not found');
+export const staleAppointment = (currentVersion: number) =>
+  new DomainError('STALE_RECORD', 'Someone else changed this appointment; reload it', {
+    currentVersion,
+  });
+
 const refused = (message: string, details: Record<string, unknown>) =>
   new DomainError('INVALID_TRANSITION', message, details);
 
@@ -41,4 +47,22 @@ export function nextAppointmentStatus(
   }
   if (ended) throw refused('The session has ended; mark the appointment as a no-show', { action });
   return action === 'CANCEL' ? 'CANCELLED' : 'RESCHEDULED';
+}
+
+/**
+ * UC-VIS-01: a BOOKED appointment is checked in on its session's hospital date (D1: a cancelled
+ * or no-show appointment is refused). Early or late tolerance is a proposed policy, not built:
+ * the patient arrives on the day of the sitting.
+ */
+export function assertCheckIn(
+  current: AppointmentStatus,
+  sessionDate: string,
+  hospitalToday: string,
+): void {
+  if (current !== 'BOOKED') {
+    throw refused(`A ${current} appointment cannot be checked in`, { status: current });
+  }
+  if (sessionDate !== hospitalToday) {
+    throw refused('Check in on the day of the session', { sessionDate });
+  }
 }

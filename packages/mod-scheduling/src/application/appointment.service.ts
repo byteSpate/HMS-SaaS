@@ -20,8 +20,10 @@ import { DomainError, type Clock } from '@hms/domain-kernel';
 import { isBookablePatient } from '@hms/mod-patients';
 import { appendAuditEvent, appendOutboxEvent, PRISMA } from '@hms/platform';
 import {
+  appointmentNotFound,
   assertBookable,
   nextAppointmentStatus,
+  staleAppointment,
   type AppointmentAction,
 } from '../domain/appointment.js';
 import { fieldError, type SessionStatus } from '../domain/schedule-session.js';
@@ -42,11 +44,8 @@ import {
 } from '../infrastructure/schedule-session.repository.js';
 import { HOSPITAL_TIME_ZONE, requestScope, SCHEDULING_CLOCK, type Scope } from './context.js';
 
-const notFound = () => new DomainError('NOT_FOUND', 'Appointment not found');
-const stale = (currentVersion: number) =>
-  new DomainError('STALE_RECORD', 'Someone else changed this appointment; reload it', {
-    currentVersion,
-  });
+const notFound = appointmentNotFound;
+const stale = staleAppointment;
 
 /** The audit event and the outbox event every change writes, in the change's transaction. */
 async function recordChange(

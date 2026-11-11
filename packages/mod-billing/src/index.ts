@@ -8,3 +8,4 @@ export {
   type PostedCharge,
   type SourceReference,
 } from './application/post-charge.js';
+export { issueDoctorFee, type DoctorFeeRequest } from './application/doctor-fee.js';
