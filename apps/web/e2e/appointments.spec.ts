@@ -2,7 +2,7 @@
 // contract-valid mock in support/mock-appointments.ts; texts come from the catalogs.
 import AxeBuilder from '@axe-core/playwright';
 import type { ScheduleSession } from '@hms/contracts';
-import { isoDateIn, messages } from '@hms/i18n';
+import { isoDateIn, messages, toLocaleDigits } from '@hms/i18n';
 import { expect, type Page, test } from '@playwright/test';
 import { installMockApi, newWorld, type MockWorld } from './support/mock-api';
 
@@ -92,6 +92,26 @@ test('books from the patient record, then cancels with a reason', async ({ page 
   await yes.click();
   await expect(row.getByText(bn.appointments.statusCANCELLED)).toBeVisible();
   await expect(row.getByText('Patient called to cancel')).toBeVisible();
+});
+
+test('changing the week clears the chosen session, so Book cannot send a hidden one', async ({
+  page,
+}) => {
+  const world = newWorld({ permissions: BOOKER });
+  const { scheduleSessions } = await installMockApi(page, world);
+  scheduleSessions.sessions.push(tomorrowSession(4, { start: '17:00', end: '21:00' }));
+  await signIn(page, world);
+  await openRecord(page);
+
+  await page.getByRole('button', { name: bn.appointments.book }).click();
+  const dialog = await chooseSession(page, toLocaleDigits('17:00', 'bn-BD'));
+  const confirm = dialog.getByRole('button', { name: bn.appointments.confirmBook });
+  await expect(confirm).toBeEnabled();
+  await dialog.getByRole('button', { name: bn.schedules.nextWeek }).click();
+  await expect(confirm).toBeDisabled();
+  await dialog.getByRole('button', { name: bn.schedules.previousWeek }).click();
+  await expect(dialog.getByRole('radio', { name: /Karim Uddin/ })).not.toBeChecked();
+  await expect(confirm).toBeDisabled();
 });
 
 test('a full session cannot be chosen, and a lost race says the session is full', async ({

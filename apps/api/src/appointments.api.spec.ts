@@ -252,6 +252,20 @@ describe('appointments over HTTP', () => {
     expect(await bookedCount(tenantId, small.sessionId)).toBe(1);
   });
 
+  it('of two concurrent bookings of one patient in one session, the second is a field error', async () => {
+    const { tenantId, reception, session, patient } = await hospital();
+    const evening = await session({ start: '17:00', end: '21:00' });
+    const salma = await patient();
+    const results = await Promise.all([
+      book(reception, salma, evening.sessionId),
+      book(reception, salma, evening.sessionId),
+    ]);
+    expect(results.map((res) => res.status).sort()).toEqual([201, 422]);
+    const loser = results.find((res) => res.status === 422);
+    expect((await problemOf(loser as Response)).fields?.[0]?.path).toBe('patientId');
+    expect(await bookedCount(tenantId, evening.sessionId)).toBe(1);
+  });
+
   it('AT-SCH-004: reschedules in one step: old RESCHEDULED, new BOOKED and linked', async () => {
     const { tenantId, reception, session, patient } = await hospital();
     const today = await session({ start: '17:00', end: '21:00' });

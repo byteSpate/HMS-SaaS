@@ -26,6 +26,15 @@ export function hasCancelReason(reason: string): boolean {
   return reason.trim().length >= 3;
 }
 
+/**
+ * The API answered and refused (4xx), so nothing was written and a new attempt needs a new
+ * Idempotency-Key. A timeout, a lost connection or a 5xx from a proxy may come after the server
+ * committed, so the retry keeps the key and the server replays the first answer.
+ */
+export function wasRefused(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500;
+}
+
 /** The API refused a booking because the last place was taken. */
 export function isCapacityFull(error: unknown): boolean {
   return error instanceof ApiError && error.code === 'CAPACITY_FULL';

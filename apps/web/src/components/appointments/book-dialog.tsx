@@ -2,7 +2,8 @@
 // Book or reschedule an appointment (T-SCH-02; UC-SCH-01/02; FR-SCH-002, FR-SCH-003; C-035). The
 // open sessions of one week are listed with the places left; a full session cannot be chosen.
 // If the last place goes to someone else first, the API answers CAPACITY_FULL and the dialog says
-// so and refreshes the list. Rescheduling moves the booking in one step on the server.
+// so and refreshes the list. Rescheduling moves the booking in one step on the server. Changing
+// the week clears the choice, so Book never sends a session that is no longer on screen.
 import type { Appointment, ScheduleSession } from '@hms/contracts';
 import { formatDate, toLocaleDigits, type Locale } from '@hms/i18n';
 import { Alert, Button, Dialog, Field, Radio, Skeleton, TextInput, useToast } from '@hms/ui';
@@ -13,7 +14,7 @@ import { APPOINTMENTS_QUERY_KEY, appointmentsApi } from '../../api/appointments'
 import { SCHEDULE_SESSIONS_QUERY_KEY } from '../../api/schedule-sessions';
 import { useApiErrorMessage } from '../../i18n/use-api-error-message';
 import { addDays, hospitalToday } from '../schedules/session-form';
-import { isCapacityFull, placesLeft } from './appointment-rules';
+import { isCapacityFull, placesLeft, wasRefused } from './appointment-rules';
 
 const doctorOf = (session: ScheduleSession) =>
   session.practitioner.nameEn ?? session.practitioner.nameBn ?? '';
@@ -43,6 +44,10 @@ export function BookDialog({
   const choices = (sessions.data ?? []).filter(
     (session) => session.sessionId !== rescheduling?.session.sessionId,
   );
+  const showWeek = (start: string) => {
+    setWeekStart(start);
+    setSessionId('');
+  };
 
   const save = useMutation({
     mutationFn: () =>
@@ -62,8 +67,9 @@ export function BookDialog({
       onOpenChange(false);
     },
     onError: async (error) => {
-      // A refused request booked nothing; trying again is a new request with a new key.
-      setIdempotencyKey(crypto.randomUUID());
+      // A refused request booked nothing, so trying again is a new request with a new key. After
+      // a timeout the booking may exist: the same key lets the server replay it, not book twice.
+      if (wasRefused(error)) setIdempotencyKey(crypto.randomUUID());
       if (isCapacityFull(error)) {
         setSessionId('');
         await sessions.refetch();
@@ -95,16 +101,16 @@ export function BookDialog({
                 type="date"
                 value={weekStart}
                 onChange={(event) => {
-                  if (event.target.value) setWeekStart(event.target.value);
+                  if (event.target.value) showWeek(event.target.value);
                 }}
                 {...aria}
               />
             )}
           </Field>
-          <Button variant="secondary" onClick={() => setWeekStart(addDays(weekStart, -7))}>
+          <Button variant="secondary" onClick={() => showWeek(addDays(weekStart, -7))}>
             {t('schedules.previousWeek')}
           </Button>
-          <Button variant="secondary" onClick={() => setWeekStart(addDays(weekStart, 7))}>
+          <Button variant="secondary" onClick={() => showWeek(addDays(weekStart, 7))}>
             {t('schedules.nextWeek')}
           </Button>
         </div>

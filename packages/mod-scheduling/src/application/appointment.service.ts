@@ -78,16 +78,22 @@ async function recordChange(
  * Takes a place for the patient in the session, or says why not: a double booking, a session
  * that is not open (UC-SCH-01 D2), or a full one (D1, CAPACITY_FULL). The place is taken by one
  * conditional UPDATE, so concurrent bookings never pass capacity (C-035, AT-SCH-003).
+ *
+ * The place is taken before the double-booking check on purpose: the UPDATE locks the session
+ * row until commit, so a concurrent booking of the same patient waits, and its check (a new
+ * READ COMMITTED snapshot) then sees the first booking and answers a field error instead of
+ * hitting the partial unique index as a 500. Throwing rolls the place back.
  */
 async function takePlaceFor(
   tx: TenantTx,
   booking: { patientId: string; sessionId: string },
   now: Date,
 ): Promise<void> {
+  const placeTaken = (await takePlace(tx, booking.sessionId, now)) === 1;
   if (await hasLiveBooking(tx, booking.patientId, booking.sessionId)) {
     throw fieldError('patientId', 'This patient is already booked in this session');
   }
-  if ((await takePlace(tx, booking.sessionId, now)) === 1) return;
+  if (placeTaken) return;
   // RLS hides another hospital's session, so it reads as missing.
   const session = await findSessionForBooking(tx, booking.sessionId);
   if (!session) throw fieldError('sessionId', 'Choose a session of this hospital');

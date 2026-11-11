@@ -58,11 +58,30 @@ Every command is one transaction with an audit event (`scheduling.appointment.bo
 - **No "next visit" booking** (FR-SCH-006): it needs a visit, which T-VIS adds; `follow_up_of_visit_id` comes then.
 - **No appointment slip print** (UC-SCH-01 step 6) yet.
 - **Reschedule is offered on the patient record only;** the session's patient list offers cancel and no-show. Moving every patient of a session at once is not built.
-- **A rare double-booking race** (the same patient booked twice at the same instant) ends at the partial unique index as a 500 instead of a field error.
 - **Bangla texts** need the native-speaker review of terms (A1).
 - **Supabase does not have this migration or `20261110090000_schedule_session` yet.**
 
 Deploy impact: migration `20261110120000_appointment` (new table, indexes, RLS policy, column grant; expand-only). Not yet applied on Supabase.
+
+## Review fixes (PR #54, 2026-11-11)
+
+A review of the feature PR found three booking bugs, fixed on the branch before the merge:
+
+| Bug                                                                                                                        | Fix                                                                                                                                                                                                                                                              | Test                                                                                                                                                     |
+| -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The same patient booked twice in one session at the same instant: the second hit the partial unique index and answered 500 | `takePlaceFor` takes the place first. Its UPDATE locks the session row, so the second booking waits, then its double-booking check (a new READ COMMITTED snapshot) sees the first and answers `VALIDATION_FAILED` on `patientId`; the throw gives the place back | API: "of two concurrent bookings of one patient in one session, the second is a field error" (failed 3 of 3 as `[201, 500]` before, passes 5 of 5 after) |
+| Changing the week in the booking dialog kept the chosen session, so Book sent a session no longer on screen                | `showWeek` clears the choice on every week change                                                                                                                                                                                                                | e2e: "changing the week clears the chosen session" (fails with the clearing removed)                                                                     |
+| Every error made a new Idempotency-Key, so a retry after a timeout could not replay a booking that had committed           | `wasRefused`: only a 4xx answer gets a new key. Safe after a 5xx because the idempotency record rolls back with the failed command                                                                                                                               | Unit: `wasRefused` in `appointment-rules.test.ts`                                                                                                        |
+
+Review findings left for later (not bugs in normal use):
+
+- **No database guard against two overlapping sessions of one doctor** created at the same instant; the overlap rule is a read before the insert. An `EXCLUDE` constraint would close it.
+- **A deactivated practitioner's published sessions still take bookings**; `takePlace` and the bookable list do not check the practitioner.
+- **`STALE_RECORD` reports `expectedVersion + 1`** as the current version, which is a guess when the version moved by more (also in sessions, practitioners and departments).
+- **Scheduling reads patient and practitioner columns through Prisma relation selects**, not through the owning modules' entry points.
+- **The audit-plus-outbox helper (`recordChange`) and `fieldError` are copied** across five services; they belong in a package.
+- **`wallClockTimeIn` builds an `Intl.DateTimeFormat` per call**; cache one per time zone.
+- **Older e2e tests use Bangla digit literals**; the new test uses `toLocaleDigits`.
 
 ## How to debug
 
