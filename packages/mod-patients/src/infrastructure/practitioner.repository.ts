@@ -83,7 +83,36 @@ export async function listPractitionerChoices(tx: TenantTx): Promise<Practitione
     select: CHOICE,
     orderBy: [{ nameEn: 'asc' }, { nameBn: 'asc' }, { id: 'asc' }],
   });
-  return rows.map((row) => ({
+  return rows.map(toChoice);
+}
+
+/**
+ * The named practitioners as choices, active or not, keyed by ID: a record that already names a
+ * doctor (a price, T-BIL-01) still shows that doctor after deactivation. Another hospital's
+ * practitioners are invisible under RLS, so they are simply missing from the map.
+ */
+export async function findPractitionerChoices(
+  tx: TenantTx,
+  practitionerIds: readonly string[],
+): Promise<Map<string, PractitionerChoice>> {
+  if (practitionerIds.length === 0) return new Map();
+  const rows = await tx.practitioner.findMany({
+    where: { id: { in: [...new Set(practitionerIds)] } },
+    select: CHOICE,
+  });
+  return new Map(rows.map((row) => [row.id, toChoice(row)]));
+}
+
+type ChoiceRow = {
+  id: string;
+  nameBn: string | null;
+  nameEn: string | null;
+  specialty: string | null;
+  department: { id: string; code: string; nameBn: string | null; nameEn: string | null } | null;
+};
+
+function toChoice(row: ChoiceRow): PractitionerChoice {
+  return {
     practitionerId: row.id,
     nameBn: row.nameBn,
     nameEn: row.nameEn,
@@ -96,7 +125,7 @@ export async function listPractitionerChoices(tx: TenantTx): Promise<Practitione
           nameEn: row.department.nameEn,
         }
       : null,
-  }));
+  };
 }
 
 /** Whether a practitioner of the caller's hospital exists and is active, so it may be scheduled. */

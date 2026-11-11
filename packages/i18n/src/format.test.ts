@@ -9,6 +9,7 @@ import {
   groupLakhCrore,
   isoDateIn,
   toLocaleDigits,
+  toWesternDigits,
 } from './index.js';
 
 describe('groupLakhCrore', () => {
@@ -39,6 +40,14 @@ describe('toLocaleDigits', () => {
 
   it('leaves letters and punctuation untouched', () => {
     expect(toLocaleDigits('MRN-000123', 'bn-BD')).toBe('MRN-০০০১২৩');
+  });
+});
+
+describe('toWesternDigits', () => {
+  it('reads typed Bangla digits as Western ones and leaves the rest alone', () => {
+    expect(toWesternDigits('৫০০.৫০')).toBe('500.50');
+    expect(toWesternDigits('1২3')).toBe('123');
+    expect(toWesternDigits('MRN-000123')).toBe('MRN-000123');
   });
 });
 

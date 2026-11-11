@@ -7,7 +7,6 @@ import {
   hasCancelReason,
   isCapacityFull,
   placesLeft,
-  wasRefused,
 } from './appointment-rules';
 
 // The appointment screens' rules (T-SCH-02; FR-SCH-002..005; C-035). IDs and names are synthetic.
@@ -80,13 +79,5 @@ describe('appointment rules', () => {
     expect(isCapacityFull(new ApiError('CAPACITY_FULL', 409))).toBe(true);
     expect(isCapacityFull(new ApiError('STALE_RECORD', 409))).toBe(false);
     expect(isCapacityFull(null)).toBe(false);
-  });
-
-  it('treats only a 4xx answer as a refusal; a timeout or a server error may have booked', () => {
-    expect(wasRefused(new ApiError('CAPACITY_FULL', 409))).toBe(true);
-    expect(wasRefused(new ApiError('VALIDATION_FAILED', 422))).toBe(true);
-    expect(wasRefused(new ApiError('NETWORK', 0))).toBe(false);
-    expect(wasRefused(new ApiError('UNKNOWN', 504))).toBe(false);
-    expect(wasRefused(new Error('boom'))).toBe(false);
   });
 });

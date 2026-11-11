@@ -32,18 +32,21 @@ model Tenant {
   createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
   version   Int          @default(1)
 
-  facilities      Facility[]
-  memberships     Membership[]
-  auditEvents     AuditEvent[]
-  roles           Role[]
-  entitlements    TenantEntitlement[]
-  numberSequences NumberSequence[]
-  policyVersions  PolicyVersion[]
-  userAccounts    UserAccount[]
-  patients        Patient[]
+  facilities       Facility[]
+  memberships      Membership[]
+  auditEvents      AuditEvent[]
+  roles            Role[]
+  entitlements     TenantEntitlement[]
+  numberSequences  NumberSequence[]
+  policyVersions   PolicyVersion[]
+  userAccounts     UserAccount[]
+  patients         Patient[]
   practitioners    Practitioner[]
   scheduleSessions ScheduleSession[]
   appointments     Appointment[]
+  serviceItems     ServiceItem[]
+  priceLists       PriceListVersion[]
+  priceListItems   PriceListItem[]
 
   @@map("tenant")
   @@schema("hms")
@@ -491,6 +494,7 @@ model Practitioner {
   tenant           Tenant            @relation(fields: [tenantId], references: [id])
   department       Department?       @relation(fields: [tenantId, departmentId], references: [tenantId, id])
   scheduleSessions ScheduleSession[]
+  priceListItems   PriceListItem[]
 
   @@unique([tenantId, id])
   @@index([tenantId, departmentId])
@@ -603,5 +607,78 @@ model PatientIdentityHistory {
 
   @@unique([tenantId, patientId, version])
   @@map("patient_identity_history")
+  @@schema("hms")
+}
+
+// A billable thing of the hospital's catalogue (T-BIL-01; E section 4, mod-billing). For now only
+// the two system items of doctor fees exist (DOCTOR_FEE_NEW, DOCTOR_FEE_FOLLOW_UP; C-041); the
+// rest of the catalogue comes with orders (T-ORD-01). Their names are in the i18n catalogs by
+// code. Category values are a CHECK in the migration.
+model ServiceItem {
+  tenantId  String   @map("tenant_id") @db.Uuid
+  id        String   @id @default(uuid(7)) @db.Uuid
+  code      String
+  nameEn    String?  @map("name_en")
+  nameBn    String?  @map("name_bn")
+  category  String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  priceListItems PriceListItem[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, code])
+  @@map("service_item")
+  @@schema("hms")
+}
+
+// A version of the hospital's price list (T-BIL-01; FR-CFG-002; FR-BIL-007). Edited as a DRAFT,
+// then PUBLISHED with an effective time; the version in force at a moment is the published one
+// with the latest effective time not after it. One draft at a time, and a published version's
+// items never change (partial unique index and trigger in the migration).
+model PriceListVersion {
+  tenantId      String    @map("tenant_id") @db.Uuid
+  id            String    @id @default(uuid(7)) @db.Uuid
+  versionNo     Int       @map("version_no")
+  /// DRAFT or PUBLISHED (CHECK in the migration).
+  status        String    @default("DRAFT")
+  effectiveFrom DateTime? @map("effective_from") @db.Timestamptz
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz
+  publishedBy   String?   @map("published_by") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  createdBy     String    @map("created_by") @db.Uuid
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  updatedBy     String    @map("updated_by") @db.Uuid
+  version       Int       @default(1)
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id])
+  items  PriceListItem[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, versionNo])
+  @@map("price_list_version")
+  @@schema("hms")
+}
+
+// One price of a price list version (T-BIL-01; C-041). A doctor fee is two rows per practitioner:
+// the new-patient fee and the follow-up fee, which also carries the follow-up window in days.
+model PriceListItem {
+  tenantId           String  @map("tenant_id") @db.Uuid
+  id                 String  @id @default(uuid(7)) @db.Uuid
+  priceListVersionId String  @map("price_list_version_id") @db.Uuid
+  serviceItemId      String  @map("service_item_id") @db.Uuid
+  practitionerId     String? @map("practitioner_id") @db.Uuid
+  unitPrice          Decimal @map("unit_price") @db.Decimal(18, 2)
+  followUpDays       Int?    @map("follow_up_days")
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  priceListVersion PriceListVersion @relation(fields: [tenantId, priceListVersionId], references: [tenantId, id])
+  serviceItem      ServiceItem      @relation(fields: [tenantId, serviceItemId], references: [tenantId, id])
+  practitioner     Practitioner?    @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@index([tenantId, priceListVersionId])
+  @@map("price_list_item")
   @@schema("hms")
 }

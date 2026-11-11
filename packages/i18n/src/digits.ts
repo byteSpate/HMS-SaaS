@@ -8,3 +8,8 @@ export function toLocaleDigits(text: string, locale: Locale): string {
   if (locale !== 'bn-BD') return text;
   return text.replaceAll(/\d/g, (digit) => BANGLA_DIGITS.charAt(Number(digit)));
 }
+
+/** Typed input in either digit style, as Western digits for the API (an amount, a day count). */
+export function toWesternDigits(text: string): string {
+  return text.replaceAll(/[০-৯]/g, (digit) => String(BANGLA_DIGITS.indexOf(digit)));
+}

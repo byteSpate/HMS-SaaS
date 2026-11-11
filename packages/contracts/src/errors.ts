@@ -18,6 +18,8 @@ export const errorCodes = {
   INVALID_TRANSITION: 409,
   /** C-035, FR-SCH-003: the session's last place was taken; it is never overbooked. */
   CAPACITY_FULL: 409,
+  /** A setting the action needs is missing, e.g. no doctor fee for the practitioner (FR-BIL-010). */
+  POLICY_NOT_CONFIGURED: 409,
   STALE_RECORD: 409,
   USERNAME_TAKEN: 409,
   IDEMPOTENCY_KEY_REUSED: 409,

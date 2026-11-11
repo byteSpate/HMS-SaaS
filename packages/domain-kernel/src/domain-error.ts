@@ -10,3 +10,10 @@ export class DomainError extends Error {
     this.name = 'DomainError';
   }
 }
+
+/** VALIDATION_FAILED on one field, the shape the screens show next to that field. */
+export function fieldError(path: string, message: string): DomainError {
+  return new DomainError('VALIDATION_FAILED', 'Request body is invalid', {
+    fields: [{ path, message }],
+  });
+}

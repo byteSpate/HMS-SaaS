@@ -2,6 +2,7 @@
 // from here.
 export { isBookablePatient } from './infrastructure/patient.repository.js';
 export {
+  findPractitionerChoices,
   isSchedulablePractitioner,
   listPractitionerChoices,
 } from './infrastructure/practitioner.repository.js';

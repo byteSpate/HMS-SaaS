@@ -11,10 +11,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { APPOINTMENTS_QUERY_KEY, appointmentsApi } from '../../api/appointments';
+import { wasRefused } from '../../api/errors';
 import { SCHEDULE_SESSIONS_QUERY_KEY } from '../../api/schedule-sessions';
 import { useApiErrorMessage } from '../../i18n/use-api-error-message';
 import { addDays, hospitalToday } from '../schedules/session-form';
-import { isCapacityFull, placesLeft, wasRefused } from './appointment-rules';
+import { isCapacityFull, placesLeft } from './appointment-rules';
 
 const doctorOf = (session: ScheduleSession) =>
   session.practitioner.nameEn ?? session.practitioner.nameBn ?? '';

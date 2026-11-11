@@ -7,7 +7,7 @@ import { siteEn, type SiteMessages } from './messages/site/en.js';
 import type { Locale } from './locale.js';
 
 export { defaultLocale, htmlLang, isLocale, locales, type Locale } from './locale.js';
-export { toLocaleDigits } from './digits.js';
+export { toLocaleDigits, toWesternDigits } from './digits.js';
 export {
   formatMoney,
   formatNumber,

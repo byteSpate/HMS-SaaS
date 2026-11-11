@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BillingModule } from '@hms/mod-billing';
 import { IdentityAccessModule, loadAuthConfig } from '@hms/mod-identity-access';
 import { PatientsModule } from '@hms/mod-patients';
 import { SchedulingModule } from '@hms/mod-scheduling';
@@ -30,6 +31,7 @@ function requireEnv(name: string): string {
       nidKey: parseEncryptionKey('NID_ENCRYPTION_KEY', process.env.NID_ENCRYPTION_KEY ?? ''),
     }),
     SchedulingModule.forRoot(),
+    BillingModule.forRoot(),
   ],
   controllers: [AppController, HealthController, OperationsController, PoliciesController],
 })

@@ -23,3 +23,12 @@ export class ApiError extends Error {
     this.problem = problem;
   }
 }
+
+/**
+ * The API answered and refused (4xx), so nothing was written and a new attempt needs a new
+ * Idempotency-Key. A timeout, a lost connection or a 5xx from a proxy may come after the server
+ * committed, so the retry keeps the key and the server replays the first answer (SP-08).
+ */
+export function wasRefused(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500;
+}

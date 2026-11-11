@@ -2,7 +2,7 @@
 // it needs; entries are filtered before they reach the shell, so a user never sees a link to
 // something the server would refuse (FR-ACC-009). The session carries the permission codes of the
 // chosen hospital's roles (T-ACC-05); the API still checks every request.
-// Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01.
+// Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01, T-BIL-01.
 import type { IconName } from '@hms/ui';
 
 // Full catalog keys, so the unused-key check can see them as literals.
@@ -12,6 +12,7 @@ export type NavLabelKey =
   | 'nav.schedules'
   | 'nav.practitioners'
   | 'nav.departments'
+  | 'nav.doctorFees'
   | 'nav.users'
   | 'nav.roles'
   | 'nav.audit';
@@ -58,6 +59,14 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/admin/departments',
     icon: 'hospital-building',
     requires: 'admin.config.publish',
+  },
+  // T-BIL-01: doctor fees in the price list, for the administrator and finance.
+  {
+    id: 'doctor-fees',
+    labelKey: 'nav.doctorFees',
+    href: '/admin/doctor-fees',
+    icon: 'certificate',
+    requires: 'admin.price.publish',
   },
   // T-ACC-05 (SCR-22): hospital administration.
   {

@@ -138,3 +138,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-09 | [T-PRA-02 part 2: a practitioner's department](2026-11-09-T-PRA-02-practitioner-department.md)                                          |
 | 2026-11-10 | [T-SCH-01: schedule sessions](2026-11-10-T-SCH-01-schedule-sessions.md)                                                                 |
 | 2026-11-10 | [T-SCH-02: book, reschedule and cancel appointments](2026-11-10-T-SCH-02-appointments.md)                                               |
+| 2026-11-11 | [T-BIL-01: price lists with doctor fees](2026-11-11-T-BIL-01-doctor-fees.md)                                                            |
