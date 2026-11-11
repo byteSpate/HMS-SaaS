@@ -161,3 +161,13 @@ export async function insertIdentifier(tx: TenantTx, identifier: NewIdentifier):
     },
   });
 }
+
+/**
+ * Whether a patient of the caller's hospital exists, so an appointment may be booked for them
+ * (T-SCH-02, UC-SCH-01). RLS hides other hospitals' patients. Exported from the package, so only
+ * this module reads the table.
+ */
+export async function isBookablePatient(tx: TenantTx, patientId: string): Promise<boolean> {
+  const row = await tx.patient.findFirst({ where: { id: patientId }, select: { id: true } });
+  return row !== null;
+}

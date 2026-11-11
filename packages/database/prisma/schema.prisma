@@ -43,6 +43,7 @@ model Tenant {
   patients        Patient[]
   practitioners    Practitioner[]
   scheduleSessions ScheduleSession[]
+  appointments     Appointment[]
 
   @@map("tenant")
   @@schema("hms")
@@ -457,6 +458,7 @@ model Patient {
   tenant                   Tenant                   @relation(fields: [tenantId], references: [id])
   patientIdentifiers       PatientIdentifier[]
   patientIdentityHistories PatientIdentityHistory[]
+  appointments             Appointment[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, mrn])
@@ -517,14 +519,47 @@ model ScheduleSession {
   updatedBy      String   @map("updated_by") @db.Uuid
   version        Int      @default(1)
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  practitioner Practitioner @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
-  facility     Facility     @relation(fields: [tenantId, facilityId], references: [tenantId, id])
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  practitioner Practitioner  @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
+  facility     Facility      @relation(fields: [tenantId, facilityId], references: [tenantId, id])
+  appointments Appointment[]
 
   @@unique([tenantId, id])
   @@index([tenantId, sessionDate])
   @@index([tenantId, practitionerId, sessionDate])
   @@map("schedule_session")
+  @@schema("hms")
+}
+
+// A booking of a patient into a schedule session (T-SCH-02; FR-SCH-001..005; UC-SCH-01/02). Status,
+// cancel-reason and one-live-booking-per-patient rules and the column UPDATE grant are in the
+// migration. No delete: an appointment is cancelled.
+model Appointment {
+  tenantId          String   @map("tenant_id") @db.Uuid
+  id                String   @id @default(uuid(7)) @db.Uuid
+  patientId         String   @map("patient_id") @db.Uuid
+  scheduleSessionId String   @map("schedule_session_id") @db.Uuid
+  /// BOOKED, CHECKED_IN, RESCHEDULED, CANCELLED or NO_SHOW (CHECK in the migration).
+  status            String   @default("BOOKED")
+  rescheduledFromId String?  @map("rescheduled_from_id") @db.Uuid
+  cancelReason      String?  @map("cancel_reason")
+  bookedAt          DateTime @default(now()) @map("booked_at") @db.Timestamptz
+  bookedBy          String   @map("booked_by") @db.Uuid
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  updatedBy         String   @map("updated_by") @db.Uuid
+  version           Int      @default(1)
+
+  tenant          Tenant          @relation(fields: [tenantId], references: [id])
+  patient         Patient         @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  scheduleSession ScheduleSession @relation(fields: [tenantId, scheduleSessionId], references: [tenantId, id])
+  rescheduledFrom Appointment?    @relation("Rescheduled", fields: [tenantId, rescheduledFromId], references: [tenantId, id])
+  rescheduledTo   Appointment?    @relation("Rescheduled")
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, rescheduledFromId])
+  @@index([tenantId, scheduleSessionId, status])
+  @@index([tenantId, patientId])
+  @@map("appointment")
   @@schema("hms")
 }
 

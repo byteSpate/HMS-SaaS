@@ -33,9 +33,11 @@ import {
   TABLE,
   TABLE_FRAME,
 } from '../../../src/components/admin/admin-table';
+import { SessionAppointmentsDialog } from '../../../src/components/appointments/session-appointments-dialog';
 import { SessionDialog } from '../../../src/components/schedules/session-dialog';
 import { addDays, hospitalToday } from '../../../src/components/schedules/session-form';
 import { useApiErrorMessage } from '../../../src/i18n/use-api-error-message';
+import { useCachedSession } from '../../../src/session/use-session';
 
 // Full catalog keys as literals, so the unused-key check can see them.
 const STATUS: Record<
@@ -61,6 +63,10 @@ export default function SchedulesPage() {
   const [weekStart, setWeekStart] = useState(() => hospitalToday(new Date()));
   const [adding, setAdding] = useState(false);
   const [cancelling, setCancelling] = useState<ScheduleSession | null>(null);
+  const [viewing, setViewing] = useState<{ session: ScheduleSession; which: string } | null>(null);
+  // T-SCH-02: a session's patient list needs the booking permission; the API enforces it.
+  const canSeePatients =
+    useCachedSession()?.permissions.includes('scheduling.appointment.book') ?? false;
   const weekEnd = addDays(weekStart, 6);
   const sessions = useQuery({
     queryKey: [...SCHEDULE_SESSIONS_QUERY_KEY, weekStart],
@@ -176,6 +182,15 @@ export default function SchedulesPage() {
                     </td>
                     <td className={`${CELL} text-end`}>
                       <div className="flex justify-end gap-2">
+                        {canSeePatients && session.status !== 'DRAFT' ? (
+                          <Button
+                            variant="secondary"
+                            aria-label={`${t('appointments.patients')}: ${which}`}
+                            onClick={() => setViewing({ session, which })}
+                          >
+                            {t('appointments.patients')}
+                          </Button>
+                        ) : null}
                         {session.status === 'DRAFT' ? (
                           <Button
                             loading={busy && change.variables.action === 'publish'}
@@ -208,6 +223,15 @@ export default function SchedulesPage() {
       ) : null}
       {adding ? (
         <SessionDialog sessionDate={weekStart} onOpenChange={(open) => setAdding(open)} />
+      ) : null}
+      {viewing ? (
+        <SessionAppointmentsDialog
+          session={viewing.session}
+          description={viewing.which}
+          onOpenChange={(open) => {
+            if (!open) setViewing(null);
+          }}
+        />
       ) : null}
       {cancelling ? (
         <Dialog

@@ -16,6 +16,8 @@ export const errorCodes = {
   NOT_FOUND: 404,
   PAYLOAD_TOO_LARGE: 413,
   INVALID_TRANSITION: 409,
+  /** C-035, FR-SCH-003: the session's last place was taken; it is never overbooked. */
+  CAPACITY_FULL: 409,
   STALE_RECORD: 409,
   USERNAME_TAKEN: 409,
   IDEMPOTENCY_KEY_REUSED: 409,

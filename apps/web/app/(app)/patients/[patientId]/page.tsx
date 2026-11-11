@@ -11,6 +11,7 @@ import { useParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState, type ReactNode } from 'react';
 import { patientQueryKeys, patientsApi } from '../../../../src/api/patients';
+import { PatientAppointments } from '../../../../src/components/appointments/patient-appointments';
 import { CorrectionDialog } from '../../../../src/components/patients/correction-dialog';
 import { displayName, usePatientText } from '../../../../src/components/patients/patient-text';
 import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
@@ -143,6 +144,10 @@ export default function PatientPage() {
       {patient.error ? <Alert tone="danger">{errorMessage(patient.error)}</Alert> : null}
       {patient.isPending ? <Skeleton className="h-40" /> : null}
       {data ? <PatientDetails patient={data} canReveal={can('patient.sensitive.view')} /> : null}
+      {/* T-SCH-02: booking needs its own permission; the API enforces it. */}
+      {data && can('scheduling.appointment.book') ? (
+        <PatientAppointments patientId={data.patientId} />
+      ) : null}
       {correcting && data ? <CorrectionDialog patient={data} onOpenChange={setCorrecting} /> : null}
     </PageLayout>
   );

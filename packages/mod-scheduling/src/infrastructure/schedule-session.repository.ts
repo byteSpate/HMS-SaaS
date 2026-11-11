@@ -2,6 +2,7 @@
 // caller's withTenant() transaction, so RLS limits it to one hospital (ADR-003). The practitioner
 // is read through the row's foreign key, which RLS also limits to the hospital.
 import type {
+  PractitionerChoice,
   ScheduleSession,
   ScheduleSessionListQuery,
   ScheduleSessionStatus,
@@ -9,6 +10,42 @@ import type {
 import type { TenantTx } from '@hms/database';
 import { wallClockTimeIn } from '@hms/domain-kernel';
 import type { SessionStatus, SessionTimes } from '../domain/schedule-session.js';
+
+/** The practitioner as session and appointment views show them, read through the FK. */
+export const PRACTITIONER_CHOICE = {
+  select: {
+    id: true,
+    nameBn: true,
+    nameEn: true,
+    specialty: true,
+    department: { select: { id: true, code: true, nameBn: true, nameEn: true } },
+  },
+} as const;
+
+interface PractitionerRow {
+  id: string;
+  nameBn: string | null;
+  nameEn: string | null;
+  specialty: string | null;
+  department: { id: string; code: string; nameBn: string | null; nameEn: string | null } | null;
+}
+
+export function toPractitionerChoice(practitioner: PractitionerRow): PractitionerChoice {
+  return {
+    practitionerId: practitioner.id,
+    nameBn: practitioner.nameBn,
+    nameEn: practitioner.nameEn,
+    specialty: practitioner.specialty,
+    department: practitioner.department
+      ? {
+          departmentId: practitioner.department.id,
+          code: practitioner.department.code,
+          nameBn: practitioner.department.nameBn,
+          nameEn: practitioner.department.nameEn,
+        }
+      : null,
+  };
+}
 
 const COLUMNS = {
   id: true,
@@ -19,15 +56,7 @@ const COLUMNS = {
   bookedCount: true,
   status: true,
   version: true,
-  practitioner: {
-    select: {
-      id: true,
-      nameBn: true,
-      nameEn: true,
-      specialty: true,
-      department: { select: { id: true, code: true, nameBn: true, nameEn: true } },
-    },
-  },
+  practitioner: PRACTITIONER_CHOICE,
 } as const;
 
 interface Row {
@@ -39,13 +68,7 @@ interface Row {
   bookedCount: number;
   status: string;
   version: number;
-  practitioner: {
-    id: string;
-    nameBn: string | null;
-    nameEn: string | null;
-    specialty: string | null;
-    department: { id: string; code: string; nameBn: string | null; nameEn: string | null } | null;
-  };
+  practitioner: PractitionerRow;
 }
 
 /** What a status change compares: the current status, bookings, end and version. */
@@ -57,26 +80,12 @@ export interface StoredSession {
 }
 
 /** A DATE column arrives as midnight UTC; its first ten characters are the calendar date. */
-const dateOf = (value: Date) => value.toISOString().slice(0, 10);
+export const dateOf = (value: Date) => value.toISOString().slice(0, 10);
 
 function toSession(row: Row, timeZone: string): ScheduleSession {
-  const { practitioner } = row;
   return {
     sessionId: row.id,
-    practitioner: {
-      practitionerId: practitioner.id,
-      nameBn: practitioner.nameBn,
-      nameEn: practitioner.nameEn,
-      specialty: practitioner.specialty,
-      department: practitioner.department
-        ? {
-            departmentId: practitioner.department.id,
-            code: practitioner.department.code,
-            nameBn: practitioner.department.nameBn,
-            nameEn: practitioner.department.nameEn,
-          }
-        : null,
-    },
+    practitioner: toPractitionerChoice(row.practitioner),
     sessionDate: dateOf(row.sessionDate),
     startTime: wallClockTimeIn(row.startsAt, timeZone),
     endTime: wallClockTimeIn(row.endsAt, timeZone),
@@ -89,16 +98,21 @@ function toSession(row: Row, timeZone: string): ScheduleSession {
   };
 }
 
-/** Sessions from `from` to `to` (dates included), in time order, the order a calendar shows. */
+/**
+ * Sessions from `from` to `to` (dates included), in time order, the order a calendar shows. With
+ * `bookableAt`, only published sessions that have not ended by then (the booking picker, T-SCH-02).
+ */
 export async function listSessions(
   tx: TenantTx,
   query: ScheduleSessionListQuery,
   timeZone: string,
+  bookableAt?: Date,
 ): Promise<ScheduleSession[]> {
   const rows = await tx.scheduleSession.findMany({
     where: {
       sessionDate: { gte: new Date(query.from), lte: new Date(query.to) },
       ...(query.practitionerId ? { practitionerId: query.practitionerId } : {}),
+      ...(bookableAt ? { status: 'PUBLISHED', endsAt: { gt: bookableAt } } : {}),
     },
     select: COLUMNS,
     orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
@@ -171,6 +185,32 @@ export async function insertSession(
 }
 
 /**
+ * C-035, FR-SCH-003: takes one place in a published session that has not ended, only while a
+ * place is free. The UPDATE locks the row, so of two concurrent bookings for the last place the
+ * second re-reads the raised count and changes nothing. Returns 1 when a place was taken.
+ */
+export async function takePlace(tx: TenantTx, sessionId: string, now: Date): Promise<number> {
+  const result = await tx.scheduleSession.updateMany({
+    where: {
+      id: sessionId,
+      status: 'PUBLISHED',
+      endsAt: { gt: now },
+      bookedCount: { lt: tx.scheduleSession.fields.capacity },
+    },
+    data: { bookedCount: { increment: 1 } },
+  });
+  return result.count;
+}
+
+/** Gives back the place of a cancelled or rescheduled booking (AT-SCH-004, AT-SCH-005). */
+export async function releasePlace(tx: TenantTx, sessionId: string): Promise<void> {
+  await tx.scheduleSession.updateMany({
+    where: { id: sessionId, bookedCount: { gt: 0 } },
+    data: { bookedCount: { decrement: 1 } },
+  });
+}
+
+/**
  * Sets the status only if the row is still at `expectedVersion` (SP-03). Returns the number of
  * rows changed: 0 means another change won the race.
  */
@@ -180,7 +220,13 @@ export async function updateSessionStatus(
   status: SessionStatus,
 ): Promise<number> {
   const result = await tx.scheduleSession.updateMany({
-    where: { id: target.sessionId, version: target.expectedVersion },
+    where: {
+      id: target.sessionId,
+      version: target.expectedVersion,
+      // A booking takes a place without changing the version, so a cancel also checks the count
+      // here: a booking that won the race keeps its session (T-SCH-02).
+      ...(status === 'CANCELLED' ? { bookedCount: 0 } : {}),
+    },
     data: {
       status,
       updatedBy: target.userId,
