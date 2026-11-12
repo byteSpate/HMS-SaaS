@@ -14,6 +14,7 @@ export { findRoutesWithoutMarker } from './http/route-markers.js';
 export { SESSION_COOKIE } from './http/session-cookie.js';
 export {
   hospitalFacilityId,
+  hospitalNamesOf,
   isSelectableDepartment,
   listDepartmentChoices,
 } from './infrastructure/department.repository.js';

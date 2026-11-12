@@ -1,6 +1,6 @@
 import { toLocaleDigits } from '@hms/i18n';
 import { describe, expect, it } from 'vitest';
-import { amountOf, positiveAmountOf } from './money';
+import { amountOf, compareAmounts, positiveAmountOf, sumAmounts } from './money';
 
 // Typed amounts (T-BIL-03, T-BIL-04; ADR-007).
 describe('typed amounts', () => {
@@ -24,5 +24,14 @@ describe('typed amounts', () => {
     expect(positiveAmountOf('0.00')).toBeNull();
     expect(positiveAmountOf('000')).toBeNull();
     expect(positiveAmountOf('0.01')).toBe('0.01');
+  });
+
+  it('adds and compares amounts exactly, never as floats', () => {
+    expect(sumAmounts(['0.10', '0.20'])).toBe('0.30');
+    expect(sumAmounts(['500.00', '300.00', '0.05'])).toBe('800.05');
+    expect(sumAmounts([])).toBe('0.00');
+    expect(compareAmounts('700.00', '700.00')).toBe(0);
+    expect(compareAmounts('700.01', '700.00')).toBe(1);
+    expect(compareAmounts('99.99', '100.00')).toBe(-1);
   });
 });

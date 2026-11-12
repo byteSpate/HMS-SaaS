@@ -39,7 +39,8 @@ export function digitsLocale(language: PrintLanguage): Locale {
 export interface HospitalHeader {
   nameEn: string;
   nameBn?: string;
-  addressEn: string;
+  /** Optional until hospitals record an address (T-SAA-01). */
+  addressEn?: string;
   addressBn?: string;
 }
 
@@ -49,6 +50,8 @@ const BASE_CSS = `
   header { border-bottom: 1.5pt solid #000; padding-bottom: 6pt; margin-bottom: 8pt; text-align: center; }
   h1 { margin: 0; font-size: 14pt; }
   h2 { margin: 8pt 0; font-size: 12pt; text-align: center; }
+  h3 { margin: 10pt 0 4pt; font-size: 10.5pt; }
+  .received { margin-top: 10pt; }
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 3pt 4pt; border-bottom: 0.5pt solid #000; text-align: start; vertical-align: top; }
   .number { text-align: end; font-variant-numeric: tabular-nums; }
@@ -70,7 +73,9 @@ export function printDocument(options: {
 }): string {
   const { hospital, language } = options;
   const htmlLang = language === 'en' ? 'en' : 'bn';
-  const address = bothNames(language, hospital.addressEn, hospital.addressBn);
+  const address = hospital.addressEn
+    ? `<div>${bothNames(language, hospital.addressEn, hospital.addressBn)}</div>`
+    : '';
   return `<!doctype html>
 <html lang="${htmlLang}">
 <head>
@@ -85,7 +90,7 @@ ${BASE_CSS}
 <body>
 <header>
 <h1>${bothNames(language, hospital.nameEn, hospital.nameBn)}</h1>
-<div>${address}</div>
+${address}
 </header>
 ${options.body}
 </body>

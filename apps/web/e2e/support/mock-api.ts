@@ -10,6 +10,7 @@ import { createPatientStore } from './mock-patients';
 import { createDepartmentStore } from './mock-departments';
 import { createPractitionerStore } from './mock-practitioners';
 import { createBillingStore } from './mock-billing';
+import { createPaymentStore } from './mock-payments';
 import { createPriceListStore } from './mock-price-lists';
 import { createScheduleSessionStore } from './mock-schedule-sessions';
 
@@ -123,6 +124,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
   const departments = createDepartmentStore();
   const priceLists = createPriceListStore();
   const billing = createBillingStore();
+  const cashierDesk = createPaymentStore(billing.openSession);
   const scheduleSessions = createScheduleSessionStore();
   const appointments = createAppointmentStore(scheduleSessions.sessions, patients.patients);
 
@@ -208,6 +210,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
       departments.answer(request.method(), path, body) ??
       priceLists.answer(request.method(), path, body) ??
       billing.answer(request.method(), path, body, new URL(request.url()).searchParams) ??
+      cashierDesk.answer(request.method(), path, body, new URL(request.url()).searchParams) ??
       scheduleSessions.answer(request.method(), path, body, new URL(request.url()).searchParams) ??
       appointments.answer(request.method(), path, body, new URL(request.url()).searchParams);
     if (moduleAnswer) return reply(route, moduleAnswer.status, moduleAnswer.body);
@@ -270,6 +273,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
     departments,
     priceLists,
     billing,
+    cashierDesk,
     scheduleSessions,
     appointments,
   };

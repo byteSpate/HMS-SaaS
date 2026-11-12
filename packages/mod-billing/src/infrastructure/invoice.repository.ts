@@ -1,4 +1,4 @@
-// Charge, invoice and invoice-line rows in PostgreSQL (T-BIL-02; E section 5.4). Every function
+// Charge, invoice and invoice-line rows in PostgreSQL (T-BIL-02, T-BIL-04; E section 5.4). Every function
 // runs in the caller's withTenant() transaction, so RLS limits it to one hospital (ADR-003).
 // Amounts cross the boundary here only: numeric in the database, Money in the code (ADR-007).
 import type { TenantTx } from '@hms/database';
@@ -248,6 +248,8 @@ const INVOICE_COLUMNS = {
       category: true,
       netAmount: true,
       status: true,
+      allocatedAmount: true,
+      eligibility: true,
       charge: {
         select: {
           practitionerId: true,
@@ -272,6 +274,9 @@ export interface StoredLine {
   amount: Money;
   category: LineCategory;
   status: string;
+  /** T-BIL-04: paid so far. */
+  allocated: Money;
+  eligibility: string;
 }
 
 export interface StoredInvoice {
@@ -320,6 +325,8 @@ function toStored(row: InvoiceRow): StoredInvoice {
       amount: moneyOf(line.netAmount),
       category: line.category as LineCategory,
       status: line.status,
+      allocated: moneyOf(line.allocatedAmount),
+      eligibility: line.eligibility,
     })),
   };
 }
@@ -329,12 +336,35 @@ export async function findInvoice(tx: TenantTx, invoiceId: string): Promise<Stor
   return row ? toStored(row) : null;
 }
 
-/** A visit's invoices: the doctor fee first, then services (C-008). */
-export async function listVisitInvoices(tx: TenantTx, visitId: string): Promise<StoredInvoice[]> {
+const OPEN_STATUSES = ['ISSUED', 'PARTIALLY_PAID'];
+
+/**
+ * A visit's or a patient's invoices: doctor fees first, then services (C-008), older first.
+ * `openOnly` keeps those that still owe money (the cashier desk, T-BIL-04).
+ */
+export async function listInvoices(
+  tx: TenantTx,
+  filter: { visitId?: string; patientId?: string; openOnly?: boolean },
+): Promise<StoredInvoice[]> {
   const rows = await tx.invoice.findMany({
-    where: { visitId },
+    where: {
+      ...(filter.visitId ? { visitId: filter.visitId } : {}),
+      ...(filter.patientId ? { patientId: filter.patientId } : {}),
+      ...(filter.openOnly ? { status: { in: OPEN_STATUSES } } : {}),
+    },
     select: INVOICE_COLUMNS,
     orderBy: [{ type: 'asc' }, { issuedAt: 'asc' }],
+  });
+  return rows.map(toStored);
+}
+
+/** T-BIL-04 cashier queue: invoices still owing that were issued from `since`, newest first. */
+export async function listOpenInvoicesSince(tx: TenantTx, since: Date): Promise<StoredInvoice[]> {
+  const rows = await tx.invoice.findMany({
+    where: { status: { in: OPEN_STATUSES }, issuedAt: { gte: since } },
+    select: INVOICE_COLUMNS,
+    orderBy: { issuedAt: 'desc' },
+    take: 200,
   });
   return rows.map(toStored);
 }

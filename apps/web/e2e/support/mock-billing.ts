@@ -1,5 +1,6 @@
-// In-memory stand-in for the cashier endpoints (T-BIL-03 cashier sessions), answering with payloads
-// that satisfy the shared contracts. Used by the cashier browser tests; the real behaviour (locks,
+// In-memory stand-in for the cashier session endpoints (T-BIL-03), answering with payloads that
+// satisfy the shared contracts; payments (T-BIL-04) are in mock-payments.ts and add to the open
+// session's expected amounts. Used by the cashier browser tests; the real behaviour (locks,
 // segregation of duty, audit) is covered by apps/api/src/cashier-sessions.api.spec.ts. Names are
 // synthetic.
 import {
@@ -77,7 +78,11 @@ export function createBillingStore() {
     const request = openCashierSessionRequestSchema.safeParse(body);
     if (!request.success) return problem(422, 'VALIDATION_FAILED');
     if (openSession()) return problem(409, 'INVALID_TRANSITION');
-    const openingFloat = request.data.openingFloat ?? '0.00';
+    return { status: 201, body: view(startSession(request.data.openingFloat ?? '0.00')) };
+  }
+
+  /** The signed-in cashier's session, opened with this float (also seeded by the desk tests). */
+  function startSession(openingFloat: string): CashierSession {
     const session: CashierSession = {
       sessionId: ID(next++),
       cashier: CASHIER,
@@ -96,7 +101,7 @@ export function createBillingStore() {
       version: 1,
     };
     sessions.push(session);
-    return { status: 201, body: view(session) };
+    return session;
   }
 
   function close(sessionId: string, body: unknown): BillingAnswer {
@@ -163,5 +168,5 @@ export function createBillingStore() {
     return undefined;
   }
 
-  return { sessions, seedClosedSession, answer };
+  return { sessions, openSession, seedClosedSession, seedOpenSession: startSession, answer };
 }

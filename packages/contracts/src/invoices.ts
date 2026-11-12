@@ -1,6 +1,6 @@
-// Invoice contracts (T-BIL-02; FR-BIL-001, FR-BIL-008, FR-BIL-030, FR-BIL-031; C-008; ADR-007). A
-// visit has a DOCTOR_FEE invoice and, with orders, a SERVICE invoice. Totals, balances and
-// subtotals are computed by the server from the posted lines; the client never adds amounts.
+// Invoice contracts (T-BIL-02, T-BIL-04; FR-BIL-001, FR-BIL-008, FR-BIL-030, FR-BIL-031; C-008;
+// ADR-007). A visit has a DOCTOR_FEE invoice and, with orders, a SERVICE invoice. Totals, balances,
+// payments per line and subtotals are computed by the server; the client never adds amounts.
 import { z } from 'zod';
 import { moneyAmountSchema } from './price-lists.js';
 import { practitionerChoiceSchema } from './schedule-sessions.js';
@@ -27,6 +27,11 @@ export const invoiceLineSchema = z.strictObject({
   amount: moneyAmountSchema,
   category: z.enum(['MEDICINE', 'NON_MEDICINE']),
   status: z.enum(['ACTIVE', 'CANCELLED', 'REVERSED']),
+  /** T-BIL-04: paid so far, and what is still owed on the line. */
+  allocatedAmount: moneyAmountSchema,
+  balance: moneyAmountSchema,
+  /** C-040 FULL_PAYMENT: a service may start only when its line is fully paid (FR-BIL-003). */
+  eligibility: z.enum(['ELIGIBLE', 'NOT_ELIGIBLE']),
 });
 export type InvoiceLine = z.infer<typeof invoiceLineSchema>;
 
@@ -54,7 +59,20 @@ export const invoiceSchema = invoiceSummarySchema.extend({
 });
 export type Invoice = z.infer<typeof invoiceSchema>;
 
-export const invoiceListQuerySchema = z.strictObject({ visitId: z.uuid() });
+/**
+ * A visit's invoices, or a patient's (T-BIL-04 cashier desk). `open=true` keeps only invoices
+ * that still owe money (ISSUED, PARTIALLY_PAID).
+ */
+export const invoiceListQuerySchema = z
+  .strictObject({
+    visitId: z.uuid().optional(),
+    patientId: z.uuid().optional(),
+    open: z.enum(['true', 'false']).optional(),
+  })
+  .refine((query) => (query.visitId === undefined) !== (query.patientId === undefined), {
+    path: ['visitId'],
+    message: 'Give a visitId or a patientId',
+  });
 export type InvoiceListQuery = z.infer<typeof invoiceListQuerySchema>;
 
 export const invoiceListSchema = z.strictObject({ invoices: z.array(invoiceSchema) });

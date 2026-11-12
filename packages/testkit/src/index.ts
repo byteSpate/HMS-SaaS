@@ -3,3 +3,4 @@
 export * from './identity.js';
 export * from './totp.js';
 export * from './staff-client.js';
+export * from './opd-world.js';

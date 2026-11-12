@@ -8,28 +8,49 @@
     },
     "receiptNo": "RCPT-2026-000045",
     "paidAt": "2026-11-02T04:15:00.000Z",
-    "patient": { "nameEn": "Rahima Khatun", "nameBn": "রহিমা খাতুন", "mrn": "SMH-000123" },
-    "lines": [
+    "patient": {
+      "nameEn": "Rahima Khatun",
+      "nameBn": "রহিমা খাতুন",
+      "mrn": "SMH-000123"
+    },
+    "invoices": [
       {
-        "descriptionEn": "Doctor fee: new patient",
-        "descriptionBn": "চিকিৎসকের ফি: নতুন রোগী",
-        "amount": "800.00"
+        "kind": "DOCTOR_FEE",
+        "number": "INV-000311",
+        "lines": [
+          {
+            "descriptionEn": "Doctor fee: new patient",
+            "descriptionBn": "চিকিৎসকের ফি: নতুন রোগী",
+            "amount": "800.00"
+          }
+        ],
+        "paid": "800.00",
+        "balanceAfter": "0.00"
       },
       {
-        "descriptionEn": "Complete blood count",
-        "descriptionBn": "সম্পূর্ণ রক্ত পরীক্ষা",
-        "amount": "450.00"
-      },
-      {
-        "descriptionEn": "X-ray chest PA view",
-        "descriptionBn": "বুকের এক্স-রে",
-        "amount": "650.00"
+        "kind": "SERVICE",
+        "number": "INV-000312",
+        "lines": [
+          {
+            "descriptionEn": "Complete blood count",
+            "descriptionBn": "সম্পূর্ণ রক্ত পরীক্ষা",
+            "amount": "450.00"
+          },
+          {
+            "descriptionEn": "X-ray chest PA view",
+            "descriptionBn": "বুকের এক্স-রে",
+            "amount": "650.00"
+          }
+        ],
+        "paid": "1100.00",
+        "balanceAfter": "0.00"
       }
     ],
-    "total": "1900.00",
-    "paid": "1900.00",
-    "balance": "0.00",
-    "method": { "nameEn": "Cash", "nameBn": "নগদ" },
+    "amountReceived": "1900.00",
+    "method": {
+      "nameEn": "Cash",
+      "nameBn": "নগদ"
+    },
     "cashier": "Sample Cashier",
     "printedAt": "2026-11-02T04:16:00.000Z"
   },
@@ -42,7 +63,10 @@
     },
     "reportNo": "LAB-2026-000210",
     "version": 1,
-    "section": { "nameEn": "Haematology", "nameBn": "হেমাটোলজি" },
+    "section": {
+      "nameEn": "Haematology",
+      "nameBn": "হেমাটোলজি"
+    },
     "patient": {
       "nameEn": "Rahima Khatun",
       "nameBn": "রহিমা খাতুন",

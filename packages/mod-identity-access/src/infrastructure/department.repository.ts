@@ -1,5 +1,5 @@
-// Department rows in PostgreSQL (T-PRA-02; FR-CFG-001; E section 4). Every function runs in the
-// caller's withTenant() transaction, so RLS limits it to one hospital (ADR-003).
+// Department and hospital rows in PostgreSQL (T-PRA-02, T-BIL-04; FR-CFG-001; E section 4). Every
+// function runs in the caller's withTenant() transaction, so RLS limits it to one hospital (ADR-003).
 import type { DepartmentChoice, DepartmentRecord } from '@hms/contracts';
 import type { TenantTx } from '@hms/database';
 import type { DepartmentValues } from '../domain/department.js';
@@ -135,4 +135,25 @@ export async function updateDepartment(
     },
   });
   return result.count;
+}
+
+/**
+ * The hospital's names for printed headers (T-BIL-04 receipts): the hospital's, else its main
+ * facility's, else its code. RLS (tenant_self) lets a hospital read only its own row.
+ */
+export async function hospitalNamesOf(
+  tx: TenantTx,
+  tenantId: string,
+): Promise<{ nameEn: string; nameBn?: string }> {
+  const tenant = await tx.tenant.findUnique({
+    where: { id: tenantId },
+    select: { code: true, nameEn: true, nameBn: true },
+  });
+  const facility = await tx.facility.findFirst({
+    orderBy: { code: 'asc' },
+    select: { nameEn: true, nameBn: true },
+  });
+  const nameEn = tenant?.nameEn ?? facility?.nameEn ?? tenant?.code ?? '';
+  const nameBn = tenant?.nameBn ?? facility?.nameBn ?? undefined;
+  return nameBn ? { nameEn, nameBn } : { nameEn };
 }

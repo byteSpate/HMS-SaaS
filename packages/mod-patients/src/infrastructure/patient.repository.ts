@@ -1,6 +1,6 @@
-// Patient rows in PostgreSQL (T-PAT-01; FR-PAT-002, FR-PAT-011; E section 5.1). Every function runs in
-// the caller's withTenant() transaction, so RLS limits it to one hospital (ADR-003).
-import type { DuplicateCandidate, PatientSex } from '@hms/contracts';
+// Patient rows in PostgreSQL (T-PAT-01, T-BIL-04; FR-PAT-002, FR-PAT-011; E section 5.1). Every
+// function runs in the caller's withTenant() transaction, so RLS limits it to one hospital (ADR-003).
+import type { DuplicateCandidate, PatientRef, PatientSex } from '@hms/contracts';
 import type { TenantTx } from '@hms/database';
 import {
   BIRTH_YEAR_TOLERANCE,
@@ -170,4 +170,27 @@ export async function insertIdentifier(tx: TenantTx, identifier: NewIdentifier):
 export async function isBookablePatient(tx: TenantTx, patientId: string): Promise<boolean> {
   const row = await tx.patient.findFirst({ where: { id: patientId }, select: { id: true } });
   return row !== null;
+}
+
+/**
+ * The MRN and names of patients, for other modules' screens and documents (T-BIL-04 cashier desk
+ * and receipts). Exported from the package, so only this module reads the table; RLS hides other
+ * hospitals' patients, which are then missing from the map.
+ */
+export async function findPatientRefs(
+  tx: TenantTx,
+  patientIds: readonly string[],
+): Promise<Map<string, PatientRef>> {
+  const ids = [...new Set(patientIds)];
+  if (ids.length === 0) return new Map();
+  const rows = await tx.patient.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, mrn: true, nameEn: true, nameBn: true },
+  });
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      { patientId: row.id, mrn: row.mrn, nameEn: row.nameEn, nameBn: row.nameBn },
+    ]),
+  );
 }

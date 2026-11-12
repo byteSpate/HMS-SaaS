@@ -1,13 +1,16 @@
-// /api/v1/billing/invoices (T-BIL-02; FR-BIL-001, FR-BIL-008, FR-BIL-030; C-008): staff with
-// billing.invoice.issue (the cashier, C-042) read a visit's invoices or one invoice, with lines,
-// totals, balance and subtotals computed by the server. Invoices are created by the charge
-// interface (postCharge), never by a client, and a client never sends a price (FR-BIL-007).
+// /api/v1/billing/invoices (T-BIL-02, T-BIL-04; FR-BIL-001, FR-BIL-008, FR-BIL-030; C-008):
+// staff with billing.invoice.issue (the cashier, C-042) read a visit's or a patient's invoices or
+// one invoice, with lines, totals, balance and subtotals computed by the server; the cashier
+// (billing.payment.record) reads today's queue. Invoices are created by the charge interface
+// (postCharge), never by a client, and a client never sends a price (FR-BIL-007).
 import { Controller, Get, Inject, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiCookieAuth, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import {
+  cashierQueueSchema,
   invoiceListQuerySchema,
   invoiceListSchema,
   invoiceSchema,
+  type CashierQueue,
   type Invoice,
   type InvoiceList,
   type InvoiceListQuery,
@@ -34,12 +37,15 @@ export class InvoicesController {
 
   @Get()
   @RequirePermission('billing.invoice.issue')
-  @ApiQuery({ name: 'visitId', format: 'uuid' })
+  @ApiQuery({ name: 'visitId', format: 'uuid', required: false })
+  @ApiQuery({ name: 'patientId', format: 'uuid', required: false })
+  @ApiQuery({ name: 'open', enum: ['true', 'false'], required: false })
   @ApiEndpoint({
-    summary: "List a visit's invoices",
+    summary: "List a visit's or a patient's invoices",
     description:
-      'The doctor-fee invoice first, then the service invoice (C-008), each with its lines in ' +
-      'posting order, total, paid, balance and medicine and non-medicine subtotals.',
+      'Give a visitId or a patientId. Doctor-fee invoices first, then service invoices (C-008), ' +
+      'each with its lines in posting order (paid so far, balance, eligibility), total, paid, ' +
+      'balance and medicine and non-medicine subtotals. open=true keeps those still owing.',
     success: { status: 200, description: 'The invoices', schema: invoiceListSchema },
     errors: [...ACCESS_ERRORS, 'VALIDATION_FAILED'],
   })
@@ -47,6 +53,21 @@ export class InvoicesController {
     @Query(new ZodBodyPipe(invoiceListQuerySchema)) query: InvoiceListQuery,
   ): Promise<InvoiceList> {
     return this.invoices.list(query);
+  }
+
+  // Before ':invoiceId', so "queue" is not read as an invoice ID.
+  @Get('queue')
+  @RequirePermission('billing.payment.record')
+  @ApiEndpoint({
+    summary: "Today's cashier queue",
+    description:
+      'Patients with invoices issued today (hospital date) that still owe money, newest first, ' +
+      'each with the summaries of those invoices (SCR-06).',
+    success: { status: 200, description: 'The queue', schema: cashierQueueSchema },
+    errors: [...ACCESS_ERRORS],
+  })
+  queue(): Promise<CashierQueue> {
+    return this.invoices.queue();
   }
 
   @Get(':invoiceId')

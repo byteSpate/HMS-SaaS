@@ -23,7 +23,6 @@ import {
   assertReviewable,
   hasVariance,
   sessionTotals,
-  zeroAmounts,
   type MethodAmounts,
   type SessionTotal,
 } from '../domain/cashier-session.js';
@@ -37,20 +36,19 @@ import {
   reviewSession,
   type StoredSession,
 } from '../infrastructure/cashier-session.repository.js';
+import { sessionPaymentTotals } from '../infrastructure/payment.repository.js';
 import { BILLING_CLOCK } from './context.js';
 
 const notFound = () => new DomainError('NOT_FOUND', 'Cashier session not found');
 const stale = (currentVersion: number) =>
   new DomainError('STALE_RECORD', 'This cashier session changed; reload it', { currentVersion });
 
-/** Payments come with T-BIL-04; until then a session holds only its float. */
-function paymentTotalsOf(): Promise<MethodAmounts> {
-  return Promise.resolve(zeroAmounts());
-}
-
 /** The open session's live expected amounts, or the rows stored when it was closed. */
-async function totalsOf(stored: StoredSession): Promise<SessionTotal[]> {
-  return stored.closing ?? sessionTotals(stored.openingFloat, await paymentTotalsOf(), null);
+async function totalsOf(tx: TenantTx, stored: StoredSession): Promise<SessionTotal[]> {
+  return (
+    stored.closing ??
+    sessionTotals(stored.openingFloat, await sessionPaymentTotals(tx, stored.sessionId), null)
+  );
 }
 
 async function toSessions(tx: TenantTx, stored: StoredSession[]): Promise<CashierSession[]> {
@@ -61,7 +59,7 @@ async function toSessions(tx: TenantTx, stored: StoredSession[]): Promise<Cashie
   const staffRef = (userId: string) => ({ userId, displayName: names.get(userId) ?? '' });
   return Promise.all(
     stored.map(async (session) => {
-      const totals = await totalsOf(session);
+      const totals = await totalsOf(tx, session);
       return {
         sessionId: session.sessionId,
         cashier: staffRef(session.cashierId),
@@ -164,7 +162,7 @@ export class CashierSessionService {
       await lockSession(tx, sessionId);
       const totals = sessionTotals(
         stored.openingFloat,
-        await paymentTotalsOf(),
+        await sessionPaymentTotals(tx, sessionId),
         countedOf(request.counted),
       );
       const rows = totals.map((row) => ({

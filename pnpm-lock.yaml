@@ -538,6 +538,9 @@ importers:
       '@hms/domain-kernel':
         specifier: workspace:*
         version: link:../domain-kernel
+      '@hms/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@hms/mod-identity-access':
         specifier: workspace:*
         version: link:../mod-identity-access
@@ -547,6 +550,9 @@ importers:
       '@hms/platform':
         specifier: workspace:*
         version: link:../platform
+      '@hms/print-templates':
+        specifier: workspace:*
+        version: link:../print-templates
       '@nestjs/common':
         specifier: 12.3.2
         version: 12.3.2(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)

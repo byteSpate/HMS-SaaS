@@ -51,10 +51,30 @@ describe('receipt template', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
-  it('marks a reprint (FR-BIL-027)', () => {
-    const html = renderReceiptHtml({ ...samples.receipt, reprint: true }, 'en');
-    expect(html).toContain('Reprint');
-    expect(renderReceiptHtml(samples.receipt, 'en')).not.toContain('Reprint');
+  it('marks copy 2 and later, never the original (FR-BIL-027)', () => {
+    expect(renderReceiptHtml({ ...samples.receipt, copyNo: 2 }, 'en')).toContain('Copy 2');
+    expect(renderReceiptHtml({ ...samples.receipt, copyNo: 1 }, 'en')).not.toContain('Copy');
+    expect(renderReceiptHtml(samples.receipt, 'en')).not.toContain('Copy');
+  });
+
+  it('lists each invoice paid, with its type and balance after (C-008, C-039)', () => {
+    const html = renderReceiptHtml(samples.receipt, 'en');
+    expect(html).toContain('Doctor fee invoice - INV-000311');
+    expect(html).toContain('Service invoice - INV-000312');
+    expect(html.match(/Balance after this payment/g)).toHaveLength(2);
+    expect(html).toContain('Amount received');
+  });
+
+  it('shows the provider and reference of a mobile payment (FR-BIL-004)', () => {
+    const mobile = {
+      ...samples.receipt,
+      method: { nameEn: 'Mobile' },
+      providerLabel: 'bKash',
+      externalReference: 'TX-9K2',
+    };
+    const html = renderReceiptHtml(mobile, 'en');
+    expect(html).toContain('Mobile, bKash');
+    expect(html).toContain('TX-9K2');
   });
 });
 
