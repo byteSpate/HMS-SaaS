@@ -2,7 +2,7 @@
 // it needs; entries are filtered before they reach the shell, so a user never sees a link to
 // something the server would refuse (FR-ACC-009). The session carries the permission codes of the
 // chosen hospital's roles (T-ACC-05); the API still checks every request.
-// Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01, T-BIL-01.
+// Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01, T-BIL-01, T-BIL-03.
 import type { IconName } from '@hms/ui';
 
 // Full catalog keys, so the unused-key check can see them as literals.
@@ -10,6 +10,8 @@ export type NavLabelKey =
   | 'nav.home'
   | 'nav.patients'
   | 'nav.schedules'
+  | 'nav.cashier'
+  | 'nav.cashierSessions'
   | 'nav.practitioners'
   | 'nav.departments'
   | 'nav.doctorFees'
@@ -43,6 +45,22 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/schedules',
     icon: 'calendar',
     requires: 'scheduling.schedule.manage',
+  },
+  // T-BIL-03 (SCR-06, SCR-07): the cashier desk with the cashier's own session.
+  {
+    id: 'cashier',
+    labelKey: 'nav.cashier',
+    href: '/cashier',
+    icon: 'briefcase',
+    requires: 'billing.cashier_session.manage',
+  },
+  // T-BIL-03 (SCR-21): finance reviews closed cashier sessions.
+  {
+    id: 'cashier-sessions',
+    labelKey: 'nav.cashierSessions',
+    href: '/cashier-sessions',
+    icon: 'shield-check',
+    requires: 'billing.cashier_session.review',
   },
   // T-PRA-01: the practitioner master, for the hospital administrator.
   {

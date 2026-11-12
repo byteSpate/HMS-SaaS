@@ -3,6 +3,7 @@
 // end to end (ADR-007): what the user typed becomes "500.00", never a float.
 import type { DoctorFee, SetDoctorFeeRequest } from '@hms/contracts';
 import { toWesternDigits } from '@hms/i18n';
+import { positiveAmountOf } from '../../money';
 
 export interface FeeForm {
   practitionerId: string;
@@ -20,16 +21,8 @@ export function formOf(fee?: DoctorFee): FeeForm {
   };
 }
 
-const AMOUNT = /^(\d{1,16})(?:\.(\d{1,2}))?$/;
-
-/** A fee as the API takes it, or null when it is not a positive amount with two decimals. */
-export function amountOf(text: string): string | null {
-  const match = AMOUNT.exec(toWesternDigits(text.trim()));
-  if (!match) return null;
-  const amount = `${match[1]}.${(match[2] ?? '').padEnd(2, '0')}`;
-  // C-041 allows no reductions, so a fee of zero is not a fee.
-  return /^0+\.00$/.test(amount) ? null : amount;
-}
+/** A fee as the API takes it; C-041 allows no reductions, so a fee of zero is not a fee. */
+export const amountOf = positiveAmountOf;
 
 export function daysOf(text: string): number | null {
   const digits = toWesternDigits(text.trim());

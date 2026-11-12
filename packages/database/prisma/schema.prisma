@@ -54,6 +54,9 @@ model Tenant {
 
   visits Visit[]
 
+  cashierSessions      CashierSession[]
+  cashierSessionCounts CashierSessionCount[]
+
   @@map("tenant")
   @@schema("hms")
 }
@@ -76,6 +79,8 @@ model Facility {
   scheduleSessions ScheduleSession[]
 
   visits Visit[]
+
+  cashierSessions CashierSession[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, code])
@@ -845,5 +850,55 @@ model Visit {
   @@unique([tenantId, appointmentId])
   @@index([tenantId, patientId, arrivedAt(sort: Desc)], map: "visit_patient_idx")
   @@map("visit")
+  @@schema("hms")
+}
+
+// A cashier's working session (T-BIL-03; FR-BIL-026; UC-BIL-04; mod-billing). OPEN until the
+// cashier closes it with the counted amounts, then CLOSED_PENDING_REVIEW until a finance user
+// other than the cashier reviews it. State, time and segregation CHECKs are in the migration.
+model CashierSession {
+  tenantId     String    @map("tenant_id") @db.Uuid
+  id           String    @id @default(uuid(7)) @db.Uuid
+  facilityId   String    @map("facility_id") @db.Uuid
+  cashierId    String    @map("cashier_id") @db.Uuid
+  /// OPEN, CLOSED_PENDING_REVIEW or REVIEWED (CHECK in the migration).
+  status       String    @default("OPEN")
+  openingFloat Decimal   @default(0) @map("opening_float") @db.Decimal(18, 2)
+  openedAt     DateTime  @default(now()) @map("opened_at") @db.Timestamptz
+  closedAt     DateTime? @map("closed_at") @db.Timestamptz
+  reviewedBy   String?   @map("reviewed_by") @db.Uuid
+  reviewedAt   DateTime? @map("reviewed_at") @db.Timestamptz
+  reviewNote   String?   @map("review_note")
+  updatedAt    DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  version      Int       @default(1)
+
+  tenant   Tenant                @relation(fields: [tenantId], references: [id])
+  facility Facility              @relation(fields: [tenantId, facilityId], references: [tenantId, id])
+  counts   CashierSessionCount[]
+
+  @@unique([tenantId, id])
+  @@index([tenantId, cashierId, openedAt(sort: Desc)], map: "cashier_session_cashier_idx")
+  @@map("cashier_session")
+  @@schema("hms")
+}
+
+// The amounts of one payment method at closing: expected from the payments, counted by the
+// cashier, and the variance (counted - expected, CHECK in the migration). Written once.
+model CashierSessionCount {
+  tenantId  String  @map("tenant_id") @db.Uuid
+  id        String  @id @default(uuid(7)) @db.Uuid
+  sessionId String  @map("session_id") @db.Uuid
+  /// CASH, CARD, MOBILE or BANK_TRANSFER (CHECK in the migration).
+  method    String
+  expected  Decimal @db.Decimal(18, 2)
+  counted   Decimal @db.Decimal(18, 2)
+  variance  Decimal @db.Decimal(18, 2)
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id])
+  session CashierSession @relation(fields: [tenantId, sessionId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, sessionId, method], map: "cashier_session_count_session_method_key")
+  @@map("cashier_session_count")
   @@schema("hms")
 }

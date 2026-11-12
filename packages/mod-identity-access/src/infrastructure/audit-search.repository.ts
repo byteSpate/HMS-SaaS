@@ -4,6 +4,7 @@
 import type { AuditEventRow, AuditSearchQuery } from '@hms/contracts';
 import { withTenant, type PrismaClient, type TenantTx } from '@hms/database';
 import type { AdminRef } from './account-lock.repository.js';
+import { findStaffNames } from './staff-names.repository.js';
 
 export interface AuditPage {
   rows: AuditEventRow[];
@@ -18,15 +19,6 @@ async function memberUserId(tx: TenantTx, username: string): Promise<string | nu
     select: { userId: true },
   });
   return membership?.userId ?? null;
-}
-
-async function namesOf(tx: TenantTx, userIds: readonly (string | null)[]) {
-  const ids = [...new Set(userIds.filter((id): id is string => id !== null))];
-  const users = await tx.userAccount.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, displayName: true },
-  });
-  return new Map(users.map((user) => [user.id, user.displayName]));
 }
 
 function timeFilter(query: AuditSearchQuery) {
@@ -62,7 +54,7 @@ export function searchAuditEvents(
       take: query.limit + 1,
     });
     const page = events.slice(0, query.limit);
-    const names = await namesOf(
+    const names = await findStaffNames(
       tx,
       page.map((event) => event.actorUserId),
     );

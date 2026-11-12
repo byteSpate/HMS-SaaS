@@ -13,6 +13,8 @@ export const errorCodes = {
   TENANT_NOT_SELECTED: 403,
   MEMBERSHIP_NOT_ACTIVE: 403,
   ENTITLEMENT_MISSING: 403,
+  /** UC-BIL-04 D2: the same person may not do both steps, e.g. review their own session. */
+  SEGREGATION_OF_DUTY: 403,
   NOT_FOUND: 404,
   PAYLOAD_TOO_LARGE: 413,
   INVALID_TRANSITION: 409,
@@ -21,6 +23,8 @@ export const errorCodes = {
   /** A setting the action needs is missing, e.g. no doctor fee for the practitioner (FR-BIL-010). */
   POLICY_NOT_CONFIGURED: 409,
   STALE_RECORD: 409,
+  /** C-038, FR-BIL-019, FR-BIL-034: a payment more than the open balance of what it pays. */
+  AMOUNT_EXCEEDS_BALANCE: 409,
   USERNAME_TAKEN: 409,
   IDEMPOTENCY_KEY_REUSED: 409,
   VALIDATION_FAILED: 422,

@@ -19,4 +19,5 @@ export {
 } from './infrastructure/department.repository.js';
 export { IdentityAccessModule, type IdentityAccessOptions } from './identity-access.module.js';
 export { hashPassword } from './infrastructure/password-hasher.js';
+export { findStaffNames } from './infrastructure/staff-names.repository.js';
 export { createRolesFromTemplates } from './infrastructure/role-templates.repository.js';

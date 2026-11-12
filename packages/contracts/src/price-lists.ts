@@ -12,6 +12,11 @@ export const moneyAmountSchema = z
   .regex(/^\d{1,16}\.\d{2}$/, 'Give an amount with two decimals, for example 500.00');
 export type MoneyAmount = z.infer<typeof moneyAmountSchema>;
 
+/** An amount that may be negative, such as a cashier session's variance (T-BIL-03). */
+export const signedMoneyAmountSchema = z
+  .string()
+  .regex(/^-?\d{1,16}\.\d{2}$/, 'Give an amount with two decimals, for example -20.00');
+
 /** C-041 allows no reductions, so a doctor fee is always more than zero. */
 const feeSchema = moneyAmountSchema.refine(
   (amount) => !/^0+\.00$/.test(amount),

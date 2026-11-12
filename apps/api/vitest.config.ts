@@ -14,6 +14,8 @@ export default defineConfig({
     // These specs share one PostgreSQL and hash passwords with Argon2. Running files side by side
     // pushed logins past the 5 second test limit, so they run one file at a time.
     fileParallelism: false,
+    // A test that logs in four or five staff (Argon2 each) takes about 6 s on a busy laptop.
+    testTimeout: 20_000,
     coverage: { provider: 'v8', reporter: ['text', 'lcov'], include: ['src/**'] },
   },
 });
