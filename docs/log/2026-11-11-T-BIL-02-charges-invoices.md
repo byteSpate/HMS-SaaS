@@ -51,7 +51,7 @@ The cashier (`billing.invoice.issue`) reads invoices: `GET /api/v1/billing/invoi
 - **AT-BIL-001 and payments** (paid, balance after payment) come with T-BIL-04.
 - **The source-content conflict alert** is a log warning; it is not an audit event, because the refusal rolls the transaction back.
 - **Only doctor-fee items** can be posted until the service catalogue exists (T-ORD-01).
-- **Supabase does not have this migration yet.**
+- **Supabase:** migration applied 2026-11-12 (`pnpm db:deploy` as `hms_migrator`), see docs/DEPLOYMENT.md section 4.
 
 Deploy impact: migration `20261111100000_invoice` (three new tables, indexes, RLS policies, column grants; expand-only). No new variable, service or build step.
 

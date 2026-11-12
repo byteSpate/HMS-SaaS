@@ -59,7 +59,7 @@ New shared pieces: `Money` in `@hms/domain-kernel` (bigint minor units, ADR-007)
 - **The time zone is Asia/Dhaka** for "start of a date", as everywhere (C-024).
 - **Older modules keep their own copies** of the scope and audit helpers; moving them is a clean-up for a later branch.
 - **Bangla texts** need the native-speaker review of terms (A1).
-- **Supabase does not have this migration yet.**
+- **Supabase:** migration applied 2026-11-12 (`pnpm db:deploy` as `hms_migrator`), see docs/DEPLOYMENT.md section 4.
 
 Deploy impact: migration `20261111090000_price_list` (three new tables, a trigger function, RLS policies, column grants; expand-only). New module `mod-billing` in the API build; no new variable, service or build step.
 

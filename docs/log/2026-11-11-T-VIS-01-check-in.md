@@ -64,7 +64,7 @@ New package `@hms/mod-clinical` (owns `visit`), route `POST /api/v1/visits/check
 - **No token print** of the serial number (T-PRN-02) and no shortcut to the cashier queue (T-BIL-03/04).
 - **No early or late check-in tolerance** (UC-VIS-01 precondition, proposed).
 - **Bangla texts** need the native-speaker review of terms (A1).
-- **Supabase does not have this migration yet.**
+- **Supabase:** migration applied 2026-11-12 (`pnpm db:deploy` as `hms_migrator`), see docs/DEPLOYMENT.md section 4.
 
 Deploy impact: migration `20261111110000_visit` (new table `visit`, a column on `schedule_session`, foreign keys on `invoice` and `charge`, RLS policy, grants; expand-only, but the two foreign keys fail if `invoice` or `charge` already hold rows without a visit, which only test data could). New module `mod-clinical` in the API build; no new variable, service or build step.
 
