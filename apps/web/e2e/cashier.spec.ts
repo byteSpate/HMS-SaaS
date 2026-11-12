@@ -173,3 +173,46 @@ test('C-038: a line cannot be paid more than it owes; a part payment is for that
   );
   expect(paid?.body).toMatchObject({ amount: '200.00', method: 'CASH' });
 });
+
+// T-BIL-05: the payment's answer is lost (FR-BIL-036, SP-08, AT-E2E-003).
+test('a lost answer for a saved payment: the desk finds it and never offers to pay again', async ({
+  page,
+}) => {
+  const world = newWorld({ permissions: DESK });
+  const { billing, cashierDesk, requests } = await installMockApi(page, world);
+  billing.seedOpenSession('0.00');
+  cashierDesk.seedInvoice(SALMA, 'DOCTOR_FEE', [{ itemCode: 'DOCTOR_FEE_NEW', amount: '500.00' }]);
+  cashierDesk.loseNextAnswer('saved');
+  await openDesk(page, world);
+
+  await page.getByRole('button', { name: bn.cashier.confirm }).click();
+  await expect(page.getByRole('heading', { name: bn.cashier.savedTitle })).toBeVisible();
+  expect(cashierDesk.payments).toHaveLength(1);
+  expect(requests.some((request) => request.path.startsWith('/operations/'))).toBe(true);
+});
+
+test('a lost answer for a payment not saved: Try again sends the same key once more', async ({
+  page,
+}) => {
+  const world = newWorld({ permissions: DESK });
+  const { billing, cashierDesk, requests } = await installMockApi(page, world);
+  billing.seedOpenSession('0.00');
+  cashierDesk.seedInvoice(SALMA, 'DOCTOR_FEE', [{ itemCode: 'DOCTOR_FEE_NEW', amount: '500.00' }]);
+  cashierDesk.loseNextAnswer('notSaved');
+  await openDesk(page, world);
+
+  await page.getByRole('button', { name: bn.cashier.confirm }).click();
+  await expect(page.getByText(bn.cashier.notSaved)).toBeVisible();
+  await expect(page.getByRole('button', { name: bn.cashier.confirm })).toBeHidden();
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations).toEqual([]);
+
+  await page.getByRole('button', { name: bn.cashier.tryAgain }).click();
+  await expect(page.getByRole('heading', { name: bn.cashier.savedTitle })).toBeVisible();
+  const sent = requests.filter(
+    (request) => request.method === 'POST' && request.path === '/billing/payments',
+  );
+  expect(sent).toHaveLength(2);
+  expect(sent[1]?.idempotencyKey).toBe(sent[0]?.idempotencyKey);
+  expect(cashierDesk.payments).toHaveLength(1);
+});

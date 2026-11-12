@@ -210,7 +210,13 @@ export async function installMockApi(page: Page, world: MockWorld) {
       departments.answer(request.method(), path, body) ??
       priceLists.answer(request.method(), path, body) ??
       billing.answer(request.method(), path, body, new URL(request.url()).searchParams) ??
-      cashierDesk.answer(request.method(), path, body, new URL(request.url()).searchParams) ??
+      cashierDesk.answer(
+        request.method(),
+        path,
+        body,
+        new URL(request.url()).searchParams,
+        request.headers()['idempotency-key'] ?? null,
+      ) ??
       scheduleSessions.answer(request.method(), path, body, new URL(request.url()).searchParams) ??
       appointments.answer(request.method(), path, body, new URL(request.url()).searchParams);
     if (moduleAnswer) return reply(route, moduleAnswer.status, moduleAnswer.body);

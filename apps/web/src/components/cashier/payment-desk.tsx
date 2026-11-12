@@ -3,7 +3,8 @@
 // C-008, C-038, C-039, C-040). The patient's open invoices are shown as cards, the doctor fee
 // apart from services. Every unpaid line starts selected for its balance; the cashier may
 // deselect a line or pay part of it. One confirmation records one payment for all selected lines
-// (C-039) and shows the receipt number and each invoice's new balance, with Print receipt.
+// (C-039) and shows the receipt number and each invoice's new balance, with Print receipt. When the
+// answer is lost, the desk asks by the payment's key whether it was saved (T-BIL-05, FR-BIL-036).
 import {
   PAYMENT_METHODS,
   type Invoice,
@@ -16,9 +17,10 @@ import { formatMoney, type Locale } from '@hms/i18n';
 import { Alert, Button, Checkbox, Field, Radio, Skeleton, StatusBadge, TextInput } from '@hms/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CASHIER_SESSION_QUERY_KEY } from '../../api/cashier-sessions';
 import { INVOICES_QUERY_KEY, invoicesApi } from '../../api/invoices';
+import { operationsApi } from '../../api/operations';
 import { PAYMENTS_QUERY_KEY, paymentsApi } from '../../api/payments';
 import { useApiErrorMessage } from '../../i18n/use-api-error-message';
 import { sumAmounts } from '../../money';
@@ -32,6 +34,7 @@ import {
   type MethodDetails,
   type Selection,
 } from './payment-form';
+import { checkOf, isUncertain } from './payment-status';
 import { usePrintReceipt } from './receipts';
 import { useIdempotencyKey } from './session-dialogs';
 import { METHOD_LABEL_KEYS } from './session-totals';
@@ -186,6 +189,64 @@ function PaymentOutcome({ payment, onNext }: { payment: Payment; onNext: () => v
   );
 }
 
+/**
+ * T-BIL-05 (FR-BIL-036, SP-08): the answer to a payment was lost. The desk asks by its key: saved
+ * shows the outcome; not saved offers Try again with the same key, which the server replays if
+ * the first request did commit after all; a failed check offers Check again. Never Pay again.
+ */
+function PaymentCheck({
+  idempotencyKey,
+  attempt,
+  retrying,
+  onSaved,
+  onRetry,
+}: {
+  idempotencyKey: string;
+  /** When the payment was last sent, so each attempt is checked afresh. */
+  attempt: number;
+  retrying: boolean;
+  onSaved: (payment: Payment) => void;
+  onRetry: () => void;
+}) {
+  const t = useTranslations();
+  const check = useQuery({
+    queryKey: ['operations', idempotencyKey, attempt],
+    queryFn: () => operationsApi.outcome(idempotencyKey),
+    retry: false,
+  });
+  const state = checkOf(check.data, check.error);
+  const savedPayment = state.kind === 'saved' ? state.payment : null;
+  // Reported once: the parent then shows the outcome instead of this form.
+  const reported = useRef<string | null>(null);
+  useEffect(() => {
+    if (!savedPayment || reported.current === savedPayment.paymentId) return;
+    reported.current = savedPayment.paymentId;
+    onSaved(savedPayment);
+  }, [savedPayment, onSaved]);
+
+  if (state.kind === 'checking' || state.kind === 'saved') {
+    return <Alert tone="info">{t('cashier.checking')}</Alert>;
+  }
+  if (state.kind === 'notSaved') {
+    return (
+      <div className="flex flex-col items-start gap-2">
+        <Alert tone="warning">{t('cashier.notSaved')}</Alert>
+        <Button loading={retrying} onClick={onRetry}>
+          {t('cashier.tryAgain')}
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Alert tone="danger">{t('cashier.checkFailed')}</Alert>
+      <Button variant="secondary" loading={check.isFetching} onClick={() => void check.refetch()}>
+        {t('cashier.checkAgain')}
+      </Button>
+    </div>
+  );
+}
+
 function PaymentForm({
   patient,
   invoices,
@@ -214,21 +275,25 @@ function PaymentForm({
       return entry ? { ...current, [lineId]: { ...entry, ...patch } } : current;
     });
 
+  const finish = async (payment: Payment) => {
+    onSaved(payment);
+    await Promise.all(
+      [INVOICES_QUERY_KEY, CASHIER_SESSION_QUERY_KEY, PAYMENTS_QUERY_KEY].map((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      ),
+    );
+  };
+
   const pay = useMutation({
     mutationFn: () => {
       if (!allocations) throw new Error('Nothing to pay');
       return paymentsApi.record(requestOf(patient.patientId, allocations, details), key);
     },
-    onSuccess: async (payment) => {
-      onSaved(payment);
-      await Promise.all(
-        [INVOICES_QUERY_KEY, CASHIER_SESSION_QUERY_KEY, PAYMENTS_QUERY_KEY].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
-      );
-    },
+    onSuccess: finish,
+    // A refusal gets a new key; a lost answer keeps it, so a retry cannot pay twice (SP-08).
     onError: renewKey,
   });
+  const uncertain = isUncertain(pay.error);
 
   return (
     <div className="flex flex-col gap-4">
@@ -298,12 +363,23 @@ function PaymentForm({
         {allocations ? null : (
           <p className="text-sm text-text-muted">{t('cashier.nothingSelected')}</p>
         )}
-        {pay.error ? <Alert tone="danger">{errorMessage(pay.error)}</Alert> : null}
-        <div>
-          <Button loading={pay.isPending} disabled={!allocations} onClick={() => pay.mutate()}>
-            {t('cashier.confirm')}
-          </Button>
-        </div>
+        {pay.error && !uncertain ? <Alert tone="danger">{errorMessage(pay.error)}</Alert> : null}
+        {uncertain ? (
+          // FR-BIL-036: no "Pay again" while it is not known whether the payment was saved.
+          <PaymentCheck
+            idempotencyKey={key}
+            attempt={pay.submittedAt}
+            retrying={pay.isPending}
+            onSaved={(payment) => void finish(payment)}
+            onRetry={() => pay.mutate()}
+          />
+        ) : (
+          <div>
+            <Button loading={pay.isPending} disabled={!allocations} onClick={() => pay.mutate()}>
+              {t('cashier.confirm')}
+            </Button>
+          </div>
+        )}
       </section>
     </div>
   );

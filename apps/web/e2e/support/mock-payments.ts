@@ -1,5 +1,6 @@
-// In-memory stand-in for the cashier desk's invoice and payment endpoints (T-BIL-04), answering
-// with payloads that satisfy the shared contracts. Used by the cashier browser tests; the real
+// In-memory stand-in for the cashier desk's invoice and payment endpoints (T-BIL-04) and the
+// payment's outcome by key (T-BIL-05), answering with payloads that satisfy the shared contracts.
+// A test can make the next payment's answer get lost, saved or not. Used by the cashier browser tests; the real
 // behaviour (locks, races, audit, receipt pages) is covered by apps/api/src/payments.api.spec.ts.
 // Names and amounts are synthetic.
 import {
@@ -40,6 +41,12 @@ export function createPaymentStore(openSession: () => CashierSession | undefined
   const invoices: Invoice[] = [];
   const patients = new Map<string, PatientRef>();
   const payments: Payment[] = [];
+  const byKey = new Map<string, Payment>();
+  /** T-BIL-05: the next payment's answer is lost (a 503 from a proxy), after or before saving. */
+  let loseNext: 'saved' | 'notSaved' | null = null;
+  function loseNextAnswer(mode: 'saved' | 'notSaved') {
+    loseNext = mode;
+  }
 
   /** An open invoice of a patient, as check-in or an order would have issued it. */
   function seedInvoice(patient: PatientRef, type: Invoice['type'], lines: SeedLine[]): Invoice {
@@ -92,7 +99,66 @@ export function createPaymentStore(openSession: () => CashierSession | undefined
     balance: invoice.balance,
   });
 
-  function record(body: unknown): BillingAnswer {
+  /** Pays one line: its amounts, its invoice's amounts and status, and the receipt's entry. */
+  function applyAllocation(
+    invoice: Invoice,
+    line: Invoice['lines'][number],
+    amount: string,
+    paidInvoices: Map<string, Payment['invoices'][number]>,
+  ) {
+    const paid = centsOf(amount);
+    line.allocatedAmount = amountOfCents(centsOf(line.allocatedAmount) + paid);
+    line.balance = amountOfCents(centsOf(line.balance) - paid);
+    line.eligibility = centsOf(line.balance) === 0 ? 'ELIGIBLE' : 'NOT_ELIGIBLE';
+    invoice.paid = amountOfCents(centsOf(invoice.paid) + paid);
+    invoice.balance = amountOfCents(centsOf(invoice.balance) - paid);
+    invoice.status = statusOf(invoice);
+    invoice.version += 1;
+    const entry = paidInvoices.get(invoice.invoiceId) ?? {
+      invoiceId: invoice.invoiceId,
+      number: invoice.number,
+      type: invoice.type,
+      paid: '0.00',
+      balanceAfter: '0.00',
+      lines: [],
+    };
+    entry.paid = amountOfCents(centsOf(entry.paid) + paid);
+    entry.balanceAfter = invoice.balance;
+    entry.lines.push({
+      lineId: line.lineId,
+      itemCode: line.itemCode,
+      itemNameEn: line.itemNameEn,
+      itemNameBn: line.itemNameBn,
+      practitioner: null,
+      amount,
+    });
+    paidInvoices.set(invoice.invoiceId, entry);
+  }
+
+  /** The request's problem before anything is written, or null. */
+  function refusalOf(
+    targets: {
+      allocation: { amount: string };
+      invoice?: Invoice;
+      line?: Invoice['lines'][number];
+    }[],
+  ): BillingAnswer | null {
+    for (const { allocation, line } of targets) {
+      if (!line) return problem(404, 'NOT_FOUND');
+      if (centsOf(allocation.amount) > centsOf(line.balance)) {
+        return problem(409, 'AMOUNT_EXCEEDS_BALANCE');
+      }
+    }
+    return null;
+  }
+
+  function record(body: unknown, key: string | null): BillingAnswer {
+    const replay = key ? byKey.get(key) : undefined;
+    if (replay) return { status: 201, body: replay };
+    if (loseNext === 'notSaved') {
+      loseNext = null;
+      return problem(503, 'SERVICE_UNAVAILABLE');
+    }
     const request = recordPaymentRequestSchema.safeParse(body);
     if (!request.success) return problem(422, 'VALIDATION_FAILED');
     const session = openSession();
@@ -106,44 +172,15 @@ export function createPaymentStore(openSession: () => CashierSession | undefined
       const line = invoice?.lines.find((row) => row.lineId === allocation.lineId);
       return { allocation, invoice, line };
     });
-    for (const { allocation, invoice, line } of targets) {
-      if (!invoice || !line) return problem(404, 'NOT_FOUND');
-      if (centsOf(allocation.amount) > centsOf(line.balance)) {
-        return problem(409, 'AMOUNT_EXCEEDS_BALANCE');
-      }
-    }
+    const refusal = refusalOf(targets);
+    if (refusal) return refusal;
     const patient = patients.get(request.data.patientId);
     if (!patient) return problem(404, 'NOT_FOUND');
     const paidInvoices = new Map<string, Payment['invoices'][number]>();
-    for (const { allocation, invoice, line } of targets) {
-      if (!invoice || !line) continue;
-      const paid = centsOf(allocation.amount);
-      line.allocatedAmount = amountOfCents(centsOf(line.allocatedAmount) + paid);
-      line.balance = amountOfCents(centsOf(line.balance) - paid);
-      line.eligibility = centsOf(line.balance) === 0 ? 'ELIGIBLE' : 'NOT_ELIGIBLE';
-      invoice.paid = amountOfCents(centsOf(invoice.paid) + paid);
-      invoice.balance = amountOfCents(centsOf(invoice.balance) - paid);
-      invoice.status = statusOf(invoice);
-      invoice.version += 1;
-      const entry = paidInvoices.get(invoice.invoiceId) ?? {
-        invoiceId: invoice.invoiceId,
-        number: invoice.number,
-        type: invoice.type,
-        paid: '0.00',
-        balanceAfter: '0.00',
-        lines: [],
-      };
-      entry.paid = amountOfCents(centsOf(entry.paid) + paid);
-      entry.balanceAfter = invoice.balance;
-      entry.lines.push({
-        lineId: line.lineId,
-        itemCode: line.itemCode,
-        itemNameEn: line.itemNameEn,
-        itemNameBn: line.itemNameBn,
-        practitioner: null,
-        amount: allocation.amount,
-      });
-      paidInvoices.set(invoice.invoiceId, entry);
+    for (const target of targets) {
+      if (target.invoice && target.line) {
+        applyAllocation(target.invoice, target.line, target.allocation.amount, paidInvoices);
+      }
     }
     const expected = session.totals.find((row) => row.method === request.data.method);
     if (expected) expected.expected = amountOfCents(centsOf(expected.expected) + sum);
@@ -163,6 +200,11 @@ export function createPaymentStore(openSession: () => CashierSession | undefined
       printCount: 0,
     });
     payments.unshift(payment);
+    if (key) byKey.set(key, payment);
+    if (loseNext === 'saved') {
+      loseNext = null;
+      return problem(503, 'SERVICE_UNAVAILABLE');
+    }
     return { status: 201, body: payment };
   }
 
@@ -178,30 +220,50 @@ export function createPaymentStore(openSession: () => CashierSession | undefined
     return { status: 201, body: { copyNo: payment.printCount, html } };
   }
 
+  /** T-BIL-05: what happened to the payment sent with this key. */
+  function outcomeOf(key: string): BillingAnswer {
+    const payment = byKey.get(key);
+    if (!payment) return problem(404, 'NOT_FOUND');
+    return {
+      status: 200,
+      body: {
+        idempotencyKey: key,
+        operation: 'billing.payment.record',
+        status: 'COMPLETED',
+        result: payment,
+      },
+    };
+  }
+
+  function queue(): BillingAnswer {
+    const byPatient = new Map<string, InvoiceSummary[]>();
+    for (const invoice of invoices.filter(open)) {
+      byPatient.set(invoice.patientId, [
+        ...(byPatient.get(invoice.patientId) ?? []),
+        summaryOf(invoice),
+      ]);
+    }
+    return {
+      status: 200,
+      body: {
+        patients: [...byPatient].map(([patientId, rows]) => ({
+          patient: patients.get(patientId),
+          invoices: rows,
+        })),
+      },
+    };
+  }
+
   function answer(
     method: string,
     path: string,
     body: unknown,
     query: URLSearchParams,
+    key: string | null,
   ): BillingAnswer | undefined {
-    if (method === 'GET' && path === '/billing/invoices/queue') {
-      const byPatient = new Map<string, InvoiceSummary[]>();
-      for (const invoice of invoices.filter(open)) {
-        byPatient.set(invoice.patientId, [
-          ...(byPatient.get(invoice.patientId) ?? []),
-          summaryOf(invoice),
-        ]);
-      }
-      return {
-        status: 200,
-        body: {
-          patients: [...byPatient].map(([patientId, rows]) => ({
-            patient: patients.get(patientId),
-            invoices: rows,
-          })),
-        },
-      };
-    }
+    const operation = /^\/operations\/([^/]+)$/.exec(path);
+    if (operation?.[1] && method === 'GET') return outcomeOf(operation[1]);
+    if (method === 'GET' && path === '/billing/invoices/queue') return queue();
     if (method === 'GET' && path === '/billing/invoices') {
       const patientId = query.get('patientId');
       const rows = invoices
@@ -210,7 +272,7 @@ export function createPaymentStore(openSession: () => CashierSession | undefined
       return { status: 200, body: { invoices: rows.map((row) => invoiceSchema.parse(row)) } };
     }
     if (path === '/billing/payments') {
-      if (method === 'POST') return record(body);
+      if (method === 'POST') return record(body, key);
       if (method === 'GET') {
         const sessionId = query.get('sessionId');
         return {
@@ -224,5 +286,5 @@ export function createPaymentStore(openSession: () => CashierSession | undefined
     return undefined;
   }
 
-  return { invoices, payments, seedInvoice, answer };
+  return { invoices, payments, seedInvoice, loseNextAnswer, answer };
 }
