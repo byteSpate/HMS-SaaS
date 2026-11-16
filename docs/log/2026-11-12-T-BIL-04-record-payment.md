@@ -71,7 +71,7 @@ New routes: `POST/GET /api/v1/billing/payments`, `GET /billing/payments/{id}`, `
 - **No method correction** (T-BIL-06), refunds, discounts or deposits.
 - **Rounding to whole taka (C-037)** is not applied; amounts stay exact to two decimals, as the invoices are.
 - **The receipt layout and Bangla wording** need the print review (T-PRN-02) and the native-speaker review of terms (A1). The hospital has no address on record yet, so the header shows its name only.
-- **Supabase does not have this migration yet.**
+- **Supabase:** the owner applied this migration on 2026-11-12, after PR #56 merged to `dev` (`prisma migrate status`: up to date, 32 migrations; re-checked 2026-11-16).
 
 Deploy impact: migration `20261112100000_payment` (three new tables, two columns and a CHECK on `invoice_line`, indexes, RLS policies, grants; expand-only, the new columns have defaults). mod-billing now bundles `@hms/print-templates` (fonts from `@fontsource/noto-sans-bengali`, already in the lockfile); no new variable, service or build step.
 

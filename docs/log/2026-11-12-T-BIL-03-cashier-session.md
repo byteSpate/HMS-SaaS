@@ -62,7 +62,7 @@ New shared pieces: `findStaffNames` in `@hms/mod-identity-access` (audit search 
 - **A session left open overnight stays open;** there is no automatic closing or a "day" boundary (SRC-B07 daily finalization is the cashier closing it).
 - **The collection report** (FR-REP-002) that reads sessions comes with T-REP-01.
 - **Bangla texts** need the native-speaker review of terms (A1).
-- **Supabase does not have this migration yet.**
+- **Supabase:** the owner applied this migration on 2026-11-12, after PR #56 merged to `dev` (`prisma migrate status`: up to date, 32 migrations; re-checked 2026-11-16).
 
 Deploy impact: migration `20261112090000_cashier_session` (two new tables, indexes, RLS policies, column grants; expand-only). No new variable, service or build step.
 
