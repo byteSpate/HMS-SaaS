@@ -56,7 +56,7 @@ On the consultation page the doctor writes the note: chief complaint, history, e
 - **No print** of the note yet; prescription and orders come with T-CLI-03 and T-ORD-01.
 - **A non-author amendment** (another doctor with the amend permission) is not offered; only the consultation's doctor amends.
 - **Bangla texts** need the native-speaker review of terms (A1, Q-050).
-- **Supabase does not have `20261116110000_clinical_document` yet.**
+- **Supabase:** the owner applied `20261116110000_clinical_document` on 2026-11-16 from `feat/CLI-consultation` (`prisma migrate status` showed exactly this one pending, then up to date, 35 migrations).
 
 Deploy impact: one expand-only migration (`20261116110000_clinical_document`: two new tables). No new variable, service or build step.
 
