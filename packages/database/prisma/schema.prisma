@@ -52,8 +52,10 @@ model Tenant {
   charges      Charge[]
   invoiceLines InvoiceLine[]
 
-  visits        Visit[]
-  consultations Consultation[]
+  visits            Visit[]
+  consultations     Consultation[]
+  clinicalDocuments ClinicalDocument[]
+  documentVersions  ClinicalDocumentVersion[]
 
   cashierSessions      CashierSession[]
   cashierSessionCounts CashierSessionCount[]
@@ -488,7 +490,8 @@ model Patient {
   charges  Charge[]
   payments Payment[]
 
-  visits Visit[]
+  visits            Visit[]
+  clinicalDocuments ClinicalDocument[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, mrn])
@@ -854,16 +857,17 @@ model Visit {
   updatedAt               DateTime @default(now()) @map("updated_at") @db.Timestamptz
   version                 Int      @default(1)
 
-  tenant                Tenant           @relation(fields: [tenantId], references: [id])
-  facility              Facility         @relation(fields: [tenantId, facilityId], references: [tenantId, id])
-  department            Department?      @relation(fields: [tenantId, departmentId], references: [tenantId, id])
-  patient               Patient          @relation(fields: [tenantId, patientId], references: [tenantId, id])
-  attendingPractitioner Practitioner?    @relation(fields: [tenantId, attendingPractitionerId], references: [tenantId, id])
-  appointment           Appointment?     @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
-  scheduleSession       ScheduleSession? @relation(fields: [tenantId, scheduleSessionId], references: [tenantId, id])
+  tenant                Tenant             @relation(fields: [tenantId], references: [id])
+  facility              Facility           @relation(fields: [tenantId, facilityId], references: [tenantId, id])
+  department            Department?        @relation(fields: [tenantId, departmentId], references: [tenantId, id])
+  patient               Patient            @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  attendingPractitioner Practitioner?      @relation(fields: [tenantId, attendingPractitionerId], references: [tenantId, id])
+  appointment           Appointment?       @relation(fields: [tenantId, appointmentId], references: [tenantId, id])
+  scheduleSession       ScheduleSession?   @relation(fields: [tenantId, scheduleSessionId], references: [tenantId, id])
   invoices              Invoice[]
   charges               Charge[]
   consultation          Consultation?
+  clinicalDocuments     ClinicalDocument[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, appointmentId])
@@ -888,13 +892,72 @@ model Consultation {
   updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz
   version        Int       @default(1)
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  visit        Visit        @relation(fields: [tenantId, visitId], references: [tenantId, id])
-  practitioner Practitioner @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
+  tenant       Tenant            @relation(fields: [tenantId], references: [id])
+  visit        Visit             @relation(fields: [tenantId, visitId], references: [tenantId, id])
+  practitioner Practitioner      @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
+  note         ClinicalDocument?
 
   @@unique([tenantId, id])
   @@unique([tenantId, visitId])
   @@map("consultation")
+  @@schema("hms")
+}
+
+// The note of a consultation (T-CLI-02; FR-CLI-003, FR-CLI-007; mod-clinical): the author's
+// current draft, and the number of the last signed version. CHECKs are in the migration.
+model ClinicalDocument {
+  tenantId        String    @map("tenant_id") @db.Uuid
+  id              String    @id @default(uuid(7)) @db.Uuid
+  consultationId  String    @map("consultation_id") @db.Uuid
+  visitId         String    @map("visit_id") @db.Uuid
+  patientId       String    @map("patient_id") @db.Uuid
+  /// CONSULTATION_NOTE (CHECK in the migration).
+  kind            String    @default("CONSULTATION_NOTE")
+  authorUserId    String    @map("author_user_id") @db.Uuid
+  /// DRAFT or SIGNED (CHECK in the migration).
+  status          String    @default("DRAFT")
+  signedVersionNo Int       @default(0) @map("signed_version_no")
+  draft           Json?
+  draftSavedAt    DateTime? @map("draft_saved_at") @db.Timestamptz
+  amendReason     String?   @map("amend_reason")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  version         Int       @default(1)
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id])
+  consultation Consultation              @relation(fields: [tenantId, consultationId], references: [tenantId, id])
+  visit        Visit                     @relation(fields: [tenantId, visitId], references: [tenantId, id])
+  patient      Patient                   @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  versions     ClinicalDocumentVersion[]
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, consultationId])
+  @@index([tenantId, patientId], map: "clinical_document_patient_idx")
+  @@map("clinical_document")
+  @@schema("hms")
+}
+
+// One signed version of a clinical document (T-CLI-02; FR-CLI-003; FPR-06): immutable; v2 and
+// later amend the previous version with a reason.
+model ClinicalDocumentVersion {
+  tenantId        String   @map("tenant_id") @db.Uuid
+  id              String   @id @default(uuid(7)) @db.Uuid
+  documentId      String   @map("document_id") @db.Uuid
+  versionNo       Int      @map("version_no")
+  content         Json
+  signedBy        String   @map("signed_by") @db.Uuid
+  signedAt        DateTime @default(now()) @map("signed_at") @db.Timestamptz
+  amendsVersionId String?  @map("amends_version_id") @db.Uuid
+  amendReason     String?  @map("amend_reason")
+
+  tenant    Tenant                    @relation(fields: [tenantId], references: [id])
+  document  ClinicalDocument          @relation(fields: [tenantId, documentId], references: [tenantId, id])
+  amends    ClinicalDocumentVersion?  @relation("Amends", fields: [tenantId, amendsVersionId], references: [tenantId, id])
+  amendedBy ClinicalDocumentVersion[] @relation("Amends")
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, documentId, versionNo], map: "clinical_document_version_document_version_no_key")
+  @@map("clinical_document_version")
   @@schema("hms")
 }
 

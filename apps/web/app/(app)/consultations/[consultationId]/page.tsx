@@ -1,8 +1,8 @@
 'use client';
-// A consultation the doctor started from the worklist (T-CLI-01; UC-CLI-01 step 1; W-03). Shows
-// the patient and when the consultation started. The note, orders and prescription (T-CLI-02,
-// T-CLI-03, T-ORD-01) are added to this screen later; until then it says so. Only the doctor's own
-// consultation reads; another is NOT_FOUND (clinical.consultation.record).
+// A consultation the doctor started from the worklist (T-CLI-01, T-CLI-02; UC-CLI-01; W-03): the
+// patient, the consultation's status and start time, and the consultation note (draft, sign,
+// amend). Orders and the prescription (T-ORD-01, T-CLI-03) join this screen later. Only the
+// doctor's own consultation reads; another is NOT_FOUND (clinical.consultation.record).
 import { formatDateTime, type Locale } from '@hms/i18n';
 import { Alert, PageLayout, Skeleton, StatusBadge } from '@hms/ui';
 import { useQuery } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { consultationQueryKey, worklistApi } from '../../../../src/api/worklist';
+import { NotePanel } from '../../../../src/components/consultation/note-panel';
 import { displayName } from '../../../../src/components/patients/patient-text';
 import { WORKLIST_STATUS } from '../../../../src/components/worklist/worklist-rules';
 import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
@@ -38,7 +39,7 @@ export default function ConsultationPage() {
       {consultation.error ? <Alert tone="danger">{errorMessage(consultation.error)}</Alert> : null}
       {consultation.isPending ? <Skeleton className="h-24" /> : null}
       {data ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           <p className="flex flex-wrap items-center gap-3">
             <StatusBadge
               status={WORKLIST_STATUS[data.status].badge}
@@ -48,7 +49,7 @@ export default function ConsultationPage() {
               {t('consultation.startedAt', { time: formatDateTime(data.startedAt, locale) })}
             </span>
           </p>
-          <Alert tone="info">{t('consultation.noteLater')}</Alert>
+          <NotePanel consultationId={consultationId} />
         </div>
       ) : null}
     </PageLayout>

@@ -1,8 +1,10 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from './generated/prisma/client.js';
+import { Prisma, PrismaClient } from './generated/prisma/client.js';
 
 export { PrismaClient } from './generated/prisma/client.js';
 export type * from './generated/prisma/client.js';
+// The SQL NULL marker for a Json? column: a plain null is refused there (T-CLI-02 note draft).
+export const DbNull = Prisma.DbNull;
 export {
   withCommandTransaction,
   withTenant,

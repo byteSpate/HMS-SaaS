@@ -5,6 +5,7 @@ export * from './appointments.js';
 export * from './audit.js';
 export * from './auth.js';
 export * from './cashier-sessions.js';
+export * from './consultation-notes.js';
 export * from './departments.js';
 export * from './envelope.js';
 export * from './errors.js';

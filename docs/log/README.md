@@ -145,3 +145,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-12 | [T-BIL-04: record a payment and print the receipt](2026-11-12-T-BIL-04-record-payment.md)                                               |
 | 2026-11-12 | [T-BIL-05: uncertain payment outcome](2026-11-12-T-BIL-05-uncertain-payment.md)                                                         |
 | 2026-11-16 | [T-CLI-01: doctor worklist and consultation start](2026-11-16-T-CLI-01-doctor-worklist.md)                                              |
+| 2026-11-16 | [T-CLI-02: consultation note (draft, sign, amend)](2026-11-16-T-CLI-02-consultation-note.md)                                            |

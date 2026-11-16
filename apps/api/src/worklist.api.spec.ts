@@ -5,6 +5,8 @@ import { Test } from '@nestjs/testing';
 import type {
   Appointment,
   Consultation,
+  ConsultationNote,
+  NoteContent,
   DoctorWorklist,
   Invoice,
   PriceList,
@@ -37,8 +39,9 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { configureApp } from './http/configure-app.js';
 
-// The doctor worklist and consultation start over real HTTP against PostgreSQL (T-CLI-01;
-// FR-CLI-002; UC-CLI-01 step 1 and D1; FR-PRA-003; C-009, C-011; ADR-015; AT-CLI-003, AT-CLI-004).
+// The doctor worklist, consultation start and consultation note over real HTTP against PostgreSQL
+// (T-CLI-01, T-CLI-02; FR-CLI-002, FR-CLI-003, FR-CLI-007; UC-CLI-01 steps 1, 2 and 5, D1, D2, D3;
+// UC-CLI-02; FR-PRA-003; C-009, C-011; FPR-06; ADR-015; AT-CLI-003..006).
 // "Now" is 10:00 in Dhaka on 2026-11-12; the evening session is that day. Names are synthetic.
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required');
@@ -75,7 +78,12 @@ interface Problem {
   code: string;
 }
 
-const DOCTOR = ['clinical.consultation.record'] as const;
+// The DOC template's clinical codes (C01 section 5).
+const DOCTOR = [
+  'clinical.consultation.record',
+  'clinical.document.sign',
+  'clinical.document.amend',
+] as const;
 
 describe('doctor worklist over HTTP', () => {
   let app: NestExpressApplication;
@@ -167,10 +175,16 @@ describe('doctor worklist over HTTP', () => {
      * Doctors, each with their own account and an evening session today, all priced in one
      * published price list version. `linked: false` leaves the account unlinked (FR-PRA-003).
      */
-    async function doctors(specs: readonly { nameEn: string; linked?: boolean }[]) {
+    async function doctors(
+      specs: readonly {
+        nameEn: string;
+        linked?: boolean;
+        permissions?: Parameters<typeof grantPermissions>[3];
+      }[],
+    ) {
       const made = [];
       for (const spec of specs) {
-        const account = await accountOf(tenantId, [...DOCTOR]);
+        const account = await accountOf(tenantId, spec.permissions ?? [...DOCTOR]);
         const { practitionerId } = await ok<{ practitionerId: string }>(
           await post(admin, '/practitioners', {
             nameEn: spec.nameEn,
@@ -482,5 +496,240 @@ describe('doctor worklist over HTTP', () => {
         }),
       ),
     ).rejects.toThrow(/permission denied/i);
+  });
+
+  describe('consultation note (T-CLI-02)', () => {
+    const content = (patch: Partial<NoteContent> = {}): NoteContent => ({
+      complaint: 'Fever for three days',
+      history: null,
+      examination: 'Temperature 38.5',
+      assessment: 'Viral fever',
+      advice: null,
+      allergies: { status: 'KNOWN_ALLERGIES', items: ['Penicillin'] },
+      ...patch,
+    });
+
+    /**
+     * A paid, started consultation of Karim (the DOC codes unless `permissions`), and a second
+     * doctor of the same hospital, priced in the same price list.
+     */
+    async function started(permissions?: Parameters<typeof grantPermissions>[3]) {
+      const opd = await hospital();
+      const [doctor, other] = await opd.doctors([
+        { nameEn: 'Karim Uddin', ...(permissions ? { permissions } : {}) },
+        { nameEn: 'Nasrin Akter' },
+      ]);
+      if (!doctor || !other) throw new Error('No doctors');
+      const visit = await opd.checkIn(
+        await opd.book(await opd.patient('Salma Begum'), doctor.evening.sessionId),
+      );
+      await opd.payFee(visit);
+      const consultation = await ok<Consultation>(await start(doctor.session, visit.visitId, 1));
+      return { opd, doctor, other, consultationId: consultation.consultationId };
+    }
+
+    const notePath = (id: string, action = '') => `/consultations/${id}/note${action}`;
+    const readNote = async (doctor: StaffSession, id: string) =>
+      ok<ConsultationNote>(await client.call(doctor, 'GET', notePath(id)), 200);
+    const saveDraft = (doctor: StaffSession, id: string, body: unknown) =>
+      client.call(doctor, 'PUT', notePath(id, '/draft'), body, { 'Idempotency-Key': randomUUID() });
+    const command = (doctor: StaffSession, id: string, action: string, body: unknown) =>
+      post(doctor, notePath(id, `/${action}`), body);
+
+    it('AT-CLI-005: drafts autosave, sign makes v1 and the consultation CONSULTED', async () => {
+      const { opd, doctor, consultationId } = await started();
+      expect(await readNote(doctor.session, consultationId)).toMatchObject({
+        status: 'NONE',
+        draft: null,
+        versions: [],
+        version: 0,
+      });
+
+      const first = await ok<ConsultationNote>(
+        await saveDraft(doctor.session, consultationId, {
+          content: content({ assessment: null }),
+          expectedVersion: 0,
+        }),
+        200,
+      );
+      expect(first).toMatchObject({ status: 'DRAFT', version: 1 });
+      const second = await ok<ConsultationNote>(
+        await saveDraft(doctor.session, consultationId, {
+          content: content(),
+          expectedVersion: 1,
+        }),
+        200,
+      );
+      expect(second.draft?.assessment).toBe('Viral fever');
+
+      const signed = await ok<ConsultationNote>(
+        await command(doctor.session, consultationId, 'sign', { expectedVersion: 2 }),
+        200,
+      );
+      expect(signed).toMatchObject({ status: 'SIGNED', draft: null, version: 3 });
+      expect(signed.versions).toEqual([
+        expect.objectContaining({ versionNo: 1, content: content(), amendReason: null }),
+      ]);
+      const [entry] = (await worklistOf(doctor.session)).sessions[0]?.entries ?? [];
+      expect(entry?.status).toBe('CONSULTED');
+
+      // A signed note is not edited without an amendment.
+      const edit = await saveDraft(doctor.session, consultationId, {
+        content: content({ advice: 'Rest' }),
+        expectedVersion: 3,
+      });
+      expect(edit.status).toBe(409);
+      expect(await codeOf(edit)).toBe('INVALID_TRANSITION');
+      const stored = await withTenant(prisma, { tenantId: opd.tenantId }, async (tx) => ({
+        audit: await tx.auditEvent.count({ where: { action: 'clinical.note.signed' } }),
+        outbox: await tx.outboxEvent.count({ where: { eventType: 'ConsultationSigned' } }),
+      }));
+      expect(stored).toEqual({ audit: 1, outbox: 1 });
+    });
+
+    it('AT-CLI-006: an amendment needs a reason and signs as v2 linked to v1', async () => {
+      const { opd, doctor, consultationId } = await started();
+      await ok(
+        await saveDraft(doctor.session, consultationId, { content: content(), expectedVersion: 0 }),
+        200,
+      );
+      await ok(await command(doctor.session, consultationId, 'sign', { expectedVersion: 1 }), 200);
+
+      const noReason = await command(doctor.session, consultationId, 'amend', {
+        reason: '',
+        expectedVersion: 2,
+      });
+      expect(noReason.status).toBe(422);
+      const amending = await ok<ConsultationNote>(
+        await command(doctor.session, consultationId, 'amend', {
+          reason: 'Allergy was recorded wrongly',
+          expectedVersion: 2,
+        }),
+        200,
+      );
+      expect(amending).toMatchObject({
+        status: 'DRAFT',
+        draft: content(),
+        amendReason: 'Allergy was recorded wrongly',
+      });
+      const corrected = content({ allergies: { status: 'NO_KNOWN_ALLERGIES' } });
+      await ok(
+        await saveDraft(doctor.session, consultationId, {
+          content: corrected,
+          expectedVersion: 3,
+        }),
+        200,
+      );
+      const signed = await ok<ConsultationNote>(
+        await command(doctor.session, consultationId, 'sign', { expectedVersion: 4 }),
+        200,
+      );
+      expect(signed.versions.map((version) => [version.versionNo, version.amendReason])).toEqual([
+        [2, 'Allergy was recorded wrongly'],
+        [1, null],
+      ]);
+      // v1 stays readable as it was signed.
+      expect(signed.versions[1]?.content).toEqual(content());
+      expect(signed.versions[0]?.content).toEqual(corrected);
+
+      const rows = await withTenant(prisma, { tenantId: opd.tenantId }, (tx) =>
+        tx.clinicalDocumentVersion.findMany({ orderBy: { versionNo: 'asc' } }),
+      );
+      expect(rows[1]?.amendsVersionId).toBe(rows[0]?.id);
+    });
+
+    it('FR-CLI-003: discards a draft; an amendment discarded leaves the signed note', async () => {
+      const { doctor, consultationId } = await started();
+      await ok(
+        await saveDraft(doctor.session, consultationId, { content: content(), expectedVersion: 0 }),
+        200,
+      );
+      const discarded = await ok<ConsultationNote>(
+        await command(doctor.session, consultationId, 'discard', { expectedVersion: 1 }),
+        200,
+      );
+      expect(discarded).toMatchObject({ status: 'NONE', draft: null, version: 2 });
+
+      await ok(
+        await saveDraft(doctor.session, consultationId, { content: content(), expectedVersion: 2 }),
+        200,
+      );
+      await ok(await command(doctor.session, consultationId, 'sign', { expectedVersion: 3 }), 200);
+      await ok(
+        await command(doctor.session, consultationId, 'amend', {
+          reason: 'Add the advice',
+          expectedVersion: 4,
+        }),
+        200,
+      );
+      const kept = await ok<ConsultationNote>(
+        await command(doctor.session, consultationId, 'discard', { expectedVersion: 5 }),
+        200,
+      );
+      expect(kept).toMatchObject({ status: 'SIGNED', draft: null, amendReason: null });
+      expect(kept.versions).toHaveLength(1);
+    });
+
+    it('SP-03 and sign rules: a stale draft is STALE_RECORD, an empty note cannot be signed', async () => {
+      const { doctor, consultationId } = await started();
+      const empty = content({ complaint: null, examination: null, assessment: null });
+      await ok(
+        await saveDraft(doctor.session, consultationId, { content: empty, expectedVersion: 0 }),
+        200,
+      );
+      const stale = await saveDraft(doctor.session, consultationId, {
+        content: content(),
+        expectedVersion: 0,
+      });
+      expect(stale.status).toBe(409);
+      expect(await codeOf(stale)).toBe('STALE_RECORD');
+      const unsignable = await command(doctor.session, consultationId, 'sign', {
+        expectedVersion: 1,
+      });
+      expect(unsignable.status).toBe(422);
+    });
+
+    it('UC-CLI-01 D2: drafting without the sign permission; another doctor sees nothing', async () => {
+      const { doctor, other, consultationId } = await started(['clinical.consultation.record']);
+      await ok(
+        await saveDraft(doctor.session, consultationId, { content: content(), expectedVersion: 0 }),
+        200,
+      );
+      const refused = await command(doctor.session, consultationId, 'sign', { expectedVersion: 1 });
+      expect(refused.status).toBe(403);
+
+      expect((await client.call(other.session, 'GET', notePath(consultationId))).status).toBe(404);
+      const write = await saveDraft(other.session, consultationId, {
+        content: content(),
+        expectedVersion: 1,
+      });
+      expect(write.status).toBe(404);
+    });
+
+    it('FPR-06: the app cannot change or delete a signed version', async () => {
+      const { opd, doctor, consultationId } = await started();
+      await ok(
+        await saveDraft(doctor.session, consultationId, { content: content(), expectedVersion: 0 }),
+        200,
+      );
+      await ok(await command(doctor.session, consultationId, 'sign', { expectedVersion: 1 }), 200);
+      const [version] = await withTenant(prisma, { tenantId: opd.tenantId }, (tx) =>
+        tx.clinicalDocumentVersion.findMany(),
+      );
+      if (!version) throw new Error('No version');
+      await expect(
+        withTenant(prisma, { tenantId: opd.tenantId }, (tx) =>
+          tx.clinicalDocumentVersion.update({
+            where: { id: version.id },
+            data: { amendReason: 'x' },
+          }),
+        ),
+      ).rejects.toThrow(/permission denied/i);
+      await expect(
+        withTenant(prisma, { tenantId: opd.tenantId }, (tx) =>
+          tx.clinicalDocumentVersion.delete({ where: { id: version.id } }),
+        ),
+      ).rejects.toThrow(/permission denied/i);
+    });
   });
 });

@@ -1,13 +1,19 @@
-// In-memory stand-in for the doctor worklist endpoints (T-CLI-01), answering with payloads that
-// satisfy the shared contracts. The list carries an ETag and answers 304 to a matching
-// If-None-Match, like the real API (ADR-015). Tests change it with pay() and unlink(). The real
-// rules (eligibility, version checks, RLS) are covered by apps/api/src/worklist.api.spec.ts.
+// In-memory stand-in for the doctor worklist and consultation note endpoints (T-CLI-01, T-CLI-02),
+// answering with payloads that satisfy the shared contracts. The list carries an ETag and answers
+// 304 to a matching If-None-Match, like the real API (ADR-015); the note keeps its draft, signed
+// versions and version number. Tests change the list with pay() and unlink(). The real rules
+// (eligibility, version checks, RLS) are covered by apps/api/src/worklist.api.spec.ts.
 // Names are synthetic.
 import {
+  amendNoteRequestSchema,
+  consultationNoteSchema,
   consultationSchema,
   doctorWorklistSchema,
+  noteVersionRequestSchema,
+  saveNoteDraftRequestSchema,
   startConsultationRequestSchema,
   type Consultation,
+  type ConsultationNote,
   type WorklistEntry,
 } from '@hms/contracts';
 
@@ -60,6 +66,7 @@ export function createWorklistStore() {
     },
   ];
   const consultations = new Map<string, Consultation>();
+  const notes = new Map<string, ConsultationNote>();
   const state = { linked: true, revision: 1 };
 
   const worklist = () =>
@@ -126,25 +133,138 @@ export function createWorklistStore() {
     return { status: 201, body: consultation };
   }
 
+  function noteOf(consultationId: string): ConsultationNote {
+    return (
+      notes.get(consultationId) ?? {
+        consultationId,
+        status: 'NONE',
+        draft: null,
+        draftSavedAt: null,
+        amendReason: null,
+        versions: [],
+        version: 0,
+      }
+    );
+  }
+
+  /** Stores the next state of a note at the next version, like the real API (SP-03). */
+  function saveNote(
+    consultationId: string,
+    from: ConsultationNote,
+    next: Omit<ConsultationNote, 'version' | 'consultationId'>,
+  ): WorklistAnswer {
+    const saved = consultationNoteSchema.parse({
+      ...next,
+      consultationId,
+      version: from.version + 1,
+    });
+    notes.set(consultationId, saved);
+    return { status: 200, body: saved };
+  }
+
+  const now = () => new Date().toISOString();
+
+  function saveDraft(consultationId: string, note: ConsultationNote, body: unknown) {
+    const request = saveNoteDraftRequestSchema.safeParse(body);
+    if (!request.success) return problem(422, 'VALIDATION_FAILED');
+    if (request.data.expectedVersion !== note.version) return problem(409, 'STALE_RECORD');
+    if (note.status === 'SIGNED') return problem(409, 'INVALID_TRANSITION');
+    return saveNote(consultationId, note, {
+      ...note,
+      status: 'DRAFT',
+      draft: request.data.content,
+      draftSavedAt: now(),
+    });
+  }
+
+  function amend(consultationId: string, note: ConsultationNote, body: unknown) {
+    const request = amendNoteRequestSchema.safeParse(body);
+    if (!request.success) return problem(422, 'VALIDATION_FAILED');
+    if (request.data.expectedVersion !== note.version) return problem(409, 'STALE_RECORD');
+    const latest = note.versions[0];
+    if (note.status !== 'SIGNED' || !latest) return problem(409, 'INVALID_TRANSITION');
+    return saveNote(consultationId, note, {
+      ...note,
+      status: 'DRAFT',
+      draft: latest.content,
+      draftSavedAt: now(),
+      amendReason: request.data.reason,
+    });
+  }
+
+  function sign(consultationId: string, note: ConsultationNote): WorklistAnswer {
+    if (!note.draft) return problem(409, 'INVALID_TRANSITION');
+    const consultation = consultations.get(consultationId);
+    if (consultation) consultations.set(consultationId, { ...consultation, status: 'CONSULTED' });
+    const signed = {
+      versionNo: (note.versions[0]?.versionNo ?? 0) + 1,
+      content: note.draft,
+      signedAt: now(),
+      signedBy: 'Nasrin Akter',
+      amendReason: note.amendReason,
+    };
+    return saveNote(consultationId, note, {
+      status: 'SIGNED',
+      draft: null,
+      draftSavedAt: null,
+      amendReason: null,
+      versions: [signed, ...note.versions],
+    });
+  }
+
+  function discard(consultationId: string, note: ConsultationNote): WorklistAnswer {
+    if (!note.draft) return problem(409, 'INVALID_TRANSITION');
+    return saveNote(consultationId, note, {
+      ...note,
+      status: note.versions.length > 0 ? 'SIGNED' : 'NONE',
+      draft: null,
+      draftSavedAt: null,
+      amendReason: null,
+    });
+  }
+
+  /** The note's commands, with the version check of the real API (SP-03). */
+  function noteCommand(consultationId: string, action: string, body: unknown): WorklistAnswer {
+    const note = noteOf(consultationId);
+    if (action === 'draft') return saveDraft(consultationId, note, body);
+    if (action === 'amend') return amend(consultationId, note, body);
+    const request = noteVersionRequestSchema.safeParse(body);
+    if (!request.success) return problem(422, 'VALIDATION_FAILED');
+    if (request.data.expectedVersion !== note.version) return problem(409, 'STALE_RECORD');
+    return action === 'sign' ? sign(consultationId, note) : discard(consultationId, note);
+  }
+
+  function worklistAnswer(ifNoneMatch: string | null): WorklistAnswer {
+    const etag = `"worklist-${state.revision}"`;
+    if (ifNoneMatch === etag) return { status: 304, headers: { ETag: etag } };
+    return { status: 200, body: worklist(), headers: { ETag: etag } };
+  }
+
+  /** GET and the commands of /consultations/{id}/note, and GET /consultations/{id}. */
+  function consultationAnswer(method: string, path: string, body: unknown): WorklistAnswer | null {
+    const notePath = /^\/consultations\/([^/]+)\/note(?:\/(draft|sign|amend|discard))?$/.exec(path);
+    const noteId = notePath?.[1];
+    if (noteId && consultations.has(noteId)) {
+      const action = notePath[2];
+      if (action) return noteCommand(noteId, action, body);
+      return method === 'GET' ? { status: 200, body: noteOf(noteId) } : null;
+    }
+    const readPath = /^\/consultations\/([^/]+)$/.exec(path);
+    if (!readPath?.[1] || method !== 'GET') return null;
+    const found = consultations.get(readPath[1]);
+    return found ? { status: 200, body: found } : problem(404, 'NOT_FOUND');
+  }
+
   function answer(
     method: string,
     path: string,
     body: unknown,
     ifNoneMatch: string | null,
   ): WorklistAnswer | null {
-    if (path === '/worklist' && method === 'GET') {
-      const etag = `"worklist-${state.revision}"`;
-      if (ifNoneMatch === etag) return { status: 304, headers: { ETag: etag } };
-      return { status: 200, body: worklist(), headers: { ETag: etag } };
-    }
+    if (path === '/worklist' && method === 'GET') return worklistAnswer(ifNoneMatch);
     const startPath = /^\/visits\/([^/]+)\/consultation\/start$/.exec(path);
     if (startPath?.[1] && method === 'POST') return start(startPath[1], body);
-    const readPath = /^\/consultations\/([^/]+)$/.exec(path);
-    if (readPath?.[1] && method === 'GET') {
-      const found = consultations.get(readPath[1]);
-      return found ? { status: 200, body: found } : problem(404, 'NOT_FOUND');
-    }
-    return null;
+    return consultationAnswer(method, path, body);
   }
 
   return { entries, answer, pay, unlink };
