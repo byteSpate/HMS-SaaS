@@ -68,7 +68,7 @@ To know who the signed-in doctor is, the administrator now links a practitioner 
 - **Results from the worklist** (FR-CLI-010) wait for the lab module.
 - **The ETag is computed after the query**, so a poll saves the transfer and the render, not the database work. A per-tenant change counter (ADR-015) can replace it if the M section 7 load test asks for it.
 - **Bangla texts** need the native-speaker review of terms (A1, Q-050).
-- **Supabase does not have these two migrations yet.**
+- **Supabase:** the owner applied both migrations on 2026-11-16 from `feat/CLI-consultation` (`prisma migrate status` showed exactly these two pending, then up to date, 34 migrations).
 
 Deploy impact: two expand-only migrations (`20261116090000_practitioner_account`: one nullable column, a foreign key, a partial unique index and a grant; `20261116100000_consultation`: a new table). CORS change: `If-None-Match` is allowed and `ETag` exposed. No new variable, service or build step.
 
