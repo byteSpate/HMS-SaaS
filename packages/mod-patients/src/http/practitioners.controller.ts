@@ -1,7 +1,8 @@
 // /api/v1/practitioners (T-PRA-01; FR-PRA-001..003): the hospital administrator lists, adds and
 // edits practitioners. Every route needs practitioner.manage; the scheduling picker gets its own
 // read route with the scheduling permissions (T-SCH-01). The department picker (T-PRA-02) is here,
-// so choosing a department does not need the right to manage departments.
+// so choosing a department does not need the right to manage departments; so is the staff
+// account picker (T-CLI-01), so linking an account does not need admin.user.manage.
 import {
   Body,
   Controller,
@@ -19,11 +20,13 @@ import {
   departmentChoiceListSchema,
   practitionerListSchema,
   practitionerSchema,
+  staffAccountChoiceListSchema,
   updatePractitionerRequestSchema,
   type CreatePractitionerRequest,
   type DepartmentChoiceList,
   type Practitioner,
   type PractitionerList,
+  type StaffAccountChoiceList,
   type UpdatePractitionerRequest,
 } from '@hms/contracts';
 import { DomainError } from '@hms/domain-kernel';
@@ -74,6 +77,24 @@ export class PractitionersController {
   })
   departmentChoices(): Promise<DepartmentChoiceList> {
     return this.practitioners.departmentChoices();
+  }
+
+  @Get('account-choices')
+  @RequirePermission('practitioner.manage')
+  @ApiEndpoint({
+    summary: 'List the staff accounts a practitioner can be linked to',
+    description:
+      'Accounts with an active membership of the hospital that are not disabled, by name ' +
+      '(T-CLI-01; FR-PRA-003). The link shows the doctor their own worklist; it grants nothing.',
+    success: {
+      status: 200,
+      description: 'The linkable accounts',
+      schema: staffAccountChoiceListSchema,
+    },
+    errors: ACCESS_ERRORS,
+  })
+  accountChoices(): Promise<StaffAccountChoiceList> {
+    return this.practitioners.accountChoices();
   }
 
   @Get(':practitionerId')

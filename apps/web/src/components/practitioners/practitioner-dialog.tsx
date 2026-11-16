@@ -2,7 +2,8 @@
 // Add or edit a practitioner (T-PRA-01; FR-PRA-001..003; SP-03). One dialog for both: empty for a
 // new practitioner, prefilled for an edit, which sends the whole record with the version the
 // screen showed. If someone else saved first, the API answers STALE_RECORD and the dialog offers
-// to reload. Saving refreshes every practitioner list at once (FR-PRA-002).
+// to reload. Saving refreshes every practitioner list at once (FR-PRA-002). The staff account
+// (T-CLI-01; FR-PRA-003) shows the doctor their own worklist; it grants no permission.
 import type { Practitioner } from '@hms/contracts';
 import { Alert, Button, Checkbox, Dialog, Field, Select, TextInput, useToast } from '@hms/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,12 +11,14 @@ import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { ApiError } from '../../api/errors';
 import {
+  ACCOUNT_CHOICES_QUERY_KEY,
   DEPARTMENT_CHOICES_QUERY_KEY,
   PRACTITIONERS_QUERY_KEY,
   practitionersApi,
 } from '../../api/practitioners';
 import { useApiErrorMessage } from '../../i18n/use-api-error-message';
 import {
+  accountOptions,
   departmentOptions,
   differsFrom,
   fieldsOf,
@@ -60,6 +63,10 @@ export function PractitionerDialog({
   const departments = useQuery({
     queryKey: DEPARTMENT_CHOICES_QUERY_KEY,
     queryFn: practitionersApi.departmentChoices,
+  });
+  const accounts = useQuery({
+    queryKey: ACCOUNT_CHOICES_QUERY_KEY,
+    queryFn: practitionersApi.accountChoices,
   });
 
   const save = useMutation({
@@ -138,6 +145,21 @@ export function PractitionerDialog({
               )}
               value={form.departmentId}
               onChange={(event) => update({ departmentId: event.target.value })}
+              {...aria}
+            />
+          )}
+        </Field>
+        <Field label={t('practitioners.account')} hint={t('practitioners.accountHint')}>
+          {({ id, ...aria }) => (
+            <Select
+              id={id}
+              options={accountOptions(
+                accounts.data ?? [],
+                practitioner?.account ?? null,
+                t('practitioners.noAccount'),
+              )}
+              value={form.userId}
+              onChange={(event) => update({ userId: event.target.value })}
               {...aria}
             />
           )}

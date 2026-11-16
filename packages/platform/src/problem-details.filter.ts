@@ -2,6 +2,8 @@
 // DomainErrors keep their code and details; Nest HTTP errors map by status; anything else is
 // an unexpected INTERNAL_ERROR whose message is never sent to the client. The body carries the
 // request's correlationId (T-PLT-07) so a user-reported error can be found in the logs.
+// NotModified is not an error: a polled worklist that did not change answers 304 with no body
+// (T-CLI-01, ADR-015).
 import {
   Catch,
   HttpException,
@@ -11,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { errorCodes, type ErrorCode } from '@hms/contracts';
 import { DomainError } from '@hms/domain-kernel';
+import { NotModified } from './conditional-get.js';
 import type { CorrelatedRequest } from './request-id.middleware.js';
 
 interface HttpResponseLike {
@@ -18,6 +21,7 @@ interface HttpResponseLike {
   status(code: number): HttpResponseLike;
   type(contentType: string): HttpResponseLike;
   send(body: string): void;
+  end(): void;
 }
 
 const statusToCode: Record<number, ErrorCode> = {
@@ -54,6 +58,10 @@ export class ProblemDetailsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
     const response = http.getResponse<HttpResponseLike>();
+    if (exception instanceof NotModified) {
+      response.status(304).end();
+      return;
+    }
     const { correlationId } = http.getRequest<CorrelatedRequest>();
     const expected =
       exception instanceof DomainError ||

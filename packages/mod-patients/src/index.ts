@@ -3,6 +3,7 @@
 export { findPatientRefs, isBookablePatient } from './infrastructure/patient.repository.js';
 export {
   findPractitionerChoices,
+  findPractitionerIdOfAccount,
   isSchedulablePractitioner,
   listPractitionerChoices,
 } from './infrastructure/practitioner.repository.js';

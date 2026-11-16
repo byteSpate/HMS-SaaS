@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatDate,
   formatDateTime,
+  formatTimeOfDay,
   formatMoney,
   formatNumber,
   groupLakhCrore,
@@ -104,6 +105,8 @@ describe('dates', () => {
   it('formats date and 24-hour time', () => {
     expect(formatDateTime(instant, 'en')).toBe('04-11-2026 02:30');
     expect(formatDateTime(instant, 'bn-BD')).toBe('০৪-১১-২০২৬ ০২:৩০');
+    expect(formatTimeOfDay(instant, 'en')).toBe('02:30:00');
+    expect(formatTimeOfDay(instant, 'bn-BD')).toBe('০২:৩০:০০');
   });
 
   it('honors another facility time zone', () => {

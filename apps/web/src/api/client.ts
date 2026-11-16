@@ -3,7 +3,8 @@
 // - state-changing requests carry the CSRF token the server issued for this session (ADR-021)
 // - errors become ApiError with a stable code; responses are validated with the shared contracts
 // - success bodies are { data, meta } (T-PLT-08), unwrapped here and nowhere else
-// Implements: T-UI-02, T-PLT-08, ADR-004, ADR-021.
+// - polled worklists send the last ETag and keep their data on 304 Not Modified (ADR-015)
+// Implements: T-UI-02, T-PLT-08, T-CLI-01, ADR-004, ADR-015, ADR-021.
 import { anySuccessEnvelopeSchema, problemSchema } from '@hms/contracts';
 import { API_BASE_URL, API_PREFIX } from '../config';
 import { ApiError, CLIENT_ERROR_CODES } from './errors';
@@ -66,7 +67,8 @@ async function send(
     throw new ApiError(CLIENT_ERROR_CODES.NETWORK, 0);
   }
 
-  if (!response.ok) throw await toApiError(response);
+  // 304 only answers a conditional read, which apiConditionalGet handles.
+  if (!response.ok && response.status !== 304) throw await toApiError(response);
   return response;
 }
 
@@ -91,6 +93,29 @@ export async function apiPage<T>(path: string, parseItem: (item: unknown) => T):
     const { data, meta } = anySuccessEnvelopeSchema.parse(await response.json());
     if (!Array.isArray(data)) throw new Error('A list answer must hold an array');
     return { items: data.map(parseItem), nextCursor: meta.nextCursor ?? null };
+  } catch {
+    throw new ApiError(CLIENT_ERROR_CODES.INVALID_RESPONSE, response.status);
+  }
+}
+
+/** A polled read's answer: the data and its tag, or `unchanged` when the API answered 304. */
+export type ConditionalAnswer<T> =
+  { unchanged: true } | { unchanged: false; data: T; etag: string | null };
+
+/**
+ * A worklist poll (ADR-015): sends the tag of the data already shown as If-None-Match. The API
+ * answers 304 with no body while nothing changed, so the screen keeps what it has.
+ */
+export async function apiConditionalGet<T>(
+  path: string,
+  parse: (data: unknown) => T,
+  etag: string | null,
+): Promise<ConditionalAnswer<T>> {
+  const response = await send(path, etag ? { headers: { 'If-None-Match': etag } } : {});
+  if (response.status === 304) return { unchanged: true };
+  try {
+    const data = parse(anySuccessEnvelopeSchema.parse(await response.json()).data);
+    return { unchanged: false, data, etag: response.headers.get('ETag') };
   } catch {
     throw new ApiError(CLIENT_ERROR_CODES.INVALID_RESPONSE, response.status);
   }

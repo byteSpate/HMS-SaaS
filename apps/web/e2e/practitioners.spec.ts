@@ -1,4 +1,4 @@
-// The practitioner master in a real browser (T-PRA-01; FR-PRA-001..003; AT-PRA-001; SP-03). The API
+// The practitioner master in a real browser (T-PRA-01, T-CLI-01; FR-PRA-001..003; AT-PRA-001; SP-03). The API
 // is the contract-valid mock in support/mock-practitioners.ts; texts come from the catalogs.
 import AxeBuilder from '@axe-core/playwright';
 import { messages } from '@hms/i18n';
@@ -79,6 +79,27 @@ test('deactivates a practitioner with the version the screen showed', async ({ p
   await expect(page.getByText(bn.practitioners.statusInactive)).toBeVisible();
   const edit = requests.find((r) => r.method === 'PUT');
   expect(edit?.body).toMatchObject({ active: false, expectedVersion: 1, nameEn: 'Nasrin Akter' });
+});
+
+test('T-CLI-01: links the staff account of the doctor, sent with the version', async ({ page }) => {
+  const world = newWorld({ permissions: ['practitioner.manage'] });
+  const { requests } = await installMockApi(page, world);
+  await signIn(page, world);
+  await openPractitioners(page);
+
+  await page.getByRole('button', { name: `${bn.practitioners.edit}: Nasrin Akter` }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog
+    .getByLabel(bn.practitioners.account)
+    .selectOption({ label: 'Nasrin Akter (dr.nasrin)' });
+  await dialog.getByRole('button', { name: bn.practitioners.save }).click();
+
+  await expect(page.getByText(bn.practitioners.saved).first()).toBeVisible();
+  const edit = requests.find((r) => r.method === 'PUT');
+  expect(edit?.body).toMatchObject({
+    userId: '0199e0b0-0000-7000-8000-000000000701',
+    expectedVersion: 1,
+  });
 });
 
 test('SP-03: someone else saved first, so the dialog offers to reload', async ({ page }) => {

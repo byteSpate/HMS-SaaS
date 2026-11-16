@@ -2,6 +2,7 @@
 export * from './audit.js';
 export * from './command-scope.js';
 export * from './concurrency-limiter.js';
+export * from './conditional-get.js';
 export * from './database.module.js';
 export * from './idempotency.js';
 export * from './maintenance.js';

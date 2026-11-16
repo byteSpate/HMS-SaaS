@@ -1,10 +1,11 @@
-// Practitioner master endpoints (T-PRA-01; FR-PRA-001..003). Every answer is checked against the
+// Practitioner master endpoints (T-PRA-01, T-CLI-01; FR-PRA-001..003). Every answer is checked against the
 // shared contract. Commands carry an Idempotency-Key made once per dialog, so a retry after a
 // timeout returns the same practitioner instead of a second one (SP-08).
 import {
   departmentChoiceListSchema,
   practitionerListSchema,
   practitionerSchema,
+  staffAccountChoiceListSchema,
   type CreatePractitionerRequest,
   type UpdatePractitionerRequest,
 } from '@hms/contracts';
@@ -20,7 +21,14 @@ export const DEPARTMENT_CHOICES_QUERY_KEY = [
   'department-choices',
 ] as const;
 
+/** T-CLI-01: the staff accounts a practitioner can be linked to. */
+export const ACCOUNT_CHOICES_QUERY_KEY = [...PRACTITIONERS_QUERY_KEY, 'account-choices'] as const;
+
 export const practitionersApi = {
+  accountChoices: () =>
+    apiRequest('/practitioners/account-choices', {
+      parse: (data) => staffAccountChoiceListSchema.parse(data).accounts,
+    }),
   departmentChoices: () =>
     apiRequest('/practitioners/department-choices', {
       parse: (data) => departmentChoiceListSchema.parse(data).departments,

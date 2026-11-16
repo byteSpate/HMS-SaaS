@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiRequest, setCsrfToken } from './client';
+import { apiConditionalGet, apiRequest, setCsrfToken } from './client';
 import { ApiError } from './errors';
 
 const fetchMock = vi.fn();
@@ -90,5 +90,29 @@ describe('apiRequest', () => {
   it('reports a non-JSON error body as UNKNOWN with the status', async () => {
     fetchMock.mockResolvedValue(new Response('<html>', { status: 502 }));
     await expect(apiRequest('/x')).rejects.toMatchObject({ code: 'UNKNOWN', status: 502 });
+  });
+});
+
+describe('apiConditionalGet (ADR-015)', () => {
+  const parse = (data: unknown) => data as { n: number };
+
+  it('reads the data and its ETag, sending no If-None-Match the first time', async () => {
+    const answer = enveloped({ n: 1 });
+    answer.headers.set('ETag', '"t1"');
+    fetchMock.mockResolvedValue(answer);
+    expect(await apiConditionalGet('/worklist', parse, null)).toEqual({
+      unchanged: false,
+      data: { n: 1 },
+      etag: '"t1"',
+    });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>)['If-None-Match']).toBeUndefined();
+  });
+
+  it('sends the last ETag and reports 304 as unchanged', async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 304 }));
+    expect(await apiConditionalGet('/worklist', parse, '"t1"')).toEqual({ unchanged: true });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Record<string, string>)['If-None-Match']).toBe('"t1"');
   });
 });

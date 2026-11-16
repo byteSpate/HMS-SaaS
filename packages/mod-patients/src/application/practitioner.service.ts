@@ -1,5 +1,6 @@
 // Practitioner master (T-PRA-01; FR-PRA-001..003; FR-AUD-001; SP-03). Create, edit and list a
-// hospital's practitioners, with an optional department (T-PRA-02). Each change is one
+// hospital's practitioners, with an optional department (T-PRA-02) and an optional staff account
+// (T-CLI-01; FR-PRA-003), which the doctor's worklist uses to find the signed-in doctor. Each change is one
 // transaction with its audit event and an outbox event; the outbox event is what a future picker
 // cache listens to (FR-PRA-002). Lists read the table directly today, so a saved practitioner
 // shows in every list on the next request.
@@ -9,20 +10,29 @@ import type {
   DepartmentChoiceList,
   Practitioner,
   PractitionerList,
+  StaffAccountChoiceList,
   UpdatePractitionerRequest,
 } from '@hms/contracts';
 import { withTenant, type PrismaClient, type TenantTx } from '@hms/database';
 import { DomainError, type Clock } from '@hms/domain-kernel';
-import { isSelectableDepartment, listDepartmentChoices } from '@hms/mod-identity-access';
+import {
+  findStaffAccountChoices,
+  isLinkableStaffAccount,
+  isSelectableDepartment,
+  listDepartmentChoices,
+  listStaffAccountChoices,
+} from '@hms/mod-identity-access';
 import { appendAuditEvent, appendOutboxEvent, PRISMA } from '@hms/platform';
 import { fieldError } from '../domain/patient-identity.js';
 import { changedPractitionerFields, practitionerValuesOf } from '../domain/practitioner.js';
 import {
   findPractitioner,
+  findPractitionerIdOfAccount,
   findStoredPractitioner,
   insertPractitioner,
   listPractitioners,
   updatePractitioner,
+  type PractitionerRecord,
 } from '../infrastructure/practitioner.repository.js';
 import { PATIENTS_CLOCK, requestScope, type Scope } from './context.js';
 
@@ -35,6 +45,43 @@ async function assertSelectable(tx: TenantTx, departmentId: string | null): Prom
   if (departmentId !== null && !(await isSelectableDepartment(tx, departmentId))) {
     throw fieldError('departmentId', 'Choose an active department of this hospital');
   }
+}
+
+/**
+ * FR-PRA-003: a linked account must be a linkable account of this hospital and not already linked
+ * to another practitioner. The partial unique index is the backstop for two saves at once.
+ */
+async function assertLinkable(
+  tx: TenantTx,
+  userId: string | null,
+  practitionerId: string | null,
+): Promise<void> {
+  if (userId === null) return;
+  if (!(await isLinkableStaffAccount(tx, userId))) {
+    throw fieldError('userId', 'Choose an active staff account of this hospital');
+  }
+  const linked = await findPractitionerIdOfAccount(tx, userId);
+  if (linked !== null && linked !== practitionerId) {
+    throw fieldError('userId', 'This account is already linked to another practitioner');
+  }
+}
+
+/** Names each record's linked account (the identity module owns the accounts). */
+async function withAccounts(tx: TenantTx, records: PractitionerRecord[]): Promise<Practitioner[]> {
+  const accounts = await findStaffAccountChoices(
+    tx,
+    records.flatMap((record) => (record.userId ? [record.userId] : [])),
+  );
+  return records.map(({ userId, ...record }) => ({
+    ...record,
+    account: userId ? (accounts.get(userId) ?? null) : null,
+  }));
+}
+
+async function withAccount(tx: TenantTx, record: PractitionerRecord): Promise<Practitioner> {
+  const [practitioner] = await withAccounts(tx, [record]);
+  if (!practitioner) throw notFound();
+  return practitioner;
 }
 
 const stale = (currentVersion: number) =>
@@ -70,7 +117,16 @@ export class PractitionerService {
 
   async list(): Promise<PractitionerList> {
     const scope = requestScope();
-    return { practitioners: await withTenant(this.prisma, scope, listPractitioners) };
+    const practitioners = await withTenant(this.prisma, scope, async (tx) =>
+      withAccounts(tx, await listPractitioners(tx)),
+    );
+    return { practitioners };
+  }
+
+  /** The linkable staff accounts for the practitioner form's picker (T-CLI-01). */
+  async accountChoices(): Promise<StaffAccountChoiceList> {
+    const scope = requestScope();
+    return { accounts: await withTenant(this.prisma, scope, listStaffAccountChoices) };
   }
 
   /** The active departments for the practitioner form's picker. */
@@ -81,11 +137,11 @@ export class PractitionerService {
 
   async detail(practitionerId: string): Promise<Practitioner> {
     const scope = requestScope();
-    const found = await withTenant(this.prisma, scope, (tx) =>
-      findPractitioner(tx, practitionerId),
-    );
-    if (!found) throw notFound();
-    return found;
+    return withTenant(this.prisma, scope, async (tx) => {
+      const found = await findPractitioner(tx, practitionerId);
+      if (!found) throw notFound();
+      return withAccount(tx, found);
+    });
   }
 
   /** FR-PRA-001: no duplicate check, two practitioners may share a name. */
@@ -94,6 +150,7 @@ export class PractitionerService {
     const values = practitionerValuesOf(request);
     return withTenant(this.prisma, scope, async (tx) => {
       await assertSelectable(tx, values.departmentId);
+      await assertLinkable(tx, values.userId, null);
       const created = await insertPractitioner(tx, scope, values);
       await auditChange(tx, scope, {
         action: 'practitioner.created',
@@ -107,7 +164,7 @@ export class PractitionerService {
         aggregateId: created.practitionerId,
         payload: { practitionerId: created.practitionerId, version: created.version },
       });
-      return created;
+      return withAccount(tx, created);
     });
   }
 
@@ -124,6 +181,7 @@ export class PractitionerService {
         throw fieldError('nameEn', 'Nothing differs from the current values');
       }
       if (changed.includes('departmentId')) await assertSelectable(tx, next.departmentId);
+      if (changed.includes('userId')) await assertLinkable(tx, next.userId, practitionerId);
       const target = {
         practitionerId,
         expectedVersion: request.expectedVersion,
@@ -149,7 +207,7 @@ export class PractitionerService {
       });
       const saved = await findPractitioner(tx, practitionerId);
       if (!saved) throw notFound();
-      return saved;
+      return withAccount(tx, saved);
     });
   }
 }

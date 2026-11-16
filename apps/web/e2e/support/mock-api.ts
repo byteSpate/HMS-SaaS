@@ -13,6 +13,7 @@ import { createBillingStore } from './mock-billing';
 import { createPaymentStore } from './mock-payments';
 import { createPriceListStore } from './mock-price-lists';
 import { createScheduleSessionStore } from './mock-schedule-sessions';
+import { createWorklistStore } from './mock-worklist';
 
 const WEB_ORIGIN = 'http://localhost:3100';
 
@@ -47,6 +48,8 @@ export interface RecordedRequest {
   csrf: string | null;
   /** T-PLT-01: commands carry one; null on reads. */
   idempotencyKey: string | null;
+  /** T-CLI-01: the worklist poll sends the last ETag (ADR-015). */
+  ifNoneMatch: string | null;
   body: unknown;
 }
 
@@ -127,6 +130,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
   const cashierDesk = createPaymentStore(billing.openSession);
   const scheduleSessions = createScheduleSessionStore();
   const appointments = createAppointmentStore(scheduleSessions.sessions, patients.patients);
+  const worklist = createWorklistStore();
 
   function session(): SessionResponse {
     const now = Date.now();
@@ -143,15 +147,23 @@ export async function installMockApi(page: Page, world: MockWorld) {
     });
   }
 
-  function reply(route: Route, status: number, body?: unknown, meta: object = {}) {
+  function reply(
+    route: Route,
+    status: number,
+    body?: unknown,
+    meta: object = {},
+    extraHeaders: Record<string, string> = {},
+  ) {
     return route.fulfill({
       status,
       contentType: 'application/json',
       headers: {
         'Access-Control-Allow-Origin': WEB_ORIGIN,
         'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, Accept',
+        'Access-Control-Allow-Headers': 'Content-Type, X-CSRF-Token, Accept, If-None-Match',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, OPTIONS',
+        'Access-Control-Expose-Headers': 'ETag',
+        ...extraHeaders,
       },
       // Success bodies are enveloped like the real API (T-PLT-08); problem details are not.
       ...(body === undefined
@@ -179,6 +191,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
       query: new URL(request.url()).search,
       csrf: request.headers()['x-csrf-token'] ?? null,
       idempotencyKey: request.headers()['idempotency-key'] ?? null,
+      ifNoneMatch: request.headers()['if-none-match'] ?? null,
       body,
     });
 
@@ -202,6 +215,15 @@ export async function installMockApi(page: Page, world: MockWorld) {
       return reply(route, 204);
     }
     if (path.startsWith('/auth/mfa/')) return answerMfa(route, path, body);
+    const worklistAnswer = worklist.answer(
+      request.method(),
+      path,
+      body,
+      request.headers()['if-none-match'] ?? null,
+    );
+    if (worklistAnswer) {
+      return reply(route, worklistAnswer.status, worklistAnswer.body, {}, worklistAnswer.headers);
+    }
     if (path === '/auth/password') return answerPasswordChange(route, body);
     const moduleAnswer =
       admin.answer(request.method(), path, body as never) ??
@@ -282,5 +304,6 @@ export async function installMockApi(page: Page, world: MockWorld) {
     cashierDesk,
     scheduleSessions,
     appointments,
+    worklist,
   };
 }

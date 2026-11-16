@@ -2,13 +2,14 @@
 // it needs; entries are filtered before they reach the shell, so a user never sees a link to
 // something the server would refuse (FR-ACC-009). The session carries the permission codes of the
 // chosen hospital's roles (T-ACC-05); the API still checks every request.
-// Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01, T-BIL-01, T-BIL-03.
+// Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01, T-BIL-01, T-BIL-03, T-CLI-01.
 import type { IconName } from '@hms/ui';
 
 // Full catalog keys, so the unused-key check can see them as literals.
 export type NavLabelKey =
   | 'nav.home'
   | 'nav.patients'
+  | 'nav.worklist'
   | 'nav.schedules'
   | 'nav.cashier'
   | 'nav.cashierSessions'
@@ -37,6 +38,14 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/patients',
     icon: 'search',
     requires: 'patient.record.search',
+  },
+  // T-CLI-01 (SCR-08): the doctor's own worklist (F section 2.1, the doctor's home).
+  {
+    id: 'worklist',
+    labelKey: 'nav.worklist',
+    href: '/worklist',
+    icon: 'stethoscope',
+    requires: 'clinical.consultation.record',
   },
   // T-SCH-01 (SCR-04): doctor sessions, for reception and the administrator.
   {

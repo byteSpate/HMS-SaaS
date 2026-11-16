@@ -264,6 +264,10 @@ export const en = {
     registrationNo: 'Registration number (BMDC)',
     department: 'Department',
     noDepartment: 'No department',
+    account: 'Staff account',
+    accountHint:
+      "When this account signs in, it sees this doctor's worklist. It grants no permission.",
+    noAccount: 'No account',
     columnDepartment: 'Department',
     activeLabel: 'Active: can be chosen for appointments and visits',
     nameRequired: 'A name in Bangla or English is required.',
@@ -353,6 +357,39 @@ export const en = {
     due: 'Due {amount}',
     feeMissing:
       'No doctor fee is set for this doctor, so no invoice was issued. Ask the administrator to set the fee.',
+  },
+  worklist: {
+    title: 'My worklist',
+    updated: 'Updated {time}',
+    refresh: 'Refresh',
+    openNext: 'Open next patient (Enter)',
+    notLinked:
+      'Your account is not linked to a practitioner, so no patients are shown. Ask the hospital administrator to link it on the practitioner record.',
+    noSessions: 'You have no sessions today.',
+    sessionTitle: 'Session {start}-{end}',
+    sessionEmpty: 'No patients in this session yet.',
+    columnSerial: '#',
+    columnPatient: 'Patient',
+    columnStatus: 'Status',
+    columnWaiting: 'Waiting',
+    columnAction: 'Action',
+    start: 'Start consultation',
+    cannotOpen: 'Cannot open until the doctor fee is paid',
+    continue: 'Continue',
+    minutes: '{minutes} min',
+    newWaiting: '{count, plural, one {# new patient waiting} other {# new patients waiting}}',
+    statusEXPECTED: 'Expected',
+    statusWAITING_PAYMENT: 'Waiting for payment',
+    statusWAITING: 'Waiting',
+    statusIN_CONSULTATION: 'In consultation',
+    statusCONSULTED: 'Done',
+  },
+  consultation: {
+    title: 'Consultation',
+    back: 'Back to my worklist',
+    startedAt: 'Started {time}',
+    noteLater:
+      'The consultation has started. Writing the note, orders and prescription is not available yet.',
   },
   cashier: {
     title: 'Cashier desk',
@@ -589,6 +626,7 @@ export const en = {
     departments: 'Departments',
     doctorFees: 'Doctor fees',
     cashier: 'Cashier desk',
+    worklist: 'My worklist',
     cashierSessions: 'Cashier sessions',
     users: 'Users',
     roles: 'Roles',
@@ -675,6 +713,7 @@ export const en = {
       POLICY_NOT_CONFIGURED:
         'A setting this needs is missing. Ask the hospital administrator to set it up.',
       STALE_RECORD: 'Someone else changed this record. Reload it to see the latest version.',
+      PAYMENT_NOT_ELIGIBLE: 'This needs its invoice paid first. Send the patient to the cashier.',
       AMOUNT_EXCEEDS_BALANCE:
         'This amount is more than what is still owed. Lower it and give the patient change.',
       SEGREGATION_OF_DUTY: 'The same person cannot do both steps. Ask a colleague to do this one.',

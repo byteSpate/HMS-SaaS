@@ -1,8 +1,9 @@
 // Practitioner master contracts (T-PRA-01; FR-PRA-001..003; E section 5.1). A practitioner is a
 // professional identity: names in Bangla and English, degrees, specialty, contact and an optional
 // registration number, and an optional department (T-PRA-02 part 2). Two practitioners may share
-// a name; these fields tell them apart. The link to a user account comes later (owner decision
-// 2026-11-08, option A).
+// a name; these fields tell them apart. T-CLI-01 adds the optional link to one staff account
+// (FR-PRA-003; owner decision 2026-11-16), which tells the doctor's worklist whose sessions to
+// show; the link grants no permission.
 import { z } from 'zod';
 import { departmentChoiceSchema } from './departments.js';
 
@@ -18,7 +19,22 @@ const practitionerFields = {
   registrationNo: shortText(50).nullable().optional(),
   /** An active department of the hospital, or null for none. */
   departmentId: z.uuid().nullable().optional(),
+  /** T-CLI-01: an active staff account of the hospital, or null for none (FR-PRA-003). */
+  userId: z.uuid().nullable().optional(),
 };
+
+/** A staff account as the practitioner form offers it (T-CLI-01). */
+export const staffAccountChoiceSchema = z.strictObject({
+  userId: z.uuid(),
+  username: z.string(),
+  displayName: z.string(),
+});
+export type StaffAccountChoice = z.infer<typeof staffAccountChoiceSchema>;
+
+export const staffAccountChoiceListSchema = z.strictObject({
+  accounts: z.array(staffAccountChoiceSchema),
+});
+export type StaffAccountChoiceList = z.infer<typeof staffAccountChoiceListSchema>;
 
 type PractitionerFields = z.infer<z.ZodObject<typeof practitionerFields>>;
 
@@ -61,6 +77,8 @@ export const practitionerSchema = z.strictObject({
   phone: z.string().nullable(),
   registrationNo: z.string().nullable(),
   department: departmentChoiceSchema.nullable(),
+  /** The linked staff account, or null (T-CLI-01). */
+  account: staffAccountChoiceSchema.nullable(),
   active: z.boolean(),
   version: z.number().int(),
 });

@@ -13,6 +13,7 @@ describe('practitioner values', () => {
       phone: null,
       registrationNo: null,
       departmentId: null,
+      userId: null,
     });
   });
 
@@ -22,5 +23,7 @@ describe('practitioner values', () => {
     expect(
       changedPractitionerFields(stored, { ...stored, specialty: 'Medicine', active: false }),
     ).toEqual(['specialty', 'active']);
+    // T-CLI-01: linking a staff account is a change of its own (FR-PRA-003).
+    expect(changedPractitionerFields(stored, { ...stored, userId: 'user-1' })).toEqual(['userId']);
   });
 });

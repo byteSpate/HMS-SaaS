@@ -21,4 +21,9 @@ export {
 export { IdentityAccessModule, type IdentityAccessOptions } from './identity-access.module.js';
 export { hashPassword } from './infrastructure/password-hasher.js';
 export { findStaffNames } from './infrastructure/staff-names.repository.js';
+export {
+  findStaffAccountChoices,
+  isLinkableStaffAccount,
+  listStaffAccountChoices,
+} from './infrastructure/staff-accounts.repository.js';
 export { createRolesFromTemplates } from './infrastructure/role-templates.repository.js';

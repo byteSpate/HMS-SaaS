@@ -1,4 +1,4 @@
-// In-memory stand-in for the practitioner endpoints (T-PRA-01), answering with payloads that satisfy
+// In-memory stand-in for the practitioner endpoints (T-PRA-01, T-CLI-01), answering with payloads that satisfy
 // the shared contracts. Used by the practitioner browser tests; the real behaviour (RLS, audit,
 // version checks) is covered by apps/api/src/practitioners.api.spec.ts. Names are synthetic.
 import {
@@ -6,9 +6,11 @@ import {
   departmentChoiceListSchema,
   practitionerListSchema,
   practitionerSchema,
+  staffAccountChoiceListSchema,
   updatePractitionerRequestSchema,
   type DepartmentChoice,
   type Practitioner,
+  type StaffAccountChoice,
 } from '@hms/contracts';
 
 const ID = (n: number): string => `0199e0b0-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -32,6 +34,15 @@ const DEPARTMENT_CHOICES: DepartmentChoice[] = [
 const departmentOf = (departmentId: string | null | undefined): DepartmentChoice | null =>
   DEPARTMENT_CHOICES.find((choice) => choice.departmentId === departmentId) ?? null;
 
+/** The hospital's linkable staff accounts, as the picker offers them (T-CLI-01). */
+const ACCOUNT_CHOICES: StaffAccountChoice[] = [
+  { userId: ID(701), username: 'dr.nasrin', displayName: 'Nasrin Akter' },
+  { userId: ID(702), username: 'dr.karim', displayName: 'Karim Uddin' },
+];
+
+const accountOf = (userId: string | null | undefined): StaffAccountChoice | null =>
+  ACCOUNT_CHOICES.find((choice) => choice.userId === userId) ?? null;
+
 export function createPractitionerStore() {
   let next = 502;
   const practitioners: Practitioner[] = [
@@ -44,6 +55,7 @@ export function createPractitionerStore() {
       phone: null,
       registrationNo: 'A-40001',
       department: null,
+      account: null,
       active: true,
       version: 1,
     },
@@ -54,7 +66,7 @@ export function createPractitionerStore() {
   function create(body: unknown): PractitionerAnswer {
     const request = createPractitionerRequestSchema.safeParse(body);
     if (!request.success) return problem(422, 'VALIDATION_FAILED');
-    const { departmentId, ...fields } = request.data;
+    const { departmentId, userId, ...fields } = request.data;
     const created = practitionerSchema.parse({
       practitionerId: ID(next++),
       nameBn: null,
@@ -65,6 +77,7 @@ export function createPractitionerStore() {
       registrationNo: null,
       ...fields,
       department: departmentOf(departmentId),
+      account: accountOf(userId),
       active: true,
       version: 1,
     });
@@ -78,7 +91,7 @@ export function createPractitionerStore() {
     if (!stored) return problem(404, 'NOT_FOUND');
     const request = updatePractitionerRequestSchema.safeParse(body);
     if (!request.success) return problem(422, 'VALIDATION_FAILED');
-    const { expectedVersion, departmentId, ...fields } = request.data;
+    const { expectedVersion, departmentId, userId, ...fields } = request.data;
     if (state.changedElsewhere || expectedVersion !== stored.version) {
       return problem(409, 'STALE_RECORD');
     }
@@ -92,6 +105,7 @@ export function createPractitionerStore() {
       registrationNo: null,
       ...fields,
       department: departmentOf(departmentId),
+      account: accountOf(userId),
       version: stored.version + 1,
     });
     practitioners[index] = updated;
@@ -99,6 +113,12 @@ export function createPractitionerStore() {
   }
 
   function answer(method: string, path: string, body: unknown): PractitionerAnswer | null {
+    if (path === '/practitioners/account-choices' && method === 'GET') {
+      return {
+        status: 200,
+        body: staffAccountChoiceListSchema.parse({ accounts: ACCOUNT_CHOICES }),
+      };
+    }
     if (path === '/practitioners/department-choices' && method === 'GET') {
       return {
         status: 200,

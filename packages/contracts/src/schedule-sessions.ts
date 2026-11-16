@@ -6,8 +6,10 @@ import { z } from 'zod';
 import { departmentChoiceSchema } from './departments.js';
 
 const isoDate = z.iso.date();
-/** HH:mm, 24-hour clock. */
-const wallClockTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:mm, 24-hour clock');
+/** HH:mm, 24-hour clock. Exported for other screens that show a session's hours (T-CLI-01). */
+export const wallClockTime = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:mm, 24-hour clock');
 
 export const SCHEDULE_SESSION_STATUSES = ['DRAFT', 'PUBLISHED', 'CANCELLED'] as const;
 export const scheduleSessionStatusSchema = z.enum(SCHEDULE_SESSION_STATUSES);

@@ -22,6 +22,7 @@ function formatterFor(timeZone: string): Intl.DateTimeFormat {
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
+      second: '2-digit',
       hourCycle: 'h23',
     });
     formatters.set(timeZone, formatter);
@@ -65,4 +66,17 @@ export function formatDateTime(
 ): string {
   const p = partsOf(input, timeZone);
   return toLocaleDigits(`${p.day}-${p.month}-${p.year} ${p.hour}:${p.minute}`, locale);
+}
+
+/**
+ * The time of day with seconds, HH:mm:ss: a worklist's "Updated" indicator (T-CLI-01; ADR-015;
+ * F section 8), where a refresh within the same minute must still show.
+ */
+export function formatTimeOfDay(
+  input: Date | string,
+  locale: Locale,
+  { timeZone = DEFAULT_TIME_ZONE }: DateFormatOptions = {},
+): string {
+  const p = partsOf(input, timeZone);
+  return toLocaleDigits(`${p.hour}:${p.minute}:${p.second}`, locale);
 }

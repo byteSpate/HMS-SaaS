@@ -23,6 +23,8 @@ export const errorCodes = {
   /** A setting the action needs is missing, e.g. no doctor fee for the practitioner (FR-BIL-010). */
   POLICY_NOT_CONFIGURED: 409,
   STALE_RECORD: 409,
+  /** C-011, FR-CLI-002: the service needs its invoice paid first, e.g. the doctor fee. */
+  PAYMENT_NOT_ELIGIBLE: 409,
   /** C-038, FR-BIL-019, FR-BIL-034: a payment more than the open balance of what it pays. */
   AMOUNT_EXCEEDS_BALANCE: 409,
   USERNAME_TAKEN: 409,

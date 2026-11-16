@@ -1,6 +1,7 @@
 import type { Practitioner } from '@hms/contracts';
 import { describe, expect, it } from 'vitest';
 import {
+  accountOptions,
   departmentOptions,
   differsFrom,
   fieldsOf,
@@ -9,7 +10,7 @@ import {
   practitionerName,
 } from './practitioner-form';
 
-// The practitioner dialog's form rules (T-PRA-01; FR-PRA-001). Names are synthetic (AS-009).
+// The practitioner dialog's form rules (T-PRA-01, T-CLI-01; FR-PRA-001, FR-PRA-003). Names are synthetic (AS-009).
 const nasrin: Practitioner = {
   practitionerId: '0199e0b0-0000-7000-8000-000000000501',
   nameBn: null,
@@ -19,6 +20,7 @@ const nasrin: Practitioner = {
   phone: null,
   registrationNo: null,
   department: null,
+  account: null,
   active: true,
   version: 3,
 };
@@ -47,6 +49,7 @@ describe('practitioner form', () => {
       phone: '',
       registrationNo: '',
       departmentId: '',
+      userId: '',
       active: true,
     });
   });
@@ -88,6 +91,23 @@ describe('practitioner form', () => {
       'None',
       'MED - Medicine',
       'SURG - x',
+    ]);
+  });
+
+  it('T-CLI-01: sends the linked account, sees its change, keeps a suspended current one', () => {
+    const account = {
+      userId: '0199e0b0-0000-7000-8000-000000000701',
+      username: 'dr.nasrin',
+      displayName: 'Nasrin Akter',
+    };
+    const linked = { ...formOf(nasrin), userId: account.userId };
+    expect(fieldsOf(formOf(nasrin)).userId).toBeNull();
+    expect(fieldsOf(linked).userId).toBe(account.userId);
+    expect(differsFrom(nasrin, linked)).toBe(true);
+    expect(differsFrom({ ...nasrin, account }, linked)).toBe(false);
+    expect(accountOptions([], account, 'None')).toEqual([
+      { value: '', label: 'None' },
+      { value: account.userId, label: 'Nasrin Akter (dr.nasrin)' },
     ]);
   });
 

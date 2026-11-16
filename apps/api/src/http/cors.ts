@@ -23,7 +23,15 @@ export function buildCorsOptions(allowedOrigins: readonly string[]): CorsOptions
     origin: (origin, callback) => callback(null, origin === undefined || allowed.has(origin)),
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'X-CSRF-Token', 'Idempotency-Key', 'X-Request-Id'],
+    // If-None-Match and ETag: polled worklists answer 304 when unchanged (ADR-015, T-CLI-01).
+    allowedHeaders: [
+      'Content-Type',
+      'X-CSRF-Token',
+      'Idempotency-Key',
+      'X-Request-Id',
+      'If-None-Match',
+    ],
+    exposedHeaders: ['ETag'],
     maxAge: 7200,
   };
 }

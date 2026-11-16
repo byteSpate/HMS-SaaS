@@ -70,6 +70,7 @@ function formOf(practitioner: Practitioner) {
     phone: practitioner.phone,
     registrationNo: practitioner.registrationNo,
     departmentId: practitioner.department?.departmentId ?? null,
+    userId: practitioner.account?.userId ?? null,
     active: practitioner.active,
   };
 }
@@ -357,6 +358,83 @@ describe('practitioner master over HTTP', () => {
     const { tenantId } = await hospital();
     const receptionist = await staffOf(tenantId, ['patient.record.search']);
     const denied = await client.call(receptionist, 'GET', '/practitioners/department-choices');
+    expect(denied.status).toBe(403);
+  });
+
+  /** A staff account of the hospital, as user admin would create it; returns its user ID. */
+  async function account(tenantId: string, status: 'ACTIVE' | 'SUSPENDED' = 'ACTIVE') {
+    const user = await seedUser(prisma, { passwordHash });
+    await seedMembership(prisma, tenantId, user.id, status);
+    return user.id;
+  }
+
+  it('T-CLI-01: links a staff account, offers active accounts and audits the link', async () => {
+    const { tenantId, admin } = await hospital();
+    const doctor = await account(tenantId);
+    const suspended = await account(tenantId, 'SUSPENDED');
+
+    const choices = await client.call(admin, 'GET', '/practitioners/account-choices');
+    expect(choices.status).toBe(200);
+    const offered = ((await dataOf(choices)) as { accounts: { userId: string }[] }).accounts.map(
+      (choice) => choice.userId,
+    );
+    expect(offered).toContain(doctor);
+    expect(offered).not.toContain(suspended);
+
+    const practitioner = await created(admin, { ...karim(), userId: doctor });
+    expect(practitioner.account).toMatchObject({ userId: doctor, displayName: 'Test User' });
+    const [listed] = await list(admin);
+    expect(listed?.account?.userId).toBe(doctor);
+
+    const unlinked = await update(admin, practitioner.practitionerId, {
+      ...formOf(practitioner),
+      userId: null,
+      expectedVersion: 1,
+    });
+    expect(unlinked.status).toBe(200);
+    expect(((await dataOf(unlinked)) as Practitioner).account).toBeNull();
+    const audit = await withTenant(prisma, { tenantId }, (tx) =>
+      tx.auditEvent.findFirstOrThrow({
+        where: { action: 'practitioner.changed', targetId: practitioner.practitionerId },
+      }),
+    );
+    expect(audit.details).toMatchObject({ changedFields: 'userId' });
+  });
+
+  it('FR-PRA-003: one practitioner per account; refuses a suspended or foreign account', async () => {
+    const { tenantId, admin } = await hospital();
+    const doctor = await account(tenantId);
+    await created(admin, { ...karim(), userId: doctor });
+
+    const fieldsOf = async (res: Response) =>
+      ((await res.json()) as Problem).fields?.map((field) => field.path);
+    const twice = await create(admin, { ...karim(), userId: doctor });
+    expect(twice.status).toBe(422);
+    expect(await fieldsOf(twice)).toEqual(['userId']);
+
+    const suspended = await create(admin, {
+      ...karim(),
+      userId: await account(tenantId, 'SUSPENDED'),
+    });
+    expect(suspended.status).toBe(422);
+    const other = await hospital();
+    const foreign = await create(admin, { ...karim(), userId: await account(other.tenantId) });
+    expect(foreign.status).toBe(422);
+    expect(await fieldsOf(foreign)).toEqual(['userId']);
+
+    // The partial unique index holds even if two saves pass the check at once.
+    const second = await created(admin);
+    await expect(
+      withTenant(prisma, { tenantId }, (tx) =>
+        tx.practitioner.update({ where: { id: second.practitionerId }, data: { userId: doctor } }),
+      ),
+    ).rejects.toThrow(/unique/i);
+  });
+
+  it('the account picker needs practitioner.manage', async () => {
+    const { tenantId } = await hospital();
+    const receptionist = await staffOf(tenantId, ['patient.record.search']);
+    const denied = await client.call(receptionist, 'GET', '/practitioners/account-choices');
     expect(denied.status).toBe(403);
   });
 

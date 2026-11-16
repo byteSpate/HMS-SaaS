@@ -1,6 +1,7 @@
 // Practitioner rows in PostgreSQL (T-PRA-01, T-PRA-02; E section 5.1). Every function runs in the
 // caller's withTenant() transaction, so RLS limits it to one hospital (ADR-003). The department is
-// read through the row's foreign key, which RLS also limits to the hospital.
+// read through the row's foreign key, which RLS also limits to the hospital. The linked staff
+// account (T-CLI-01) is an ID here; its name comes from the identity module.
 import type { Practitioner, PractitionerChoice } from '@hms/contracts';
 import type { TenantTx } from '@hms/database';
 import type { PractitionerValues } from '../domain/practitioner.js';
@@ -15,6 +16,7 @@ const COLUMNS = {
   registrationNo: true,
   departmentId: true,
   department: { select: { id: true, code: true, nameBn: true, nameEn: true } },
+  userId: true,
   active: true,
   version: true,
 } as const;
@@ -29,7 +31,10 @@ type Row = PractitionerValues & {
 /** The stored values with the active flag and version, as an edit compares them. */
 export type StoredPractitioner = PractitionerValues & { active: boolean; version: number };
 
-function toPractitioner(row: Row): Practitioner {
+/** A practitioner as read here: the linked account is its ID, named by the service. */
+export type PractitionerRecord = Omit<Practitioner, 'account'> & { userId: string | null };
+
+function toPractitioner(row: Row): PractitionerRecord {
   return {
     practitionerId: row.id,
     nameBn: row.nameBn,
@@ -46,6 +51,7 @@ function toPractitioner(row: Row): Practitioner {
           nameEn: row.department.nameEn,
         }
       : null,
+    userId: row.userId,
     active: row.active,
     version: row.version,
   };
@@ -60,6 +66,7 @@ function toStored(row: Row): StoredPractitioner {
     phone: row.phone,
     registrationNo: row.registrationNo,
     departmentId: row.departmentId,
+    userId: row.userId,
     active: row.active,
     version: row.version,
   };
@@ -141,7 +148,7 @@ export async function isSchedulablePractitioner(
 }
 
 /** Active first, then by name, so a long list shows the doctors in use at the top. */
-export async function listPractitioners(tx: TenantTx): Promise<Practitioner[]> {
+export async function listPractitioners(tx: TenantTx): Promise<PractitionerRecord[]> {
   const rows = await tx.practitioner.findMany({
     select: COLUMNS,
     orderBy: [{ active: 'desc' }, { nameEn: 'asc' }, { nameBn: 'asc' }, { id: 'asc' }],
@@ -152,7 +159,7 @@ export async function listPractitioners(tx: TenantTx): Promise<Practitioner[]> {
 export async function findPractitioner(
   tx: TenantTx,
   practitionerId: string,
-): Promise<Practitioner | null> {
+): Promise<PractitionerRecord | null> {
   const row = await tx.practitioner.findUnique({ where: { id: practitionerId }, select: COLUMNS });
   return row ? toPractitioner(row) : null;
 }
@@ -169,7 +176,7 @@ export async function insertPractitioner(
   tx: TenantTx,
   target: { tenantId: string; userId: string },
   values: PractitionerValues,
-): Promise<Practitioner> {
+): Promise<PractitionerRecord> {
   const row = await tx.practitioner.create({
     data: {
       tenantId: target.tenantId,
@@ -201,4 +208,13 @@ export async function updatePractitioner(
     },
   });
   return result.count;
+}
+
+/** T-CLI-01: the practitioner linked to a staff account, if any (the doctor's own worklist). */
+export async function findPractitionerIdOfAccount(
+  tx: TenantTx,
+  userId: string,
+): Promise<string | null> {
+  const row = await tx.practitioner.findFirst({ where: { userId }, select: { id: true } });
+  return row?.id ?? null;
 }
