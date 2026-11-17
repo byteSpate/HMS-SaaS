@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { activeNavigationId, type NavDefinition, visibleNavigation } from './navigation';
+import {
+  activeNavigationId,
+  NAVIGATION,
+  type NavDefinition,
+  visibleNavigation,
+} from './navigation';
 
 const DEFINITIONS: NavDefinition[] = [
   { id: 'home', labelKey: 'nav.home', href: '/', icon: 'home' },
@@ -39,5 +44,24 @@ describe('activeNavigationId', () => {
   it('picks the most specific matching route', () => {
     expect(activeNavigationId(DEFINITIONS, '/billing/sessions/42')).toBe('billing-sessions');
     expect(activeNavigationId(DEFINITIONS, '/billing/invoices')).toBe('billing');
+  });
+});
+
+describe('NAVIGATION sections', () => {
+  it('keeps the items of each section together, so each heading shows once', () => {
+    const groups = NAVIGATION.map((item) => item.groupKey ?? 'none');
+    const seen = new Set<string>();
+    groups.forEach((group, index) => {
+      if (group !== groups[index - 1]) {
+        expect(seen.has(group)).toBe(false);
+        seen.add(group);
+      }
+    });
+  });
+
+  it('puts Home first, above every section', () => {
+    expect(NAVIGATION[0]?.id).toBe('home');
+    expect(NAVIGATION[0]?.groupKey).toBeUndefined();
+    expect(NAVIGATION.slice(1).every((item) => item.groupKey !== undefined)).toBe(true);
   });
 });

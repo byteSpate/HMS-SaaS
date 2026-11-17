@@ -4,7 +4,7 @@
 // desk's search, T-PAT-02). Choosing a patient opens their open invoices.
 import type { PatientRef, PatientSummary } from '@hms/contracts';
 import { formatMoney, type Locale } from '@hms/i18n';
-import { Alert, Button, Field, Skeleton, TextInput } from '@hms/ui';
+import { Alert, Button, Field, TextInput } from '@hms/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -14,6 +14,7 @@ import { useApiErrorMessage } from '../../i18n/use-api-error-message';
 import { sumAmounts } from '../../money';
 import { displayName } from '../patients/patient-text';
 import { useDebouncedValue } from '../patients/use-debounced-value';
+import { QueryView } from '../query-view';
 
 /** The front desk's rule: digits search at once, a name from three letters. */
 const searchable = (term: string) => /\d/.test(term) || Array.from(term).length >= 3;
@@ -94,31 +95,35 @@ export function PatientPicker({ onSelect }: { onSelect: (patient: PatientRef) =>
         <h2 id="cashier-queue-title" className="text-base font-semibold">
           {t('cashier.queueTitle')}
         </h2>
-        {queue.error ? <Alert tone="danger">{errorMessage(queue.error)}</Alert> : null}
-        {queue.isPending ? <Skeleton className="h-24" /> : null}
-        {queue.data?.length === 0 ? (
-          <p className="text-sm text-text-muted">{t('cashier.queueEmpty')}</p>
-        ) : null}
-        <ul className="flex flex-col gap-1">
-          {queue.data?.map(({ patient, invoices }) => (
-            <li key={patient.patientId}>
-              <Button
-                variant="secondary"
-                className="w-full justify-between"
-                onClick={() => onSelect(patient)}
-              >
-                <span>
-                  {displayName(patient)} <span className="text-text-muted">{patient.mrn}</span>
-                </span>
-                <span className="tabular-nums">
-                  {t('cashier.due', {
-                    amount: money(sumAmounts(invoices.map((invoice) => invoice.balance))),
-                  })}
-                </span>
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <QueryView
+          query={queue}
+          isEmpty={(rows) => rows.length === 0}
+          empty={{ title: t('cashier.queueEmpty') }}
+          columns={2}
+        >
+          {(rows) => (
+            <ul className="flex flex-col gap-1">
+              {rows.map(({ patient, invoices }) => (
+                <li key={patient.patientId}>
+                  <Button
+                    variant="secondary"
+                    className="w-full justify-between"
+                    onClick={() => onSelect(patient)}
+                  >
+                    <span>
+                      {displayName(patient)} <span className="text-text-muted">{patient.mrn}</span>
+                    </span>
+                    <span className="tabular-nums">
+                      {t('cashier.due', {
+                        amount: money(sumAmounts(invoices.map((invoice) => invoice.balance))),
+                      })}
+                    </span>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </QueryView>
       </section>
     </div>
   );

@@ -4,7 +4,7 @@
 // numbers each print, so copy 2 and later say "Copy n"; a print never creates a payment.
 import type { Payment } from '@hms/contracts';
 import { formatDateTime, formatMoney, type Locale } from '@hms/i18n';
-import { Alert, Button, Skeleton } from '@hms/ui';
+import { Alert, Button } from '@hms/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
 import { PAYMENTS_QUERY_KEY, paymentsApi } from '../../api/payments';
@@ -12,6 +12,7 @@ import { useApiErrorMessage } from '../../i18n/use-api-error-message';
 import { printHtml } from '../../print-html';
 import { CELL, HEAD_CELL, ROW, TABLE, TABLE_FRAME } from '../admin/admin-table';
 import { displayName } from '../patients/patient-text';
+import { QueryView } from '../query-view';
 
 /** Prints a payment's receipt; each click is a new print, so it gets its own key. */
 export function usePrintReceipt() {
@@ -43,56 +44,67 @@ export function SessionPayments({ sessionId }: { sessionId: string }) {
       <h2 id="session-payments-title" className="text-base font-semibold">
         {t('cashier.sessionPayments')}
       </h2>
-      {payments.error ? <Alert tone="danger">{errorMessage(payments.error)}</Alert> : null}
       {print.error ? <Alert tone="danger">{errorMessage(print.error)}</Alert> : null}
-      {payments.isPending ? <Skeleton className="h-24" /> : null}
-      {payments.data?.length === 0 ? (
-        <p className="text-sm text-text-muted">{t('cashier.noPayments')}</p>
-      ) : null}
-      {payments.data && payments.data.length > 0 ? (
-        <div className={TABLE_FRAME}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('cashier.columnReceipt')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('cashier.columnPatient')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('cashier.columnTime')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-end`}>
-                  {t('cashier.columnAmount')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-end`}>
-                  {t('cashier.columnActions')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {payments.data.map((payment: Payment) => (
-                <tr key={payment.paymentId} className={ROW}>
-                  <td className={CELL}>{payment.receiptNumber}</td>
-                  <td className={CELL}>{displayName(payment.patient)}</td>
-                  <td className={CELL}>{formatDateTime(payment.receivedAt, locale)}</td>
-                  <td className={`${CELL} text-end tabular-nums`}>{money(payment.amount)}</td>
-                  <td className={`${CELL} text-end`}>
-                    <Button
-                      variant="secondary"
-                      loading={print.isPending && print.variables === payment.paymentId}
-                      onClick={() => print.mutate(payment.paymentId)}
-                    >
-                      {payment.printCount > 0 ? t('cashier.reprint') : t('cashier.printReceipt')}
-                    </Button>
-                  </td>
+      <QueryView
+        query={payments}
+        isEmpty={(rows) => rows.length === 0}
+        empty={{ title: t('cashier.noPayments') }}
+        columns={5}
+      >
+        {(rows) => (
+          <div className={TABLE_FRAME}>
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('cashier.columnReceipt')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('cashier.columnPatient')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('cashier.columnTime')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-end`}>
+                    {t('cashier.columnAmount')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-end`}>
+                    {t('cashier.columnActions')}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+              </thead>
+              <tbody>
+                {rows.map((payment: Payment) => (
+                  <tr key={payment.paymentId} className={ROW}>
+                    <td className={CELL}>{payment.receiptNumber}</td>
+                    <td className={CELL} data-label={t('cashier.columnPatient')}>
+                      {displayName(payment.patient)}
+                    </td>
+                    <td className={CELL} data-label={t('cashier.columnTime')}>
+                      {formatDateTime(payment.receivedAt, locale)}
+                    </td>
+                    <td
+                      className={`${CELL} text-end tabular-nums`}
+                      data-label={t('cashier.columnAmount')}
+                    >
+                      {money(payment.amount)}
+                    </td>
+                    <td className={`${CELL} text-end`} data-cell="actions">
+                      <Button
+                        variant="secondary"
+                        loading={print.isPending && print.variables === payment.paymentId}
+                        onClick={() => print.mutate(payment.paymentId)}
+                      >
+                        {payment.printCount > 0 ? t('cashier.reprint') : t('cashier.printReceipt')}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </QueryView>
     </section>
   );
 }

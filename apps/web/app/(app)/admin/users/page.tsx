@@ -3,7 +3,7 @@
 // add a user with a temporary password, view one, manage one, or remove one from the hospital
 // (T-ACC-05; FR-ACC-007, FR-ACC-008, FR-ACC-010). admin.user.manage; the API enforces it.
 import { formatNumber, type Locale } from '@hms/i18n';
-import { Alert, Button, IconButton, PageLayout, Skeleton, StatusBadge } from '@hms/ui';
+import { Alert, Button, IconButton, PageLayout, StatusBadge } from '@hms/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -25,7 +25,7 @@ import { UserDetailsDialog } from '../../../../src/components/admin/user-details
 import { UserManageDialog } from '../../../../src/components/admin/user-manage-dialog';
 import { UserRemoveDialog } from '../../../../src/components/admin/user-remove-dialog';
 import { initial, isLocked, MEMBERSHIP_BADGE } from '../../../../src/components/admin/user-status';
-import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
+import { QueryView } from '../../../../src/components/query-view';
 
 /** One dialog at a time, for one user. */
 type OpenDialog = { kind: 'details' | 'manage' | 'remove'; userId: string } | null;
@@ -33,7 +33,6 @@ type OpenDialog = { kind: 'details' | 'manage' | 'remove'; userId: string } | nu
 export default function UsersPage() {
   const t = useTranslations();
   const locale = useLocale() as Locale;
-  const errorMessage = useApiErrorMessage();
   const users = useQuery({ queryKey: USERS_QUERY_KEY, queryFn: adminApi.users });
   const [creating, setCreating] = useState(false);
   const [dialog, setDialog] = useState<OpenDialog>(null);
@@ -51,114 +50,114 @@ export default function UsersPage() {
       description={t('admin.usersDescription')}
       actions={<Button onClick={() => setCreating(true)}>{t('admin.addUser')}</Button>}
     >
-      {users.error ? <Alert tone="danger">{errorMessage(users.error)}</Alert> : null}
-      {users.isPending ? <Skeleton className="h-40" /> : null}
       {/* C-093: anyone can ask under any username, so the administrator must check it was them. */}
       {resetRequests > 0 ? (
-        <Alert tone="warning">
+        <Alert tone="warning" className="mb-4">
           {t('admin.resetPendingNotice', { count: formatNumber(String(resetRequests), locale) })}
         </Alert>
       ) : null}
-      {users.data ? (
-        <div className={TABLE_FRAME}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('admin.user')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('admin.roles')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('admin.status')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-end`}>
-                  {t('admin.actions')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.data.users.map((user) => {
-                const badge = MEMBERSHIP_BADGE[user.membershipStatus];
-                const revoked = user.membershipStatus === 'REVOKED';
-                const open = (kind: 'details' | 'remove') =>
-                  setDialog({ kind, userId: user.userId });
-                return (
-                  <tr key={user.userId} className={ROW}>
-                    <td className={CELL}>
-                      <div className="flex items-center gap-3">
-                        <span
-                          aria-hidden="true"
-                          className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-on-primary"
-                        >
-                          {initial(user.displayName)}
-                        </span>
-                        <div className="min-w-0">
-                          <p className={ROW_TITLE}>{user.displayName}</p>
-                          <p className="text-[0.6875rem] text-text-muted">{user.username}</p>
+      <QueryView query={users} columns={4}>
+        {(data) => (
+          <div className={TABLE_FRAME}>
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('admin.user')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('admin.roles')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('admin.status')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-end`}>
+                    {t('admin.actions')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.users.map((user) => {
+                  const badge = MEMBERSHIP_BADGE[user.membershipStatus];
+                  const revoked = user.membershipStatus === 'REVOKED';
+                  const open = (kind: 'details' | 'remove') =>
+                    setDialog({ kind, userId: user.userId });
+                  return (
+                    <tr key={user.userId} className={ROW}>
+                      <td className={CELL}>
+                        <div className="flex items-center gap-3">
+                          <span
+                            aria-hidden="true"
+                            className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-on-primary"
+                          >
+                            {initial(user.displayName)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className={ROW_TITLE}>{user.displayName}</p>
+                            <p className="text-[0.6875rem] text-text-muted">{user.username}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className={CELL}>
-                      {user.roles.length > 0 ? (
-                        <ul className="flex flex-wrap gap-1">
-                          {user.roles.map((role) => (
-                            <li key={role.id} title={role.nameEn} className={CODE_CHIP}>
-                              {role.code}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <span className="text-text-muted">{t('admin.noRoles')}</span>
-                      )}
-                    </td>
-                    <td className={CELL}>
-                      <div className="flex flex-wrap gap-1.5">
-                        <StatusBadge size="sm" status={badge.status} label={t(badge.labelKey)} />
-                        {isLocked(user) ? (
-                          <StatusBadge size="sm" status="problem" label={t('admin.locked')} />
-                        ) : null}
-                        {user.mfaEnrolled ? (
-                          <StatusBadge size="sm" status="done" label={t('admin.mfaOn')} />
-                        ) : null}
-                        {user.mustChangePassword ? (
-                          <StatusBadge size="sm" status="review" label={t('admin.mustChange')} />
-                        ) : null}
-                        {user.passwordResetRequestedAt ? (
-                          <StatusBadge
-                            size="sm"
-                            status="attention"
-                            label={t('admin.resetRequested')}
+                      </td>
+                      <td className={CELL} data-label={t('admin.roles')}>
+                        {user.roles.length > 0 ? (
+                          <ul className="flex flex-wrap gap-1">
+                            {user.roles.map((role) => (
+                              <li key={role.id} title={role.nameEn} className={CODE_CHIP}>
+                                {role.code}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-text-muted">{t('admin.noRoles')}</span>
+                        )}
+                      </td>
+                      <td className={CELL}>
+                        <div className="flex flex-wrap gap-1.5">
+                          <StatusBadge size="sm" status={badge.status} label={t(badge.labelKey)} />
+                          {isLocked(user) ? (
+                            <StatusBadge size="sm" status="problem" label={t('admin.locked')} />
+                          ) : null}
+                          {user.mfaEnrolled ? (
+                            <StatusBadge size="sm" status="done" label={t('admin.mfaOn')} />
+                          ) : null}
+                          {user.mustChangePassword ? (
+                            <StatusBadge size="sm" status="review" label={t('admin.mustChange')} />
+                          ) : null}
+                          {user.passwordResetRequestedAt ? (
+                            <StatusBadge
+                              size="sm"
+                              status="attention"
+                              label={t('admin.resetRequested')}
+                            />
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className={CELL} data-cell="actions">
+                        <div className="flex gap-1.5 xl:justify-end">
+                          <IconButton
+                            icon="eye"
+                            label={`${t('admin.viewDetails')}: ${user.displayName}`}
+                            variant="secondary"
+                            onClick={() => open('details')}
                           />
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className={CELL}>
-                      <div className="flex justify-end gap-1.5">
-                        <IconButton
-                          icon="eye"
-                          label={`${t('admin.viewDetails')}: ${user.displayName}`}
-                          variant="secondary"
-                          onClick={() => open('details')}
-                        />
-                        {/* Removing is final, so the button is disabled for a removed person. */}
-                        <IconButton
-                          icon="trash"
-                          label={`${t('admin.remove')}: ${user.displayName}`}
-                          variant="secondary"
-                          disabled={revoked}
-                          onClick={() => open('remove')}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+                          {/* Removing is final, so the button is disabled for a removed person. */}
+                          <IconButton
+                            icon="trash"
+                            label={`${t('admin.remove')}: ${user.displayName}`}
+                            variant="secondary"
+                            disabled={revoked}
+                            onClick={() => open('remove')}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </QueryView>
       {creating ? <UserCreateDialog roles={roles} onOpenChange={setCreating} /> : null}
       {selected && dialog?.kind === 'details' ? (
         <UserDetailsDialog

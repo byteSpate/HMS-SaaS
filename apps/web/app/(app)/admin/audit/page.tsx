@@ -2,7 +2,7 @@
 // SCR-24: search this hospital's audit trail by person, action, record and time (T-PLT-02;
 // FR-AUD-005; AT-AUD-005). audit.view; the API enforces it.
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Alert, Button, Field, PageLayout, Skeleton, TextInput } from '@hms/ui';
+import { Button, Field, PageLayout, TextInput } from '@hms/ui';
 import { formatDateTime } from '@hms/i18n';
 import { useLocale, useTranslations } from 'next-intl';
 import { type FormEvent, useState } from 'react';
@@ -14,8 +14,9 @@ import {
   ROW,
   TABLE,
   TABLE_FRAME,
+  TOOLBAR,
 } from '../../../../src/components/admin/admin-table';
-import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
+import { QueryView } from '../../../../src/components/query-view';
 
 // Dates are picked in hospital time. Bangladesh has one UTC offset all year (C-050 formats).
 const HOSPITAL_OFFSET = '+06:00';
@@ -50,7 +51,6 @@ function toFilters(draft: Draft): AuditFilters {
 export default function AuditPage() {
   const t = useTranslations();
   const locale = useLocale();
-  const errorMessage = useApiErrorMessage();
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [filters, setFilters] = useState<AuditFilters>({});
 
@@ -60,7 +60,6 @@ export default function AuditPage() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
-  const rows = events.data?.pages.flatMap((page) => page.items) ?? [];
 
   function search(event: FormEvent) {
     event.preventDefault();
@@ -84,7 +83,7 @@ export default function AuditPage() {
 
   return (
     <PageLayout title={t('admin.auditTitle')} description={t('admin.auditDescription')}>
-      <form onSubmit={search} className="mb-4 grid gap-3 md:grid-cols-3">
+      <form onSubmit={search} className={`${TOOLBAR} grid gap-3 md:grid-cols-3`}>
         {input('actor', t('admin.auditActor'))}
         {input('action', t('admin.auditAction'))}
         {input('targetId', t('admin.auditRecord'))}
@@ -95,49 +94,61 @@ export default function AuditPage() {
         </div>
       </form>
 
-      {events.error ? <Alert tone="danger">{errorMessage(events.error)}</Alert> : null}
-      {events.isPending ? <Skeleton className="h-40" /> : null}
-      {events.data && rows.length === 0 ? <p>{t('admin.auditEmpty')}</p> : null}
-      {rows.length > 0 ? (
-        <div className={TABLE_FRAME}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('admin.auditWhen')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('admin.auditActor')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('admin.auditAction')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('admin.auditOutcome')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('admin.auditReason')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className={ROW}>
-                  <td className={`${CELL} tabular-nums`}>
-                    {formatDateTime(new Date(row.occurredAt), locale as 'en' | 'bn-BD')}
-                  </td>
-                  <td className={CELL}>{row.actorName ?? t('admin.auditSystem')}</td>
-                  <td className={CELL}>
-                    <span className={CODE_CHIP}>{row.action}</span>
-                  </td>
-                  <td className={CELL}>{t(OUTCOME_KEYS[row.outcome])}</td>
-                  <td className={`${CELL} text-text-muted`}>{row.reason ?? ''}</td>
+      <QueryView
+        query={events}
+        isEmpty={(data) => data.pages.every((page) => page.items.length === 0)}
+        empty={{ title: t('admin.auditEmpty'), hint: t('admin.auditEmptyHint') }}
+        columns={5}
+      >
+        {(data) => (
+          <div className={TABLE_FRAME}>
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('admin.auditWhen')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('admin.auditActor')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('admin.auditAction')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('admin.auditOutcome')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('admin.auditReason')}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+              </thead>
+              <tbody>
+                {data.pages
+                  .flatMap((page) => page.items)
+                  .map((row) => (
+                    <tr key={row.id} className={ROW}>
+                      <td className={`${CELL} tabular-nums`}>
+                        {formatDateTime(new Date(row.occurredAt), locale as 'en' | 'bn-BD')}
+                      </td>
+                      <td className={CELL} data-label={t('admin.auditActor')}>
+                        {row.actorName ?? t('admin.auditSystem')}
+                      </td>
+                      <td className={CELL} data-label={t('admin.auditAction')}>
+                        <span className={CODE_CHIP}>{row.action}</span>
+                      </td>
+                      <td className={CELL} data-label={t('admin.auditOutcome')}>
+                        {t(OUTCOME_KEYS[row.outcome])}
+                      </td>
+                      <td className={`${CELL} text-text-muted`} data-label={t('admin.auditReason')}>
+                        {row.reason ?? ''}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </QueryView>
       {events.hasNextPage ? (
         <div className="mt-4">
           <Button

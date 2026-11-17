@@ -4,7 +4,7 @@
 // published, so what check-in charged stays on record (AT-CFG-002). admin.price.publish; the API
 // enforces it.
 import type { PriceListSummary } from '@hms/contracts';
-import { Alert, Button, PageLayout, Skeleton } from '@hms/ui';
+import { Alert, Button, PageLayout } from '@hms/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -18,6 +18,7 @@ import {
   usePriceList,
 } from '../../../../src/components/doctor-fees/price-list-sections';
 import { PublishDialog } from '../../../../src/components/doctor-fees/publish-dialog';
+import { QueryView } from '../../../../src/components/query-view';
 import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
 
 /** The add dialog, the edit dialog for one doctor, or the publish dialog. */
@@ -73,23 +74,25 @@ export default function DoctorFeesPage() {
         ) : null
       }
     >
-      {versions.error ? <Alert tone="danger">{errorMessage(versions.error)}</Alert> : null}
       {startDraft.error ? <Alert tone="danger">{errorMessage(startDraft.error)}</Alert> : null}
-      {versions.isPending ? <Skeleton className="h-40" /> : null}
-      {draftSummary ? (
-        <DraftSection
-          draft={draft}
-          onAdd={() => setDialog({ kind: 'add' })}
-          onEdit={(fee) =>
-            setDialog({ kind: 'edit', practitionerId: fee.practitioner.practitionerId })
-          }
-          onPublish={() => setDialog({ kind: 'publish' })}
-        />
-      ) : null}
-      {scheduled.length > 0 ? <ScheduledVersions versions={scheduled} /> : null}
-      {versions.data ? (
-        <InForceSection summary={summaries.find((version) => version.inForce)} />
-      ) : null}
+      <QueryView query={versions} columns={4}>
+        {() => (
+          <div className="flex flex-col gap-6">
+            {draftSummary ? (
+              <DraftSection
+                draft={draft}
+                onAdd={() => setDialog({ kind: 'add' })}
+                onEdit={(fee) =>
+                  setDialog({ kind: 'edit', practitionerId: fee.practitioner.practitionerId })
+                }
+                onPublish={() => setDialog({ kind: 'publish' })}
+              />
+            ) : null}
+            {scheduled.length > 0 ? <ScheduledVersions versions={scheduled} /> : null}
+            <InForceSection summary={summaries.find((version) => version.inForce)} />
+          </div>
+        )}
+      </QueryView>
 
       {dialog?.kind === 'add' && draft ? (
         <DoctorFeeDialog draft={draft} onOpenChange={close} />

@@ -80,6 +80,40 @@ describe('AppShell', () => {
     expect(window.localStorage.getItem('hms.sidebar-collapsed')).toBe('1');
   });
 
+  it('shows a section heading once above each group of the sidebar', () => {
+    renderShell([
+      { id: 'home', label: 'Home', href: '/', icon: 'home' },
+      { id: 'desk', label: 'Front desk', href: '/desk', icon: 'search', group: 'Front office' },
+      { id: 'sched', label: 'Schedules', href: '/sched', icon: 'calendar', group: 'Front office' },
+      { id: 'cash', label: 'Cashier', href: '/cash', icon: 'briefcase', group: 'Finance' },
+    ]);
+    const sidebar = screen.getAllByRole('navigation', {
+      name: 'Main navigation',
+    })[0] as HTMLElement;
+    expect(within(sidebar).getAllByText('Front office')).toHaveLength(1);
+    expect(within(sidebar).getAllByText('Finance')).toHaveLength(1);
+    // The phone bar keeps the flat list without headings.
+    const phone = screen.getAllByRole('navigation', { name: 'Main navigation' })[1] as HTMLElement;
+    expect(within(phone).queryByText('Front office')).toBeNull();
+  });
+
+  it('places the top bar tools before the account controls', () => {
+    render(
+      <AppShell
+        brand={<span>Hospital name</span>}
+        nav={NAV}
+        activeId="home"
+        topBarStart={<input aria-label="Find a patient" />}
+        topBarEnd={<span>top end</span>}
+        {...TEXTS}
+      >
+        <p>Page content</p>
+      </AppShell>,
+    );
+    const header = screen.getByRole('banner');
+    expect(within(header).getByRole('textbox', { name: 'Find a patient' })).toBeTruthy();
+  });
+
   it('puts the items beyond five behind a More menu on the phone bar', async () => {
     const user = userEvent.setup();
     const many: NavItem[] = Array.from({ length: 7 }, (_, i) => ({

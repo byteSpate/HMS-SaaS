@@ -4,13 +4,14 @@
 // the page only decides which parts to show.
 import type { DoctorFee, PriceList, PriceListSummary } from '@hms/contracts';
 import { formatDateTime, toLocaleDigits, type Locale } from '@hms/i18n';
-import { Alert, Button, Skeleton, useToast } from '@hms/ui';
+import { Alert, Button, EmptyState, SkeletonRows, useToast } from '@hms/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { wasRefused } from '../../api/errors';
 import { PRICE_LISTS_QUERY_KEY, priceListsApi } from '../../api/price-lists';
 import { useApiErrorMessage } from '../../i18n/use-api-error-message';
+import { QueryView } from '../query-view';
 import { FeeTable } from './fee-table';
 
 export function usePriceList(summary: PriceListSummary | undefined) {
@@ -85,10 +86,8 @@ export function DraftSection({
         </span>
       </div>
       {remove.error ? <Alert tone="danger">{errorMessage(remove.error)}</Alert> : null}
-      {draft ? null : <Skeleton className="h-24" />}
-      {draft?.doctorFees.length === 0 ? (
-        <p className="text-sm text-text-muted">{t('doctorFees.empty')}</p>
-      ) : null}
+      {draft ? null : <SkeletonRows label={t('states.loading')} rows={3} columns={5} />}
+      {draft?.doctorFees.length === 0 ? <EmptyState title={t('doctorFees.empty')} /> : null}
       {draft && draft.doctorFees.length > 0 ? (
         <FeeTable
           fees={draft.doctorFees}
@@ -127,7 +126,6 @@ export function ScheduledVersions({ versions }: { versions: PriceListSummary[] }
 
 export function InForceSection({ summary }: { summary: PriceListSummary | undefined }) {
   const t = useTranslations();
-  const errorMessage = useApiErrorMessage();
   const { when, number } = useFormatters();
   const inForce = usePriceList(summary);
   return (
@@ -145,10 +143,11 @@ export function InForceSection({ summary }: { summary: PriceListSummary | undefi
             : t('doctorFees.noneInForce')}
         </p>
       </div>
-      {inForce.error ? <Alert tone="danger">{errorMessage(inForce.error)}</Alert> : null}
-      {inForce.data && inForce.data.doctorFees.length > 0 ? (
-        <FeeTable fees={inForce.data.doctorFees} />
-      ) : null}
+      <QueryView query={inForce} columns={4}>
+        {(priceList) =>
+          priceList.doctorFees.length > 0 ? <FeeTable fees={priceList.doctorFees} /> : null
+        }
+      </QueryView>
     </section>
   );
 }

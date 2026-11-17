@@ -18,7 +18,10 @@ export function Brand({ name }: { name: string }) {
         className="shrink-0 rounded-control"
         priority
       />
-      <span className="truncate font-heading font-semibold text-heading">{name}</span>
+      {/* data-brand-name: the shell hides the name where only the logo fits. */}
+      <span data-brand-name="" className="truncate font-heading font-semibold text-heading">
+        {name}
+      </span>
     </span>
   );
 }

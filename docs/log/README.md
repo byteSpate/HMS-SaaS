@@ -146,3 +146,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-12 | [T-BIL-05: uncertain payment outcome](2026-11-12-T-BIL-05-uncertain-payment.md)                                                         |
 | 2026-11-16 | [T-CLI-01: doctor worklist and consultation start](2026-11-16-T-CLI-01-doctor-worklist.md)                                              |
 | 2026-11-16 | [T-CLI-02: consultation note (draft, sign, amend)](2026-11-16-T-CLI-02-consultation-note.md)                                            |
+| 2026-11-17 | [T-UI-02: staff shell and page states (design refresh)](2026-11-17-T-UI-02-design-refresh.md)                                           |

@@ -81,6 +81,11 @@ import { YoutubeLogo } from '@phosphor-icons/react/dist/csr/YoutubeLogo';
 import { ShareNetwork } from '@phosphor-icons/react/dist/csr/ShareNetwork';
 import { Trash } from '@phosphor-icons/react/dist/csr/Trash';
 import { PencilSimple } from '@phosphor-icons/react/dist/csr/PencilSimple';
+// Staff shell (Role Home v2 design): theme switch, shortcut help, no-connection page.
+import { Keyboard } from '@phosphor-icons/react/dist/csr/Keyboard';
+import { Moon } from '@phosphor-icons/react/dist/csr/Moon';
+import { Sun } from '@phosphor-icons/react/dist/csr/Sun';
+import { WifiSlash } from '@phosphor-icons/react/dist/csr/WifiSlash';
 
 import type { IconName } from './icon-names.js';
 
@@ -164,6 +169,10 @@ const ICONS = {
   share: ShareNetwork,
   trash: Trash,
   pencil: PencilSimple,
+  keyboard: Keyboard,
+  moon: Moon,
+  sun: Sun,
+  'wifi-slash': WifiSlash,
 } satisfies Record<IconName, unknown>;
 
 export interface IconProps {

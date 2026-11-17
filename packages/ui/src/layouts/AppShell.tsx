@@ -6,9 +6,13 @@
 //   phone   (below md):        top bar and a bottom tab bar, at most 5 items plus "More"
 // All breakpoint behavior lives here, in CSS classes, so screens never write it (ADR-022 rule 9).
 // Navigation items arrive already filtered by permission and already translated.
+// Role Home v2 design: the sidebar is a teal band, and items that share a `group` sit under a
+// small heading (Front office, Clinical, Finance, Administration). Headings show only in the
+// expanded sidebar; the rail and the phone tabs keep the flat order.
 import {
   type AnchorHTMLAttributes,
   type ComponentType,
+  Fragment,
   type ReactNode,
   useEffect,
   useState,
@@ -23,6 +27,8 @@ export interface NavItem {
   label: string;
   href: string;
   icon: IconName;
+  /** Section heading the item sits under, already translated. Items of one group are adjacent. */
+  group?: string;
 }
 
 /** What the shell needs from a link: Next's `Link` or a plain anchor both fit. */
@@ -34,13 +40,18 @@ export type ShellLinkProps = Pick<
 const PlainLink: ComponentType<ShellLinkProps> = (props) => <a {...props} />;
 
 export interface AppShellProps {
-  /** Tenant logo and name (ADR-022 section 12). */
+  /**
+   * Tenant logo and name (ADR-022 section 12). Mark the name element with `data-brand-name`:
+   * the shell hides it where only the logo fits (the rail, and the phone top bar).
+   */
   brand: ReactNode;
   nav: readonly NavItem[];
   activeId: string;
   linkComponent?: ComponentType<ShellLinkProps>;
   /** Called when a phone "More" item is chosen (it is a menu, not a link). */
   onNavigate?: (href: string) => void;
+  /** Search and other tools at the start of the top bar. */
+  topBarStart?: ReactNode;
   /** Language switch and user menu. */
   topBarEnd: ReactNode;
   children: ReactNode;
@@ -90,8 +101,9 @@ function SidebarLink({ item, active, collapsed, Link }: NavLinkProps) {
       title={item.label}
       aria-current={active ? 'page' : undefined}
       className={cx(
-        'flex h-11 items-center gap-3 rounded-control px-3 font-ui font-medium',
-        active ? 'bg-primary-soft text-primary' : 'text-text hover:bg-surface-hover',
+        'flex h-11 items-center gap-3 rounded-control px-3 font-ui font-medium text-sidebar-text',
+        'focus-visible:outline-sidebar-focus focus-visible:-outline-offset-2',
+        active ? 'bg-sidebar-active' : 'hover:bg-sidebar-hover',
       )}
     >
       <Icon name={item.icon} className="shrink-0" />
@@ -171,6 +183,7 @@ export function AppShell({
   activeId,
   linkComponent,
   onNavigate,
+  topBarStart,
   topBarEnd,
   children,
   navLabel,
@@ -193,38 +206,66 @@ export function AppShell({
 
       <aside
         className={cx(
-          'sticky top-0 hidden h-dvh shrink-0 flex-col border-e border-border bg-surface md:flex md:w-18',
+          'sticky top-0 hidden h-dvh shrink-0 flex-col border-e border-sidebar-border bg-sidebar-bg text-sidebar-text md:flex md:w-18',
           collapsed ? 'xl:w-18' : 'xl:w-60',
         )}
       >
-        <div className="flex h-14 items-center overflow-hidden border-b border-border px-3">
+        {/* The brand is themed for the white top bar; on the teal band every part of it takes
+            the sidebar text color. */}
+        <div
+          className={cx(
+            'flex h-14 items-center overflow-hidden border-b border-sidebar-border px-5 **:text-sidebar-text!',
+            'md:[&_[data-brand-name]]:sr-only xl:px-3',
+            collapsed ? 'xl:px-5' : 'xl:[&_[data-brand-name]]:not-sr-only',
+          )}
+        >
           {brand}
         </div>
         <nav aria-label={navLabel} className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
-          {nav.map((item) => (
-            <SidebarLink
-              key={item.id}
-              item={item}
-              active={item.id === activeId}
-              collapsed={collapsed}
-              Link={Link}
-            />
+          {nav.map((item, index) => (
+            <Fragment key={item.id}>
+              {item.group && item.group !== nav[index - 1]?.group ? (
+                <p
+                  className={cx(
+                    'hidden px-2 pt-3 pb-0.5 text-xs font-medium text-sidebar-muted',
+                    collapsed ? null : 'xl:block',
+                  )}
+                >
+                  {item.group}
+                </p>
+              ) : null}
+              <SidebarLink
+                item={item}
+                active={item.id === activeId}
+                collapsed={collapsed}
+                Link={Link}
+              />
+            </Fragment>
           ))}
         </nav>
-        <div className="hidden border-t border-border p-2 xl:block">
+        <div className="hidden border-t border-sidebar-border p-2 xl:block">
           <IconButton
             icon={collapsed ? 'caret-right' : 'caret-left'}
             label={collapsed ? expandLabel : collapseLabel}
             aria-expanded={!collapsed}
             variant="ghost"
+            // cx does not merge classes: `!` makes these win over the ghost variant's colors.
+            className="text-sidebar-text! hover:bg-sidebar-hover! focus-visible:outline-sidebar-focus!"
             onClick={() => setCollapsed(!collapsed)}
           />
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4">
-          <div className="min-w-0 md:hidden">{brand}</div>
+        <header className="sticky top-0 z-30 flex min-h-14 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-surface px-4 py-2 md:flex-nowrap md:py-0">
+          {/* Only the logo on a phone, so the controls fit on the brand's row. */}
+          <div className="min-w-0 md:hidden [&_[data-brand-name]]:sr-only">{brand}</div>
+          {/* On a phone the tools wrap to a full-width second row under the brand. */}
+          {topBarStart ? (
+            <div className="order-last flex min-w-0 basis-full items-center gap-2 md:order-none md:max-w-xl md:flex-1 md:basis-auto">
+              {topBarStart}
+            </div>
+          ) : null}
           <div className="ms-auto flex items-center gap-2">{topBarEnd}</div>
         </header>
         <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 pb-20 outline-none md:pb-0">

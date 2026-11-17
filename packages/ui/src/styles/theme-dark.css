@@ -1,7 +1,8 @@
 /*
- * Dark theme color tokens. Created now, switched on later (C-055, ADR-022 section 4).
- * Applies only under data-theme="dark", never from the system preference, until the theme has
- * been reviewed. Must define exactly the same token names as theme-light.css (checked by test).
+ * Dark theme color tokens (C-055, ADR-022 section 4). Switched on by the top-bar theme toggle
+ * (product owner, 2026-11-17, Role Home v2 design). Applies only under data-theme="dark", never
+ * from the system preference. Must define exactly the same token names as theme-light.css
+ * (checked by test).
  * The :root prefix raises specificity above Tailwind's :root theme variables.
  */
 :root[data-theme='dark'] {
@@ -41,4 +42,12 @@
   --color-status-done-text: #b9f8cf; /* green-200 */
   --color-status-problem-bg: #460809; /* red-950 */
   --color-status-problem-text: #ffc9c9; /* red-200 */
+
+  --color-sidebar-bg: #022f2e; /* teal-950 */
+  --color-sidebar-text: #f0fdfa; /* teal-50 */
+  --color-sidebar-muted: #d0d6d8; /* mist-300 */
+  --color-sidebar-hover: #0b4f4a; /* teal-900 */
+  --color-sidebar-active: #005f5a; /* teal-800 */
+  --color-sidebar-border: #0b4f4a; /* teal-900 */
+  --color-sidebar-focus: #00d5be; /* teal-400 */
 }

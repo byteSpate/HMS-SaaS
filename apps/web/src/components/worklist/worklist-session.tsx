@@ -5,7 +5,7 @@
 // reason and cannot be opened (C-011); IN_CONSULTATION continues it.
 import type { WorklistEntry, WorklistSession } from '@hms/contracts';
 import { toLocaleDigits, type Locale } from '@hms/i18n';
-import { Button, StatusBadge } from '@hms/ui';
+import { Button, EmptyState, StatusBadge } from '@hms/ui';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { CELL, HEAD_CELL, ROW, ROW_TITLE, TABLE, TABLE_FRAME } from '../admin/admin-table';
@@ -71,7 +71,7 @@ export function WorklistSessionTable({
         })}
       </h2>
       {session.entries.length === 0 ? (
-        <p className="text-sm text-text-muted">{t('worklist.sessionEmpty')}</p>
+        <EmptyState title={t('worklist.sessionEmpty')} hint={t('worklist.sessionEmptyHint')} />
       ) : (
         <div className={TABLE_FRAME}>
           <table className={TABLE}>
@@ -105,7 +105,7 @@ export function WorklistSessionTable({
                     className={greyed ? `${ROW} text-text-muted` : ROW}
                     data-status={entry.status}
                   >
-                    <td className={`${CELL} tabular-nums`}>
+                    <td className={`${CELL} tabular-nums`} data-cell="inline">
                       {entry.queueNumber === null ? '-' : digits(entry.queueNumber)}
                     </td>
                     <td className={CELL}>
@@ -115,10 +115,10 @@ export function WorklistSessionTable({
                     <td className={CELL}>
                       <StatusBadge size="sm" status={badge} label={t(labelKey)} />
                     </td>
-                    <td className={`${CELL} tabular-nums`}>
+                    <td className={`${CELL} tabular-nums`} data-label={t('worklist.columnWaiting')}>
                       {minutes === null ? '-' : t('worklist.minutes', { minutes: digits(minutes) })}
                     </td>
-                    <td className={CELL}>
+                    <td className={CELL} data-cell="actions">
                       <EntryAction
                         entry={entry}
                         starting={startingId === entry.visitId}

@@ -11,7 +11,6 @@ import {
   Dialog,
   Field,
   PageLayout,
-  Skeleton,
   StatusBadge,
   TextInput,
   useToast,
@@ -32,8 +31,10 @@ import {
   ROW_TITLE,
   TABLE,
   TABLE_FRAME,
+  TOOLBAR,
 } from '../../../src/components/admin/admin-table';
 import { SessionAppointmentsDialog } from '../../../src/components/appointments/session-appointments-dialog';
+import { QueryView } from '../../../src/components/query-view';
 import { SessionDialog } from '../../../src/components/schedules/session-dialog';
 import { addDays, hospitalToday } from '../../../src/components/schedules/session-form';
 import { useApiErrorMessage } from '../../../src/i18n/use-api-error-message';
@@ -101,7 +102,7 @@ export default function SchedulesPage() {
       description={t('schedules.description')}
       actions={<Button onClick={() => setAdding(true)}>{t('schedules.add')}</Button>}
     >
-      <div className="flex flex-wrap items-end gap-3">
+      <div className={`${TOOLBAR} flex flex-wrap items-end gap-3`}>
         <Field label={t('schedules.weekStarting')}>
           {({ id, ...aria }) => (
             <TextInput
@@ -122,105 +123,116 @@ export default function SchedulesPage() {
           {t('schedules.nextWeek')}
         </Button>
       </div>
-      {sessions.error ? <Alert tone="danger">{errorMessage(sessions.error)}</Alert> : null}
-      {changeError && !cancelling ? <Alert tone="danger">{errorMessage(changeError)}</Alert> : null}
-      {sessions.isPending ? <Skeleton className="h-40" /> : null}
-      {sessions.data?.length === 0 ? (
-        <p className="text-sm text-text-muted">{t('schedules.empty')}</p>
+      {changeError && !cancelling ? (
+        <Alert tone="danger" className="mb-3">
+          {errorMessage(changeError)}
+        </Alert>
       ) : null}
-      {sessions.data && sessions.data.length > 0 ? (
-        <div className={TABLE_FRAME}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('schedules.columnDate')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('schedules.columnTime')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('schedules.columnPractitioner')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('schedules.columnBookings')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('schedules.columnStatus')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-end`}>
-                  {t('schedules.columnActions')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessions.data.map((session) => {
-                const status = STATUS[session.status];
-                const time = toLocaleDigits(`${session.startTime}-${session.endTime}`, locale);
-                const which = `${doctorOf(session)} ${time}`;
-                const busy = change.isPending && change.variables.session === session;
-                return (
-                  <tr key={session.sessionId} className={ROW}>
-                    <td className={CELL}>{formatDate(session.startsAt, locale)}</td>
-                    <td className={`${CELL} tabular-nums`}>{time}</td>
-                    <td className={CELL}>
-                      <p className={ROW_TITLE}>{doctorOf(session)}</p>
-                      {session.practitioner.specialty ? (
-                        <p className="text-[0.6875rem] text-text-muted">
-                          {session.practitioner.specialty}
-                        </p>
-                      ) : null}
-                    </td>
-                    <td className={`${CELL} tabular-nums`}>
-                      {t('schedules.bookings', {
-                        booked: session.bookedCount,
-                        capacity: session.capacity,
-                      })}
-                    </td>
-                    <td className={CELL}>
-                      <StatusBadge size="sm" status={status.badge} label={t(status.labelKey)} />
-                    </td>
-                    <td className={`${CELL} text-end`}>
-                      <div className="flex justify-end gap-2">
-                        {canSeePatients && session.status !== 'DRAFT' ? (
-                          <Button
-                            variant="secondary"
-                            aria-label={`${t('appointments.patients')}: ${which}`}
-                            onClick={() => setViewing({ session, which })}
-                          >
-                            {t('appointments.patients')}
-                          </Button>
+      <QueryView
+        query={sessions}
+        isEmpty={(rows) => rows.length === 0}
+        empty={{ title: t('schedules.empty'), hint: t('schedules.emptyHint') }}
+        columns={6}
+      >
+        {(rows) => (
+          <div className={TABLE_FRAME}>
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('schedules.columnDate')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('schedules.columnTime')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('schedules.columnPractitioner')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('schedules.columnBookings')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('schedules.columnStatus')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-end`}>
+                    {t('schedules.columnActions')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((session) => {
+                  const status = STATUS[session.status];
+                  const time = toLocaleDigits(`${session.startTime}-${session.endTime}`, locale);
+                  const which = `${doctorOf(session)} ${time}`;
+                  const busy = change.isPending && change.variables.session === session;
+                  return (
+                    <tr key={session.sessionId} className={ROW}>
+                      <td className={CELL}>{formatDate(session.startsAt, locale)}</td>
+                      <td className={`${CELL} tabular-nums`} data-label={t('schedules.columnTime')}>
+                        {time}
+                      </td>
+                      <td className={CELL} data-label={t('schedules.columnPractitioner')}>
+                        <p className={ROW_TITLE}>{doctorOf(session)}</p>
+                        {session.practitioner.specialty ? (
+                          <p className="text-[0.6875rem] text-text-muted">
+                            {session.practitioner.specialty}
+                          </p>
                         ) : null}
-                        {session.status === 'DRAFT' ? (
-                          <Button
-                            loading={busy && change.variables.action === 'publish'}
-                            aria-label={`${t('schedules.publish')}: ${which}`}
-                            onClick={() => change.mutate({ session, action: 'publish' })}
-                          >
-                            {t('schedules.publish')}
-                          </Button>
-                        ) : null}
-                        {session.status !== 'CANCELLED' && session.bookedCount === 0 ? (
-                          <Button
-                            variant="secondary"
-                            aria-label={`${t('schedules.cancel')}: ${which}`}
-                            onClick={() => {
-                              change.reset();
-                              setCancelling(session);
-                            }}
-                          >
-                            {t('schedules.cancel')}
-                          </Button>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+                      </td>
+                      <td
+                        className={`${CELL} tabular-nums`}
+                        data-label={t('schedules.columnBookings')}
+                      >
+                        {t('schedules.bookings', {
+                          booked: session.bookedCount,
+                          capacity: session.capacity,
+                        })}
+                      </td>
+                      <td className={CELL}>
+                        <StatusBadge size="sm" status={status.badge} label={t(status.labelKey)} />
+                      </td>
+                      <td className={`${CELL} text-end`} data-cell="actions">
+                        <div className="flex flex-wrap gap-2 xl:justify-end">
+                          {canSeePatients && session.status !== 'DRAFT' ? (
+                            <Button
+                              variant="secondary"
+                              aria-label={`${t('appointments.patients')}: ${which}`}
+                              onClick={() => setViewing({ session, which })}
+                            >
+                              {t('appointments.patients')}
+                            </Button>
+                          ) : null}
+                          {session.status === 'DRAFT' ? (
+                            <Button
+                              loading={busy && change.variables.action === 'publish'}
+                              aria-label={`${t('schedules.publish')}: ${which}`}
+                              onClick={() => change.mutate({ session, action: 'publish' })}
+                            >
+                              {t('schedules.publish')}
+                            </Button>
+                          ) : null}
+                          {session.status !== 'CANCELLED' && session.bookedCount === 0 ? (
+                            <Button
+                              variant="secondary"
+                              aria-label={`${t('schedules.cancel')}: ${which}`}
+                              onClick={() => {
+                                change.reset();
+                                setCancelling(session);
+                              }}
+                            >
+                              {t('schedules.cancel')}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </QueryView>
       {adding ? (
         <SessionDialog sessionDate={weekStart} onOpenChange={(open) => setAdding(open)} />
       ) : null}

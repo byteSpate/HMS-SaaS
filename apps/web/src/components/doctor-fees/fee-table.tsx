@@ -58,15 +58,28 @@ export function FeeTable({ fees, actions }: { fees: DoctorFee[]; actions?: FeeRo
                     <p className="text-[0.6875rem] text-text-muted">{fee.practitioner.specialty}</p>
                   ) : null}
                 </td>
-                <td className={`${CELL} text-end tabular-nums`}>{money(fee.newPatientFee)}</td>
-                <td className={`${CELL} text-end tabular-nums`}>{money(fee.followUpFee)}</td>
-                <td className={`${CELL} text-end tabular-nums`}>
+                <td
+                  className={`${CELL} text-end tabular-nums`}
+                  data-label={t('doctorFees.columnNewPatient')}
+                >
+                  {money(fee.newPatientFee)}
+                </td>
+                <td
+                  className={`${CELL} text-end tabular-nums`}
+                  data-label={t('doctorFees.columnFollowUp')}
+                >
+                  {money(fee.followUpFee)}
+                </td>
+                <td
+                  className={`${CELL} text-end tabular-nums`}
+                  data-label={t('doctorFees.columnWindow')}
+                >
                   {t('doctorFees.windowDays', {
                     days: toLocaleDigits(String(fee.followUpDays), locale),
                   })}
                 </td>
                 {actions ? (
-                  <td className={`${CELL} text-end`}>
+                  <td className={`${CELL} text-end`} data-cell="actions">
                     <span className="inline-flex gap-1">
                       <IconButton
                         icon="pencil"

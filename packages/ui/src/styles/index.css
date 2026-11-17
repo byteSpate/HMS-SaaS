@@ -104,3 +104,68 @@
     background-image: none;
   }
 }
+
+/* Tables below the desktop tier (Role Home v2 design, "Stacked row"): desktop columns cannot fit
+   under 1280 px, so each row becomes a short card. The first cell leads the row on a line of its
+   own, unless it is a short token marked `data-cell="inline"` (a serial number), which the next
+   cell joins. Every other cell that has a `data-label` shows its column name in small muted text
+   above the value, so two amounts or counts are never confused. Cells marked
+   `data-cell="actions"` take a full line.
+   The column heads stay in the accessibility tree (visually hidden), and the visible label
+   repeats the column name, so the meaning survives if a browser drops table semantics after the
+   display change. */
+@utility stack-table {
+  @media (width < 80rem) {
+    & thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    & tbody,
+    & tr,
+    & td {
+      display: block;
+    }
+
+    & tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 0.25rem 1rem;
+      padding: 0.5rem 1rem;
+    }
+
+    & td {
+      padding: 0;
+      text-align: start;
+    }
+
+    & td:first-child {
+      flex: 1 1 100%;
+    }
+
+    & td[data-cell='inline'] {
+      flex: 0 0 auto;
+    }
+
+    & td[data-cell='inline'] + td {
+      flex: 1 1 60%;
+    }
+
+    & td[data-cell='actions'] {
+      flex: 1 1 100%;
+    }
+
+    & td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 0.75rem;
+      line-height: 1rem;
+      color: var(--color-text-muted);
+    }
+  }
+}

@@ -66,6 +66,10 @@ const TEXT_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['color-accent', 'color-surface'],
   ['color-accent', 'color-accent-soft'],
   ...STATUSES.map((s) => [`color-status-${s}-text`, `color-status-${s}-bg`] as const),
+  ['color-sidebar-text', 'color-sidebar-bg'],
+  ['color-sidebar-text', 'color-sidebar-hover'],
+  ['color-sidebar-text', 'color-sidebar-active'],
+  ['color-sidebar-muted', 'color-sidebar-bg'],
 ];
 
 // Boundaries and focus indicators need 3:1 (WCAG 1.4.11, 2.4.11).
@@ -74,6 +78,8 @@ const NON_TEXT_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['color-focus', 'color-surface'],
   ['color-border-strong', 'color-bg'],
   ['color-border-strong', 'color-surface'],
+  ['color-sidebar-focus', 'color-sidebar-bg'],
+  ['color-sidebar-focus', 'color-sidebar-active'],
 ];
 
 describe.each([

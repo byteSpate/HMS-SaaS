@@ -2,6 +2,8 @@
 // it needs; entries are filtered before they reach the shell, so a user never sees a link to
 // something the server would refuse (FR-ACC-009). The session carries the permission codes of the
 // chosen hospital's roles (T-ACC-05); the API still checks every request.
+// Items sit under the section headings of the Role Home v2 design (Front office, Clinical,
+// Finance, Administration); the order keeps each section's items together.
 // Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01, T-BIL-01, T-BIL-03, T-CLI-01.
 import type { IconName } from '@hms/ui';
 
@@ -20,6 +22,9 @@ export type NavLabelKey =
   | 'nav.roles'
   | 'nav.audit';
 
+export type NavGroupKey =
+  'nav.groupFrontOffice' | 'nav.groupClinical' | 'nav.groupFinance' | 'nav.groupAdministration';
+
 export interface NavDefinition {
   id: string;
   labelKey: NavLabelKey;
@@ -27,6 +32,8 @@ export interface NavDefinition {
   icon: IconName;
   /** Permission code from the contracts catalog; omitted when every signed-in user may see it. */
   requires?: string;
+  /** Section heading; omitted for Home, which stands above every section. */
+  groupKey?: NavGroupKey;
 }
 
 export const NAVIGATION: readonly NavDefinition[] = [
@@ -38,14 +45,7 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/patients',
     icon: 'search',
     requires: 'patient.record.search',
-  },
-  // T-CLI-01 (SCR-08): the doctor's own worklist (F section 2.1, the doctor's home).
-  {
-    id: 'worklist',
-    labelKey: 'nav.worklist',
-    href: '/worklist',
-    icon: 'stethoscope',
-    requires: 'clinical.consultation.record',
+    groupKey: 'nav.groupFrontOffice',
   },
   // T-SCH-01 (SCR-04): doctor sessions, for reception and the administrator.
   {
@@ -54,6 +54,16 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/schedules',
     icon: 'calendar',
     requires: 'scheduling.schedule.manage',
+    groupKey: 'nav.groupFrontOffice',
+  },
+  // T-CLI-01 (SCR-08): the doctor's own worklist (F section 2.1, the doctor's home).
+  {
+    id: 'worklist',
+    labelKey: 'nav.worklist',
+    href: '/worklist',
+    icon: 'stethoscope',
+    requires: 'clinical.consultation.record',
+    groupKey: 'nav.groupClinical',
   },
   // T-BIL-03 (SCR-06, SCR-07): the cashier desk with the cashier's own session.
   {
@@ -62,6 +72,7 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/cashier',
     icon: 'briefcase',
     requires: 'billing.cashier_session.manage',
+    groupKey: 'nav.groupFinance',
   },
   // T-BIL-03 (SCR-21): finance reviews closed cashier sessions.
   {
@@ -70,6 +81,7 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/cashier-sessions',
     icon: 'shield-check',
     requires: 'billing.cashier_session.review',
+    groupKey: 'nav.groupFinance',
   },
   // T-PRA-01: the practitioner master, for the hospital administrator.
   {
@@ -78,6 +90,7 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/admin/practitioners',
     icon: 'stethoscope',
     requires: 'practitioner.manage',
+    groupKey: 'nav.groupAdministration',
   },
   // T-PRA-02: the department master, hospital configuration.
   {
@@ -86,6 +99,7 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/admin/departments',
     icon: 'hospital-building',
     requires: 'admin.config.publish',
+    groupKey: 'nav.groupAdministration',
   },
   // T-BIL-01: doctor fees in the price list, for the administrator and finance.
   {
@@ -94,6 +108,7 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/admin/doctor-fees',
     icon: 'certificate',
     requires: 'admin.price.publish',
+    groupKey: 'nav.groupAdministration',
   },
   // T-ACC-05 (SCR-22): hospital administration.
   {
@@ -102,6 +117,7 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/admin/users',
     icon: 'users',
     requires: 'admin.user.manage',
+    groupKey: 'nav.groupAdministration',
   },
   {
     id: 'roles',
@@ -109,6 +125,7 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/admin/roles',
     icon: 'shield-check',
     requires: 'admin.role.manage',
+    groupKey: 'nav.groupAdministration',
   },
   // T-PLT-02 (SCR-24).
   {
@@ -117,6 +134,7 @@ export const NAVIGATION: readonly NavDefinition[] = [
     href: '/admin/audit',
     icon: 'file-text',
     requires: 'audit.view',
+    groupKey: 'nav.groupAdministration',
   },
 ];
 

@@ -2,7 +2,7 @@
 // SCR-02 front desk (W-01; T-PAT-01, T-PAT-02; UC-PAT-01): one search for a phone number, MRN, NID
 // or name, the matches with their banner fields, and a new registration. Seeing it needs
 // patient.record.search and registering patient.record.register; the API checks both again.
-import { PageLayout, Alert, Button, Field, Skeleton, TextInput } from '@hms/ui';
+import { PageLayout, Button, Field, TextInput } from '@hms/ui';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -20,7 +20,7 @@ import {
 import { displayName, usePatientText } from '../../../src/components/patients/patient-text';
 import { RegistrationDialog } from '../../../src/components/patients/registration-dialog';
 import { useDebouncedValue } from '../../../src/components/patients/use-debounced-value';
-import { useApiErrorMessage } from '../../../src/i18n/use-api-error-message';
+import { QueryView } from '../../../src/components/query-view';
 import { useCachedSession } from '../../../src/session/use-session';
 
 const MATCHED_BY_KEYS = {
@@ -40,7 +40,6 @@ export default function FrontDeskPage() {
   const router = useRouter();
   const session = useCachedSession();
   const text = usePatientText();
-  const errorMessage = useApiErrorMessage();
   const [term, setTerm] = useState('');
   const [registering, setRegistering] = useState(false);
   const settled = useDebouncedValue(term.trim(), 250);
@@ -76,64 +75,73 @@ export default function FrontDeskPage() {
             />
           )}
         </Field>
-        {results.error ? <Alert tone="danger">{errorMessage(results.error)}</Alert> : null}
-        {results.isFetching && !results.data ? <Skeleton className="h-24" /> : null}
-        {results.data && results.data.patients.length === 0 ? (
-          <Alert tone="info">{t('patients.noResults')}</Alert>
-        ) : null}
-        {results.data && results.data.patients.length > 0 ? (
-          <>
-            <p className="text-text-muted">{t(MATCHED_BY_KEYS[results.data.matchedBy])}</p>
-            <div className={TABLE_FRAME}>
-              <table className={TABLE}>
-                <thead>
-                  <tr>
-                    <th scope="col" className={`${HEAD_CELL} text-start`}>
-                      {t('patients.columnPatient')}
-                    </th>
-                    <th scope="col" className={`${HEAD_CELL} text-start`}>
-                      {t('patients.columnMrn')}
-                    </th>
-                    <th scope="col" className={`${HEAD_CELL} text-start`}>
-                      {t('patients.columnSexAge')}
-                    </th>
-                    <th scope="col" className={`${HEAD_CELL} text-start`}>
-                      {t('patients.columnPhone')}
-                    </th>
-                    <th scope="col" className={`${HEAD_CELL} text-end`}>
-                      {t('patients.nidLabel')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.data.patients.map((patient) => (
-                    <tr key={patient.patientId} className={ROW}>
-                      <td className={CELL}>
-                        <Link
-                          className={`${ROW_TITLE} underline`}
-                          href={`/patients/${patient.patientId}`}
-                        >
-                          {displayName(patient)}
-                        </Link>
-                        {patient.identityStatus === 'TEMPORARY' ? (
-                          <span className="ms-2 text-status-attention-text">
-                            {t('patients.temporaryId')}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className={CELL}>{patient.mrn}</td>
-                      <td className={CELL}>
-                        {text.sex(patient.sex)}, {text.age(patient.ageYears, patient.ageEstimated)}
-                      </td>
-                      <td className={CELL}>{patient.phone ? text.digits(patient.phone) : '-'}</td>
-                      <td className={`${CELL} text-end`}>{text.nid(patient.nidLast4)}</td>
+        <QueryView
+          query={results}
+          isEmpty={(data) => data.patients.length === 0}
+          empty={{ title: t('patients.noResults'), hint: t('patients.noResultsHint') }}
+          columns={5}
+        >
+          {(data) => (
+            <>
+              <p className="text-text-muted">{t(MATCHED_BY_KEYS[data.matchedBy])}</p>
+              <div className={TABLE_FRAME}>
+                <table className={TABLE}>
+                  <thead>
+                    <tr>
+                      <th scope="col" className={`${HEAD_CELL} text-start`}>
+                        {t('patients.columnPatient')}
+                      </th>
+                      <th scope="col" className={`${HEAD_CELL} text-start`}>
+                        {t('patients.columnMrn')}
+                      </th>
+                      <th scope="col" className={`${HEAD_CELL} text-start`}>
+                        {t('patients.columnSexAge')}
+                      </th>
+                      <th scope="col" className={`${HEAD_CELL} text-start`}>
+                        {t('patients.columnPhone')}
+                      </th>
+                      <th scope="col" className={`${HEAD_CELL} text-end`}>
+                        {t('patients.nidLabel')}
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        ) : null}
+                  </thead>
+                  <tbody>
+                    {data.patients.map((patient) => (
+                      <tr key={patient.patientId} className={ROW}>
+                        <td className={CELL}>
+                          <Link
+                            className={`${ROW_TITLE} underline`}
+                            href={`/patients/${patient.patientId}`}
+                          >
+                            {displayName(patient)}
+                          </Link>
+                          {patient.identityStatus === 'TEMPORARY' ? (
+                            <span className="ms-2 text-status-attention-text">
+                              {t('patients.temporaryId')}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className={CELL} data-label={t('patients.columnMrn')}>
+                          {patient.mrn}
+                        </td>
+                        <td className={CELL} data-label={t('patients.columnSexAge')}>
+                          {text.sex(patient.sex)},{' '}
+                          {text.age(patient.ageYears, patient.ageEstimated)}
+                        </td>
+                        <td className={CELL} data-label={t('patients.columnPhone')}>
+                          {patient.phone ? text.digits(patient.phone) : '-'}
+                        </td>
+                        <td className={`${CELL} text-end`} data-label={t('patients.nidLabel')}>
+                          {text.nid(patient.nidLast4)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </QueryView>
       </div>
       {registering ? (
         <RegistrationDialog

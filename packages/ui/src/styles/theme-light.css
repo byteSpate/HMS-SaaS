@@ -50,4 +50,14 @@
   --color-status-done-text: #016630;
   --color-status-problem-bg: #ffe2e2;
   --color-status-problem-text: #9f0712;
+
+  /* Sidebar: the teal band that holds the navigation (Role Home v2 design, sidebar "teal").
+     Its own tokens, so the rest of the page keeps the white surface. */
+  --color-sidebar-bg: #00786f; /* teal-700 */
+  --color-sidebar-text: #ffffff;
+  --color-sidebar-muted: #f0fdfa; /* teal-50, group headings */
+  --color-sidebar-hover: #005f5a; /* teal-800 */
+  --color-sidebar-active: #005f5a; /* teal-800, the current page */
+  --color-sidebar-border: #33938c; /* white at 20% over teal-700 */
+  --color-sidebar-focus: #ffffff;
 }

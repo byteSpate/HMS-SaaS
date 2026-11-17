@@ -20,6 +20,7 @@ export { TextArea, type TextAreaProps } from './primitives/TextArea.js';
 export { Select, type SelectOption, type SelectProps } from './primitives/Select.js';
 export { Field, type FieldControlProps, type FieldProps } from './primitives/Field.js';
 export { Skeleton, type SkeletonProps } from './primitives/Skeleton.js';
+export { ShortcutKey, type ShortcutKeyProps } from './primitives/ShortcutKey.js';
 export {
   StatusBadge,
   type StatusBadgeProps,
@@ -58,3 +59,20 @@ export {
   type SessionExpiryDialogProps,
 } from './patterns/SessionExpiryDialog.js';
 export { Alert, type AlertProps, type AlertTone } from './patterns/Alert.js';
+export { EmptyState, type EmptyStateProps } from './patterns/EmptyState.js';
+export { LoadErrorAlert, type LoadErrorAlertProps } from './patterns/LoadErrorAlert.js';
+export { SkeletonRows, type SkeletonRowsProps } from './patterns/SkeletonRows.js';
+export { ErrorPage, type ErrorPageKind, type ErrorPageProps } from './patterns/ErrorPage.js';
+export {
+  ShortcutHelpDialog,
+  type Shortcut,
+  type ShortcutHelpDialogProps,
+} from './patterns/ShortcutHelpDialog.js';
+export {
+  applyTheme,
+  readStoredTheme,
+  storeTheme,
+  THEME_INIT_SCRIPT,
+  THEME_STORAGE_KEY,
+  type Theme,
+} from './utils/theme.js';

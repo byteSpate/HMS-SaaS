@@ -79,6 +79,10 @@ export const iconNames = [
   'share',
   'trash',
   'pencil',
+  'keyboard',
+  'moon',
+  'sun',
+  'wifi-slash',
 ] as const;
 
 export type IconName = (typeof iconNames)[number];

@@ -4,7 +4,7 @@
 // the administrator sees what still needs translating. Add or edit one in a dialog.
 // admin.config.publish; the API enforces it.
 import type { DepartmentRecord } from '@hms/contracts';
-import { Alert, Button, IconButton, PageLayout, Skeleton, StatusBadge } from '@hms/ui';
+import { Button, IconButton, PageLayout, StatusBadge } from '@hms/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -18,7 +18,7 @@ import {
   TABLE_FRAME,
 } from '../../../../src/components/admin/admin-table';
 import { DepartmentDialog } from '../../../../src/components/departments/department-dialog';
-import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
+import { QueryView } from '../../../../src/components/query-view';
 
 /** The add dialog, or the edit dialog for one department. */
 type OpenDialog = { kind: 'add' } | { kind: 'edit'; departmentId: string } | null;
@@ -44,7 +44,6 @@ function DepartmentNames({ department }: { department: DepartmentRecord }) {
 
 export default function DepartmentsPage() {
   const t = useTranslations();
-  const errorMessage = useApiErrorMessage();
   const departments = useQuery({ queryKey: DEPARTMENTS_QUERY_KEY, queryFn: departmentsApi.list });
   const [dialog, setDialog] = useState<OpenDialog>(null);
   const editing =
@@ -61,68 +60,70 @@ export default function DepartmentsPage() {
       description={t('departments.description')}
       actions={<Button onClick={() => setDialog({ kind: 'add' })}>{t('departments.add')}</Button>}
     >
-      {departments.error ? <Alert tone="danger">{errorMessage(departments.error)}</Alert> : null}
-      {departments.isPending ? <Skeleton className="h-40" /> : null}
-      {departments.data?.length === 0 ? (
-        <p className="text-sm text-text-muted">{t('departments.empty')}</p>
-      ) : null}
-      {departments.data && departments.data.length > 0 ? (
-        <div className={TABLE_FRAME}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('departments.columnCode')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('departments.columnName')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-start`}>
-                  {t('departments.columnStatus')}
-                </th>
-                <th scope="col" className={`${HEAD_CELL} text-end`}>
-                  {t('departments.columnActions')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {departments.data.map((department) => (
-                <tr key={department.departmentId} className={ROW}>
-                  <td className={`${CELL} font-mono`}>{department.code}</td>
-                  <td className={CELL}>
-                    <DepartmentNames department={department} />
-                  </td>
-                  <td className={CELL}>
-                    {department.active ? (
-                      <StatusBadge
-                        size="sm"
-                        status="active"
-                        label={t('departments.statusActive')}
-                      />
-                    ) : (
-                      <StatusBadge
-                        size="sm"
-                        status="idle"
-                        label={t('departments.statusInactive')}
-                      />
-                    )}
-                  </td>
-                  <td className={`${CELL} text-end`}>
-                    <IconButton
-                      icon="pencil"
-                      label={`${t('departments.edit')}: ${department.code}`}
-                      variant="secondary"
-                      onClick={() =>
-                        setDialog({ kind: 'edit', departmentId: department.departmentId })
-                      }
-                    />
-                  </td>
+      <QueryView
+        query={departments}
+        isEmpty={(rows) => rows.length === 0}
+        empty={{ title: t('departments.empty'), hint: t('departments.emptyHint') }}
+        columns={4}
+      >
+        {(rows) => (
+          <div className={TABLE_FRAME}>
+            <table className={TABLE}>
+              <thead>
+                <tr>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('departments.columnCode')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('departments.columnName')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-start`}>
+                    {t('departments.columnStatus')}
+                  </th>
+                  <th scope="col" className={`${HEAD_CELL} text-end`}>
+                    {t('departments.columnActions')}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+              </thead>
+              <tbody>
+                {rows.map((department) => (
+                  <tr key={department.departmentId} className={ROW}>
+                    <td className={`${CELL} font-mono`}>{department.code}</td>
+                    <td className={CELL} data-label={t('departments.columnName')}>
+                      <DepartmentNames department={department} />
+                    </td>
+                    <td className={CELL} data-label={t('departments.columnStatus')}>
+                      {department.active ? (
+                        <StatusBadge
+                          size="sm"
+                          status="active"
+                          label={t('departments.statusActive')}
+                        />
+                      ) : (
+                        <StatusBadge
+                          size="sm"
+                          status="idle"
+                          label={t('departments.statusInactive')}
+                        />
+                      )}
+                    </td>
+                    <td className={`${CELL} text-end`} data-cell="actions">
+                      <IconButton
+                        icon="pencil"
+                        label={`${t('departments.edit')}: ${department.code}`}
+                        variant="secondary"
+                        onClick={() =>
+                          setDialog({ kind: 'edit', departmentId: department.departmentId })
+                        }
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </QueryView>
       {dialog?.kind === 'add' ? <DepartmentDialog onOpenChange={close} /> : null}
       {editing ? (
         <DepartmentDialog

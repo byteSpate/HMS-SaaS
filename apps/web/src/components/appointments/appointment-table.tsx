@@ -110,8 +110,8 @@ export function AppointmentTable({
                   <td className={CELL}>
                     <AppointmentStatusBadge status={appointment.status} />
                   </td>
-                  <td className={`${CELL} text-end`}>
-                    <div className="flex justify-end gap-2">
+                  <td className={`${CELL} text-end`} data-cell="actions">
+                    <div className="flex flex-wrap gap-2 xl:justify-end">
                       {mayCheckIn && canCheckIn(appointment, now) ? (
                         <Button
                           aria-label={`${t('checkIn.button')}: ${which}`}
