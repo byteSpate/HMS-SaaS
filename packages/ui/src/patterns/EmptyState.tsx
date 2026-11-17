@@ -13,15 +13,18 @@ export interface EmptyStateProps {
   hint?: string;
   /** One button or link for the next step. */
   action?: ReactNode;
+  /** False inside a panel that already draws the frame (a role home work panel). */
+  framed?: boolean;
   className?: string;
 }
 
-export function EmptyState({ title, hint, action, className }: EmptyStateProps) {
+export function EmptyState({ title, hint, action, framed = true, className }: EmptyStateProps) {
   return (
     <div
       role="status"
       className={cx(
-        'flex flex-col items-start gap-2 rounded-panel border border-border bg-surface px-4 py-5',
+        'flex flex-col items-start gap-2 px-4 py-5',
+        framed ? 'rounded-panel border border-border bg-surface' : null,
         className,
       )}
     >

@@ -27,10 +27,19 @@ export interface QueryViewProps<T> {
   empty?: { title: string; hint?: string; action?: ReactNode };
   /** Columns of the loading placeholder, to match the table that will arrive. */
   columns?: number;
+  /** Inside a WorkPanel: the panel draws the frame, so the states draw none. */
+  inPanel?: boolean;
   children: (data: T) => ReactNode;
 }
 
-export function QueryView<T>({ query, isEmpty, empty, columns, children }: QueryViewProps<T>) {
+export function QueryView<T>({
+  query,
+  isEmpty,
+  empty,
+  columns,
+  inPanel = false,
+  children,
+}: QueryViewProps<T>) {
   const t = useTranslations();
   const errorMessage = useApiErrorMessage();
   const failure = query.error ? (
@@ -40,12 +49,22 @@ export function QueryView<T>({ query, isEmpty, empty, columns, children }: Query
       retryLabel={t('common.retry')}
       retrying={query.isRefetching}
       onRetry={() => void query.refetch()}
+      className={inPanel ? 'm-4' : undefined}
     />
   ) : null;
 
   if (query.data === undefined) {
     if (failure) return failure;
-    if (query.isLoading) return <SkeletonRows label={t('states.loading')} columns={columns} />;
+    if (query.isLoading) {
+      return (
+        <SkeletonRows
+          label={t('states.loading')}
+          columns={columns}
+          rows={inPanel ? 3 : 5}
+          framed={!inPanel}
+        />
+      );
+    }
     return null;
   }
   // A failed refresh keeps the rows already on screen and says so above them.
@@ -53,7 +72,7 @@ export function QueryView<T>({ query, isEmpty, empty, columns, children }: Query
     <div className="flex flex-col gap-3">
       {failure}
       {empty && isEmpty?.(query.data) ? (
-        <EmptyState title={empty.title} hint={empty.hint} action={empty.action} />
+        <EmptyState title={empty.title} hint={empty.hint} action={empty.action} framed={!inPanel} />
       ) : (
         children(query.data)
       )}

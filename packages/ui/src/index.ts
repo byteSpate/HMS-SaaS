@@ -62,6 +62,8 @@ export { Alert, type AlertProps, type AlertTone } from './patterns/Alert.js';
 export { EmptyState, type EmptyStateProps } from './patterns/EmptyState.js';
 export { LoadErrorAlert, type LoadErrorAlertProps } from './patterns/LoadErrorAlert.js';
 export { SkeletonRows, type SkeletonRowsProps } from './patterns/SkeletonRows.js';
+export { KpiTile, type KpiTileProps, type KpiTileState } from './patterns/KpiTile.js';
+export { WorkPanel, type WorkPanelProps } from './patterns/WorkPanel.js';
 export { ErrorPage, type ErrorPageKind, type ErrorPageProps } from './patterns/ErrorPage.js';
 export {
   ShortcutHelpDialog,

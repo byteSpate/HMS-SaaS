@@ -69,7 +69,8 @@ test('the administrator sees who asked, with the reminder to confirm it was them
   await page.locator('input[name="password"]').fill(world.password);
   await page.getByRole('button', { name: bn.login.submit }).click();
   await expect(page).toHaveURL(/\/staff$/);
-  await page.getByRole('link', { name: bn.nav.users }).click();
+  // Exact: the role home also has a tile whose name contains the word (T-UI-03).
+  await page.getByRole('link', { name: bn.nav.users, exact: true }).click();
 
   const row = page.getByRole('row', { name: /Karim Hossain/ });
   await expect(row.getByText(bn.admin.resetRequested)).toBeVisible();

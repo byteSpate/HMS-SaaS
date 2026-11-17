@@ -11,19 +11,31 @@ export interface SkeletonRowsProps {
   label: string;
   rows?: number;
   columns?: number;
+  /** False inside a panel that already draws the frame (a role home work panel). */
+  framed?: boolean;
   className?: string;
 }
 
 // Varied bar widths read as text rather than a solid block.
 const WIDTHS = ['70%', '55%', '80%', '60%', '75%', '50%'];
 
-export function SkeletonRows({ label, rows = 5, columns = 4, className }: SkeletonRowsProps) {
+export function SkeletonRows({
+  label,
+  rows = 5,
+  columns = 4,
+  framed = true,
+  className,
+}: SkeletonRowsProps) {
   const grid = { '--skeleton-columns': `repeat(${columns}, minmax(0, 1fr))` } as CSSProperties;
   return (
     <div
       role="status"
       aria-busy="true"
-      className={cx('overflow-hidden rounded-panel border border-border bg-surface', className)}
+      className={cx(
+        'overflow-hidden',
+        framed ? 'rounded-panel border border-border bg-surface' : null,
+        className,
+      )}
     >
       <span className="sr-only">{label}</span>
       {Array.from({ length: rows }, (_, row) => (

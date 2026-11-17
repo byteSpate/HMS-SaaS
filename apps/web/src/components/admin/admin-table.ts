@@ -5,6 +5,8 @@
 // Plain class strings, so every table stays identical.
 export const TABLE_FRAME = 'overflow-x-auto rounded-panel border border-border bg-surface';
 export const TABLE = 'stack-table w-full text-start text-xs xl:min-w-2xl';
+/** A table inside a role home panel: no minimum width, so it fits the panel's column. */
+export const PANEL_TABLE = 'stack-table w-full text-start text-xs';
 export const HEAD_CELL =
   'px-4 py-2.5 text-[0.6875rem] font-semibold tracking-wide text-text-muted uppercase';
 export const ROW = 'border-t border-border hover:bg-surface-hover';
