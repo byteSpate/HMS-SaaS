@@ -85,5 +85,7 @@ export const orderableServiceSchema = serviceChoiceSchema.extend({
   directlyOrderable: z.boolean(),
   reportHours: z.number().int().nullable(),
   unitPrice: moneyAmountSchema,
+  /** The catalogue version an order keeps (FR-ORD-002). */
+  version: z.number().int(),
 });
 export type OrderableService = z.infer<typeof orderableServiceSchema>;

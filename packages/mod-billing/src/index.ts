@@ -11,3 +11,4 @@ export {
 } from './application/post-charge.js';
 export { issueDoctorFee, type DoctorFeeRequest } from './application/doctor-fee.js';
 export { doctorFeeEligibilityOf } from './application/doctor-fee-eligibility.js';
+export { findLineStates, type LineState } from './infrastructure/invoice.repository.js';

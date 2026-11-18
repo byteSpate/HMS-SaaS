@@ -1,8 +1,8 @@
 'use client';
 // A consultation the doctor started from the worklist (T-CLI-01, T-CLI-02, T-CLI-03; UC-CLI-01;
 // W-03): the patient, the consultation's status and start time, the consultation note and the
-// prescription (draft, sign, amend, print). Orders (T-ORD-01) join this screen later. Only the
-// doctor's own consultation reads; another is NOT_FOUND (clinical.consultation.record).
+// prescription (draft, sign, amend, print), and the visit's orders (T-ORD-01). Only the doctor's
+// own consultation reads; another is NOT_FOUND (clinical.consultation.record).
 import { formatDateTime, type Locale } from '@hms/i18n';
 import { Alert, PageLayout, Skeleton, StatusBadge } from '@hms/ui';
 import { useQuery } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { useParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { consultationQueryKey, worklistApi } from '../../../../src/api/worklist';
 import { NotePanel } from '../../../../src/components/consultation/note-panel';
+import { ConsultationOrders } from '../../../../src/components/orders/consultation-orders';
 import { PrescriptionPanel } from '../../../../src/components/prescription/prescription-panel';
 import { displayName } from '../../../../src/components/patients/patient-text';
 import { WORKLIST_STATUS } from '../../../../src/components/worklist/worklist-rules';
@@ -22,9 +23,9 @@ export default function ConsultationPage() {
   const locale = useLocale() as Locale;
   const errorMessage = useApiErrorMessage();
   const { consultationId } = useParams<{ consultationId: string }>();
-  const canPrescribe = (useCachedSession()?.permissions ?? []).includes(
-    'clinical.prescription.create',
-  );
+  const permissions = useCachedSession()?.permissions ?? [];
+  const canPrescribe = permissions.includes('clinical.prescription.create');
+  const canOrder = permissions.includes('order.service.create');
   const consultation = useQuery({
     queryKey: consultationQueryKey(consultationId),
     queryFn: () => worklistApi.consultation(consultationId),
@@ -55,6 +56,7 @@ export default function ConsultationPage() {
             </span>
           </p>
           <NotePanel consultationId={consultationId} />
+          {canOrder ? <ConsultationOrders consultationId={consultationId} /> : null}
           {canPrescribe ? <PrescriptionPanel consultationId={consultationId} /> : null}
         </div>
       ) : null}

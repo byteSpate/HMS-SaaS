@@ -15,6 +15,7 @@ import { createBillingStore } from './mock-billing';
 import { createPaymentStore } from './mock-payments';
 import { createPriceListStore } from './mock-price-lists';
 import { createServiceStore } from './mock-services';
+import { createOrderStore } from './mock-orders';
 import { createScheduleSessionStore } from './mock-schedule-sessions';
 import { createWorklistStore } from './mock-worklist';
 
@@ -132,6 +133,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
   const prescriptions = createPrescriptionStore(medicines.medicines, medicines.terms);
   const services = createServiceStore();
   const priceLists = createPriceListStore(services.services);
+  const orders = createOrderStore(services.services);
   const billing = createBillingStore();
   const cashierDesk = createPaymentStore(billing.openSession);
   const scheduleSessions = createScheduleSessionStore();
@@ -240,6 +242,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
       prescriptions.answer(request.method(), path, body) ??
       priceLists.answer(request.method(), path, body) ??
       services.answer(request.method(), path, body) ??
+      orders.answer(request.method(), path, body, new URL(request.url()).searchParams) ??
       billing.answer(request.method(), path, body, new URL(request.url()).searchParams) ??
       cashierDesk.answer(
         request.method(),
@@ -312,6 +315,7 @@ export async function installMockApi(page: Page, world: MockWorld) {
     prescriptions,
     priceLists,
     services,
+    orders,
     billing,
     cashierDesk,
     scheduleSessions,

@@ -13,6 +13,7 @@ export * from './health.js';
 export * from './invoices.js';
 export * from './medicines.js';
 export * from './operations.js';
+export * from './orders.js';
 export * from './patients.js';
 export * from './payments.js';
 export * from './permissions.js';

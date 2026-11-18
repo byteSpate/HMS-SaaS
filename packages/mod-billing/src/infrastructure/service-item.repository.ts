@@ -130,6 +130,7 @@ const ORDERABLE_COLUMNS = {
   nameEn: true,
   directlyOrderable: true,
   reportHours: true,
+  version: true,
 } as const;
 
 export const ORDERABLE_SEARCH_LIMIT = 20;

@@ -66,6 +66,7 @@ model Tenant {
   medicines         Medicine[]
   prescribingTerms  PrescribingTerm[]
   prescriptionLines PrescriptionLine[]
+  serviceOrders     ServiceOrder[]
 
   @@map("tenant")
   @@schema("hms")
@@ -498,6 +499,8 @@ model Patient {
   clinicalDocuments ClinicalDocument[]
   prescriptionLines PrescriptionLine[]
 
+  serviceOrders ServiceOrder[]
+
   @@unique([tenantId, id])
   @@unique([tenantId, mrn])
   @@index([tenantId, phoneNormalized])
@@ -539,6 +542,8 @@ model Practitioner {
 
   visits        Visit[]
   consultations Consultation[]
+
+  serviceOrders ServiceOrder[]
 
   @@unique([tenantId, id])
   @@index([tenantId, departmentId])
@@ -684,6 +689,8 @@ model ServiceItem {
 
   charges Charge[]
 
+  serviceOrders ServiceOrder[]
+
   @@unique([tenantId, id])
   @@unique([tenantId, code])
   @@map("service_item")
@@ -808,6 +815,8 @@ model Charge {
 
   visit Visit @relation(fields: [tenantId, visitId], references: [tenantId, id])
 
+  serviceOrder ServiceOrder?
+
   @@unique([tenantId, id])
   @@unique([tenantId, sourceModule, sourceType, sourceId, sourceEvent], map: "charge_source_reference_key")
   @@map("charge")
@@ -838,6 +847,8 @@ model InvoiceLine {
   invoice     Invoice             @relation(fields: [tenantId, invoiceId], references: [tenantId, id])
   charge      Charge              @relation(fields: [tenantId, chargeId], references: [tenantId, id])
   allocations PaymentAllocation[]
+
+  serviceOrders ServiceOrder[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, chargeId])
@@ -880,6 +891,8 @@ model Visit {
   consultation          Consultation?
   clinicalDocuments     ClinicalDocument[]
 
+  serviceOrders ServiceOrder[]
+
   @@unique([tenantId, id])
   @@unique([tenantId, appointmentId])
   @@index([tenantId, patientId, arrivedAt(sort: Desc)], map: "visit_patient_idx")
@@ -907,6 +920,8 @@ model Consultation {
   visit        Visit              @relation(fields: [tenantId, visitId], references: [tenantId, id])
   practitioner Practitioner       @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
   documents    ClinicalDocument[]
+
+  serviceOrders ServiceOrder[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, visitId])
@@ -1176,5 +1191,56 @@ model PrescriptionLine {
   @@unique([tenantId, documentVersionId, lineNo], map: "prescription_line_version_line_no_key")
   @@index([tenantId, patientId, fulfilment], map: "prescription_line_patient_idx")
   @@map("prescription_line")
+  @@schema("hms")
+}
+
+// A service order of a visit (T-ORD-01; FR-ORD-002..005, FR-ORD-007): from a consultation or
+// directly at reception, charged through billing in the same transaction. Fulfilment status only;
+// payment is read from the invoice line (FR-ORD-004). CHECKs are in the migration.
+model ServiceOrder {
+  tenantId                 String    @map("tenant_id") @db.Uuid
+  id                       String    @id @default(uuid(7)) @db.Uuid
+  visitId                  String    @map("visit_id") @db.Uuid
+  patientId                String    @map("patient_id") @db.Uuid
+  consultationId           String?   @map("consultation_id") @db.Uuid
+  /// CONSULTATION or RECEPTION_DIRECT.
+  source                   String
+  requestedBy              String    @map("requested_by") @db.Uuid
+  requestingPractitionerId String?   @map("requesting_practitioner_id") @db.Uuid
+  serviceItemId            String    @map("service_item_id") @db.Uuid
+  serviceItemVersion       Int       @map("service_item_version")
+  serviceCode              String    @map("service_code")
+  serviceNameEn            String?   @map("service_name_en")
+  serviceNameBn            String?   @map("service_name_bn")
+  category                 String
+  reportHours              Int?      @map("report_hours")
+  /// ROUTINE or URGENT.
+  priority                 String    @default("ROUTINE")
+  clinicalNote             String?   @map("clinical_note")
+  /// REQUESTED, IN_PROGRESS, COMPLETED or CANCELLED.
+  status                   String    @default("REQUESTED")
+  chargeId                 String    @map("charge_id") @db.Uuid
+  invoiceLineId            String    @map("invoice_line_id") @db.Uuid
+  cancelReason             String?   @map("cancel_reason")
+  cancelledAt              DateTime? @map("cancelled_at") @db.Timestamptz
+  cancelledBy              String?   @map("cancelled_by") @db.Uuid
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  version                  Int       @default(1)
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  visit        Visit         @relation(fields: [tenantId, visitId], references: [tenantId, id])
+  patient      Patient       @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  consultation Consultation? @relation(fields: [tenantId, consultationId], references: [tenantId, id])
+  practitioner Practitioner? @relation(fields: [tenantId, requestingPractitionerId], references: [tenantId, id])
+  serviceItem  ServiceItem   @relation(fields: [tenantId, serviceItemId], references: [tenantId, id])
+  charge       Charge        @relation(fields: [tenantId, chargeId], references: [tenantId, id])
+  invoiceLine  InvoiceLine   @relation(fields: [tenantId, invoiceLineId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, chargeId])
+  @@index([tenantId, visitId], map: "service_order_visit_idx")
+  @@index([tenantId, patientId, createdAt], map: "service_order_patient_idx")
+  @@map("service_order")
   @@schema("hms")
 }

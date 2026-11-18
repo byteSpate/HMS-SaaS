@@ -25,6 +25,10 @@ export const errorCodes = {
   STALE_RECORD: 409,
   /** C-011, FR-CLI-002: the service needs its invoice paid first, e.g. the doctor fee. */
   PAYMENT_NOT_ELIGIBLE: 409,
+  /** T-ORD-01, FR-ORD-001: reception ordered a service that needs a doctor. */
+  TEST_NOT_DIRECTLY_ORDERABLE: 422,
+  /** T-ORD-03, UC-ORD-02 D1: the step exists but is not configured yet (Q-017). */
+  FEATURE_NOT_AVAILABLE: 409,
   /** C-038, FR-BIL-019, FR-BIL-034: a payment more than the open balance of what it pays. */
   AMOUNT_EXCEEDS_BALANCE: 409,
   USERNAME_TAKEN: 409,

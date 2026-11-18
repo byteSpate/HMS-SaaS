@@ -368,3 +368,34 @@ export async function listOpenInvoicesSince(tx: TenantTx, since: Date): Promise<
   });
   return rows.map(toStored);
 }
+
+/** T-ORD-01 (FR-ORD-004): what an order shows of its invoice line, by line ID. */
+export interface LineState {
+  amount: Money;
+  paid: Money;
+  eligibility: 'ELIGIBLE' | 'NOT_ELIGIBLE';
+  status: 'ACTIVE' | 'CANCELLED' | 'REVERSED';
+}
+
+export async function findLineStates(
+  tx: TenantTx,
+  lineIds: readonly string[],
+): Promise<Map<string, LineState>> {
+  if (lineIds.length === 0) return new Map();
+  const rows = await tx.invoiceLine.findMany({
+    where: { id: { in: [...new Set(lineIds)] } },
+    select: { id: true, netAmount: true, allocatedAmount: true, eligibility: true, status: true },
+  });
+  // The CHECK constraints allow only these values.
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      {
+        amount: moneyOf(row.netAmount),
+        paid: moneyOf(row.allocatedAmount),
+        eligibility: row.eligibility as LineState['eligibility'],
+        status: row.status as LineState['status'],
+      },
+    ]),
+  );
+}
