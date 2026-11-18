@@ -55,6 +55,8 @@ export interface StoredVersion {
   publishedAt: Date | null;
   version: number;
   doctorFeeCount: number;
+  /** T-ORD-01: prices of services (items without a practitioner). */
+  servicePriceCount: number;
 }
 
 const VERSION_COLUMNS = {
@@ -67,12 +69,35 @@ const VERSION_COLUMNS = {
   _count: { select: { items: { where: { serviceItem: { code: DOCTOR_FEE_NEW } } } } },
 } as const;
 
-type VersionRow = Omit<StoredVersion, 'doctorFeeCount'> & { _count: { items: number } };
+type VersionRow = Omit<StoredVersion, 'doctorFeeCount' | 'servicePriceCount'> & {
+  _count: { items: number };
+};
 
-const toStoredVersion = ({ _count, ...row }: VersionRow): StoredVersion => ({
-  ...row,
-  doctorFeeCount: _count.items,
-});
+/** How many service prices each version has; one query for a whole list. */
+async function servicePriceCounts(
+  tx: TenantTx,
+  versionIds: readonly string[],
+): Promise<Map<string, number>> {
+  if (versionIds.length === 0) return new Map();
+  const rows = await tx.priceListItem.groupBy({
+    by: ['priceListVersionId'],
+    where: { priceListVersionId: { in: [...versionIds] }, practitionerId: null },
+    _count: { _all: true },
+  });
+  return new Map(rows.map((row) => [row.priceListVersionId, row._count._all]));
+}
+
+async function toStoredVersions(tx: TenantTx, rows: VersionRow[]): Promise<StoredVersion[]> {
+  const counts = await servicePriceCounts(
+    tx,
+    rows.map((row) => row.id),
+  );
+  return rows.map(({ _count, ...row }) => ({
+    ...row,
+    doctorFeeCount: _count.items,
+    servicePriceCount: counts.get(row.id) ?? 0,
+  }));
+}
 
 /** Newest first: the draft, then the published versions by number. */
 export async function listVersions(tx: TenantTx): Promise<StoredVersion[]> {
@@ -80,12 +105,12 @@ export async function listVersions(tx: TenantTx): Promise<StoredVersion[]> {
     select: VERSION_COLUMNS,
     orderBy: { versionNo: 'desc' },
   });
-  return rows.map(toStoredVersion);
+  return toStoredVersions(tx, rows);
 }
 
 export async function findVersion(tx: TenantTx, id: string): Promise<StoredVersion | null> {
   const row = await tx.priceListVersion.findUnique({ where: { id }, select: VERSION_COLUMNS });
-  return row ? toStoredVersion(row) : null;
+  return row ? ((await toStoredVersions(tx, [row]))[0] ?? null) : null;
 }
 
 /** FR-BIL-007: the published version with the latest effective time not after `at`. */
@@ -95,7 +120,48 @@ export async function findVersionInForce(tx: TenantTx, at: Date): Promise<Stored
     orderBy: { effectiveFrom: 'desc' },
     select: VERSION_COLUMNS,
   });
-  return row ? toStoredVersion(row) : null;
+  return row ? ((await toStoredVersions(tx, [row]))[0] ?? null) : null;
+}
+
+/** T-ORD-01: a version's service prices (items without a practitioner), keyed by item. */
+export async function servicePricesOf(
+  tx: TenantTx,
+  versionId: string,
+): Promise<Map<string, Money>> {
+  const rows = await tx.priceListItem.findMany({
+    where: { priceListVersionId: versionId, practitionerId: null },
+    select: { serviceItemId: true, unitPrice: true },
+  });
+  return new Map(rows.map((row) => [row.serviceItemId, Money.parse(row.unitPrice.toFixed(2))]));
+}
+
+/** Replaces one service's price in the draft (the trigger refuses any other version). */
+export async function writeServicePrice(
+  tx: TenantTx,
+  target: { tenantId: string; versionId: string; serviceItemId: string },
+  unitPrice: Money,
+): Promise<void> {
+  await removeServicePrice(tx, target.versionId, target.serviceItemId);
+  await tx.priceListItem.create({
+    data: {
+      tenantId: target.tenantId,
+      priceListVersionId: target.versionId,
+      serviceItemId: target.serviceItemId,
+      unitPrice: unitPrice.toDecimalString(),
+    },
+  });
+}
+
+/** Returns how many rows went: 0 means the service had no price in the draft. */
+export async function removeServicePrice(
+  tx: TenantTx,
+  versionId: string,
+  serviceItemId: string,
+): Promise<number> {
+  const result = await tx.priceListItem.deleteMany({
+    where: { priceListVersionId: versionId, serviceItemId, practitionerId: null },
+  });
+  return result.count;
 }
 
 /** A version's doctor fees, keyed by practitioner. */

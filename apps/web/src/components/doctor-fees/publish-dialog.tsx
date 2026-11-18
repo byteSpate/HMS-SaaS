@@ -3,7 +3,7 @@
 // changes against the fees in force, doctor by doctor, then the administrator chooses now or the
 // start of a later date. Visits checked in before the new version takes effect keep the fee they
 // were charged (AT-CFG-002).
-import type { PriceList, PriceListChange } from '@hms/contracts';
+import type { PriceList, PriceListChange, ServicePriceChange } from '@hms/contracts';
 import { formatMoney, toLocaleDigits, type Locale } from '@hms/i18n';
 import { Alert, Button, Dialog, Field, Radio, Skeleton, TextInput, useToast } from '@hms/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,6 +14,7 @@ import { PRICE_LISTS_QUERY_KEY, priceListsApi } from '../../api/price-lists';
 import { useApiErrorMessage } from '../../i18n/use-api-error-message';
 import { hospitalToday } from '../schedules/session-form';
 import { effectiveFromOf, type PublishTiming } from './doctor-fee-form';
+import { serviceName } from '../services/service-form';
 import { doctorNameOf } from './fee-table';
 
 // Full catalog keys as literals, so the unused-key check can see them.
@@ -43,6 +44,26 @@ function ChangeRow({ change }: { change: PriceListChange }) {
         <p className="text-xs text-text-muted line-through">{describe(change.before)}</p>
       ) : null}
       {change.after ? <p className="text-xs">{describe(change.after)}</p> : null}
+    </li>
+  );
+}
+
+/** T-ORD-01: one service whose price changes, with the old price struck through. */
+function ServiceChangeRow({ change }: { change: ServicePriceChange }) {
+  const t = useTranslations();
+  const locale = useLocale() as Locale;
+  const money = (amount: string) => formatMoney(amount, locale, { symbol: 'sign' });
+  return (
+    <li className="flex flex-col gap-0.5 border-t border-border py-2 first:border-t-0">
+      <p className="text-sm">
+        <span className="font-medium">{serviceName(change.service, locale)}</span>
+        {' - '}
+        {t(CHANGE_LABELS[change.change])}
+      </p>
+      {change.before ? (
+        <p className="text-xs text-text-muted line-through">{money(change.before)}</p>
+      ) : null}
+      {change.after ? <p className="text-xs">{money(change.after)}</p> : null}
     </li>
   );
 }
@@ -111,13 +132,20 @@ export function PublishDialog({
           <h3 className="text-sm font-semibold">{t('doctorFees.changesTitle')}</h3>
           {changes.isPending ? <Skeleton className="h-16" /> : null}
           {changes.error ? <Alert tone="danger">{errorMessage(changes.error)}</Alert> : null}
-          {changes.data?.changes.length === 0 ? (
+          {changes.data?.changes.length === 0 && changes.data.serviceChanges.length === 0 ? (
             <p className="text-sm text-text-muted">{t('doctorFees.noChanges')}</p>
           ) : null}
           {changes.data && changes.data.changes.length > 0 ? (
             <ul>
               {changes.data.changes.map((change) => (
                 <ChangeRow key={change.practitioner.practitionerId} change={change} />
+              ))}
+            </ul>
+          ) : null}
+          {changes.data && changes.data.serviceChanges.length > 0 ? (
+            <ul>
+              {changes.data.serviceChanges.map((change) => (
+                <ServiceChangeRow key={change.service.serviceItemId} change={change} />
               ))}
             </ul>
           ) : null}

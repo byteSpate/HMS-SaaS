@@ -2,6 +2,7 @@
 // from here.
 export { BillingModule, type BillingModuleOptions } from './billing.module.js';
 export { invoiceSummaryOf } from './application/invoice.service.js';
+export { orderableServicesInForce } from './application/orderable-services.js';
 export {
   postCharge,
   type PostChargeRequest,

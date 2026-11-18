@@ -151,3 +151,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-18 | [T-CLI-03 (part 1): medicine catalogue and prescribing lists](2026-11-18-T-CLI-03-medicine-catalogue.md)                                |
 | 2026-11-18 | [T-CLI-03 (part 2): prescription and its print](2026-11-18-T-CLI-03-prescription.md)                                                    |
 | 2026-11-18 | [Chore: Next.js 16.4.6 and the T-CLI-03 Supabase migrations](2026-11-18-nextjs-16.4.6.md)                                               |
+| 2026-11-19 | [T-ORD-01 (part 1): service catalogue and service prices](2026-11-19-T-ORD-01-service-catalogue.md)                                     |

@@ -1,6 +1,7 @@
-// Price lists with doctor fees (T-BIL-01; FR-CFG-001, FR-CFG-002, FR-BIL-007; C-041; FR-AUD-001;
-// SP-03). An administrator with admin.price.publish opens a draft (a copy of the newest published
-// version), sets or removes doctors' fees in it, previews the changes against the version in
+// Price lists with doctor fees and service prices (T-BIL-01, T-ORD-01; FR-CFG-001, FR-CFG-002,
+// FR-BIL-007; C-041; FR-AUD-001; SP-03). An administrator with admin.price.publish opens a draft
+// (a copy of the newest published version), sets or removes doctors' fees and services' prices
+// in it, previews the changes against the version in
 // force, and publishes it now or from a later time. Each command is one transaction with its
 // audit event and outbox event. Published versions never change (trigger in the migration).
 import { Inject, Injectable } from '@nestjs/common';
@@ -12,7 +13,9 @@ import type {
   PriceListList,
   PriceListSummary,
   PublishPriceListRequest,
+  ServicePrice,
   SetDoctorFeeRequest,
+  SetServicePriceRequest,
 } from '@hms/contracts';
 import { withTenant, type PrismaClient, type TenantTx } from '@hms/database';
 import { DomainError, fieldError, Money, type Clock } from '@hms/domain-kernel';
@@ -25,6 +28,7 @@ import { PRISMA, recordChange, requestScope, type Scope } from '@hms/platform';
 import {
   assertDraft,
   diffDoctorFees,
+  diffServicePrices,
   effectiveTimeFor,
   type FeeValues,
 } from '../domain/price-list.js';
@@ -38,10 +42,14 @@ import {
   listVersions,
   publishDraft,
   removeDoctorFee,
+  removeServicePrice,
+  servicePricesOf,
   touchDraft,
   writeDoctorFee,
+  writeServicePrice,
   type StoredVersion,
 } from '../infrastructure/price-list.repository.js';
+import { findService, findServiceChoices } from '../infrastructure/service-item.repository.js';
 import { BILLING_CLOCK } from './context.js';
 
 const notFound = () => new DomainError('NOT_FOUND', 'Price list not found');
@@ -65,6 +73,7 @@ function toSummary(version: StoredVersion, inForceId: string | null): PriceListS
     publishedAt: version.publishedAt?.toISOString() ?? null,
     inForce: version.id === inForceId,
     doctorFeeCount: version.doctorFeeCount,
+    servicePriceCount: version.servicePriceCount,
     version: version.version,
   };
 }
@@ -199,6 +208,65 @@ export class PriceListService {
     });
   }
 
+  /** T-ORD-01: one price for an active orderable service of this hospital. */
+  setServicePrice(
+    priceListId: string,
+    serviceItemId: string,
+    request: SetServicePriceRequest,
+  ): Promise<PriceList> {
+    const scope = requestScope();
+    const now = this.clock.now();
+    return withTenant(this.prisma, scope, async (tx) => {
+      await this.draftFor(tx, priceListId, request.expectedVersion);
+      const service = await findService(tx, serviceItemId);
+      if (!service?.active) {
+        throw fieldError('serviceItemId', 'Choose an active service of this hospital');
+      }
+      const unitPrice = Money.parse(request.unitPrice);
+      await writeServicePrice(
+        tx,
+        { tenantId: scope.tenantId, versionId: priceListId, serviceItemId },
+        unitPrice,
+      );
+      await this.touch(tx, scope, priceListId, request.expectedVersion, now);
+      await recordChange(
+        tx,
+        scope,
+        changeOf(priceListId, 'billing.service_price.set', {
+          serviceItemId,
+          unitPrice: unitPrice.toDecimalString(),
+          toVersion: request.expectedVersion + 1,
+        }),
+      );
+      return this.read(tx, priceListId);
+    });
+  }
+
+  removeServicePrice(
+    priceListId: string,
+    serviceItemId: string,
+    expectedVersion: number,
+  ): Promise<PriceList> {
+    const scope = requestScope();
+    const now = this.clock.now();
+    return withTenant(this.prisma, scope, async (tx) => {
+      await this.draftFor(tx, priceListId, expectedVersion);
+      if ((await removeServicePrice(tx, priceListId, serviceItemId)) === 0) {
+        throw new DomainError('NOT_FOUND', 'This service has no price in the draft');
+      }
+      await this.touch(tx, scope, priceListId, expectedVersion, now);
+      await recordChange(
+        tx,
+        scope,
+        changeOf(priceListId, 'billing.service_price.removed', {
+          serviceItemId,
+          toVersion: expectedVersion + 1,
+        }),
+      );
+      return this.read(tx, priceListId);
+    });
+  }
+
   /** FR-CFG-002: the preview, doctor by doctor, against the version in force now. */
   changes(priceListId: string): Promise<PriceListChanges> {
     const scope = requestScope();
@@ -230,7 +298,8 @@ export class PriceListService {
       });
       if (published === 0) throw stale(request.expectedVersion + 1);
       const count = (kind: string) =>
-        summary.changes.filter((change) => change.change === kind).length;
+        summary.changes.filter((change) => change.change === kind).length +
+        summary.serviceChanges.filter((change) => change.change === kind).length;
       await recordChange(
         tx,
         scope,
@@ -258,7 +327,23 @@ export class PriceListService {
       return practitioner ? [{ practitioner, ...toValues(fee) }] : [];
     });
     doctorFees.sort((left, right) => nameOf(left).localeCompare(nameOf(right)));
-    return { ...toSummary(version, inForce?.id ?? null), doctorFees };
+    return {
+      ...toSummary(version, inForce?.id ?? null),
+      doctorFees,
+      servicePrices: await this.servicePrices(tx, priceListId),
+    };
+  }
+
+  /** The version's service prices, by code, with each service as it is named now. */
+  private async servicePrices(tx: TenantTx, versionId: string): Promise<ServicePrice[]> {
+    const prices = await servicePricesOf(tx, versionId);
+    const services = await findServiceChoices(tx, [...prices.keys()]);
+    return [...prices]
+      .flatMap(([serviceItemId, unitPrice]): ServicePrice[] => {
+        const service = services.get(serviceItemId);
+        return service ? [{ service, unitPrice: unitPrice.toDecimalString() }] : [];
+      })
+      .sort((left, right) => left.service.code.localeCompare(right.service.code));
   }
 
   private async changesAgainstInForce(
@@ -270,6 +355,14 @@ export class PriceListService {
     const before = inForce ? await doctorFeesOf(tx, inForce.id) : new Map<string, FeeValues>();
     const after = await doctorFeesOf(tx, version.id);
     const changes = diffDoctorFees(before, after);
+    const serviceChanges = diffServicePrices(
+      inForce ? await servicePricesOf(tx, inForce.id) : new Map(),
+      await servicePricesOf(tx, version.id),
+    );
+    const services = await findServiceChoices(
+      tx,
+      serviceChanges.map((change) => change.serviceItemId),
+    );
     const choices = await findPractitionerChoices(
       tx,
       changes.map((change) => change.practitionerId),
@@ -285,6 +378,18 @@ export class PriceListService {
             change: change.change,
             before: change.before ? toValues(change.before) : null,
             after: change.after ? toValues(change.after) : null,
+          },
+        ];
+      }),
+      serviceChanges: serviceChanges.flatMap((change) => {
+        const service = services.get(change.serviceItemId);
+        if (!service) return [];
+        return [
+          {
+            service,
+            change: change.change,
+            before: change.before?.toDecimalString() ?? null,
+            after: change.after?.toDecimalString() ?? null,
           },
         ];
       }),

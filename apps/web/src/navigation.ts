@@ -4,7 +4,7 @@
 // chosen hospital's roles (T-ACC-05); the API still checks every request.
 // Items sit under the section headings of the Role Home v2 design (Front office, Clinical,
 // Finance, Administration); the order keeps each section's items together.
-// Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01, T-BIL-01, T-BIL-03, T-CLI-01, T-CLI-03.
+// Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01, T-BIL-01, T-BIL-03, T-CLI-01, T-CLI-03, T-ORD-01.
 import type { IconName } from '@hms/ui';
 
 // Full catalog keys, so the unused-key check can see them as literals.
@@ -20,6 +20,7 @@ export type NavLabelKey =
   | 'nav.medicines'
   | 'nav.prescribingLists'
   | 'nav.doctorFees'
+  | 'nav.services'
   | 'nav.users'
   | 'nav.roles'
   | 'nav.audit';
@@ -126,6 +127,15 @@ export const NAVIGATION: readonly NavDefinition[] = [
     labelKey: 'nav.doctorFees',
     href: '/admin/doctor-fees',
     icon: 'certificate',
+    requires: 'admin.price.publish',
+    groupKey: 'nav.groupAdministration',
+  },
+  // T-ORD-01: the orderable services; their prices are on the price list.
+  {
+    id: 'services',
+    labelKey: 'nav.services',
+    href: '/admin/services',
+    icon: 'flask',
     requires: 'admin.price.publish',
     groupKey: 'nav.groupAdministration',
   },

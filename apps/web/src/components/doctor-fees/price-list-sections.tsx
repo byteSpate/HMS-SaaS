@@ -1,6 +1,6 @@
 'use client';
-// The three parts of the doctor-fee screen (T-BIL-01; FR-CFG-002; C-041): the draft being edited,
-// the versions scheduled for a later date, and the fees in force. Each reads its own version, so
+// The three parts of the price list screen (T-BIL-01, T-ORD-01; FR-CFG-002; C-041): the draft being
+// edited, the versions scheduled for a later date, and the fees and service prices in force. Each reads its own version, so
 // the page only decides which parts to show.
 import type { DoctorFee, PriceList, PriceListSummary } from '@hms/contracts';
 import { formatDateTime, toLocaleDigits, type Locale } from '@hms/i18n';
@@ -12,6 +12,7 @@ import { wasRefused } from '../../api/errors';
 import { PRICE_LISTS_QUERY_KEY, priceListsApi } from '../../api/price-lists';
 import { useApiErrorMessage } from '../../i18n/use-api-error-message';
 import { QueryView } from '../query-view';
+import { DraftServicePrices, ServicePriceTable } from '../services/service-prices';
 import { FeeTable } from './fee-table';
 
 export function usePriceList(summary: PriceListSummary | undefined) {
@@ -98,6 +99,7 @@ export function DraftSection({
           }}
         />
       ) : null}
+      {draft ? <DraftServicePrices draft={draft} /> : null}
     </section>
   );
 }
@@ -144,9 +146,17 @@ export function InForceSection({ summary }: { summary: PriceListSummary | undefi
         </p>
       </div>
       <QueryView query={inForce} columns={4}>
-        {(priceList) =>
-          priceList.doctorFees.length > 0 ? <FeeTable fees={priceList.doctorFees} /> : null
-        }
+        {(priceList) => (
+          <div className="flex flex-col gap-4">
+            {priceList.doctorFees.length > 0 ? <FeeTable fees={priceList.doctorFees} /> : null}
+            {priceList.servicePrices.length > 0 ? (
+              <>
+                <h3 className="text-base font-semibold">{t('servicePrices.title')}</h3>
+                <ServicePriceTable prices={priceList.servicePrices} />
+              </>
+            ) : null}
+          </div>
+        )}
       </QueryView>
     </section>
   );

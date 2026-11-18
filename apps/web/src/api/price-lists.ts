@@ -8,6 +8,7 @@ import {
   priceListSchema,
   type PublishPriceListRequest,
   type SetDoctorFeeRequest,
+  type SetServicePriceRequest,
 } from '@hms/contracts';
 import { apiRequest } from './client';
 
@@ -58,6 +59,30 @@ export const priceListsApi = {
     key: string,
   ) =>
     apiRequest(`/billing/price-lists/${priceListId}/doctor-fees/${practitionerId}/remove`, {
+      method: 'POST',
+      body: { expectedVersion },
+      headers: idempotent(key),
+      parse: (data) => priceListSchema.parse(data),
+    }),
+  setServicePrice: (
+    priceListId: string,
+    serviceItemId: string,
+    body: SetServicePriceRequest,
+    key: string,
+  ) =>
+    apiRequest(`/billing/price-lists/${priceListId}/service-prices/${serviceItemId}`, {
+      method: 'PUT',
+      body,
+      headers: idempotent(key),
+      parse: (data) => priceListSchema.parse(data),
+    }),
+  removeServicePrice: (
+    priceListId: string,
+    serviceItemId: string,
+    expectedVersion: number,
+    key: string,
+  ) =>
+    apiRequest(`/billing/price-lists/${priceListId}/service-prices/${serviceItemId}/remove`, {
       method: 'POST',
       body: { expectedVersion },
       headers: idempotent(key),

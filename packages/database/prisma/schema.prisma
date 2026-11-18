@@ -664,14 +664,20 @@ model PatientIdentityHistory {
 // rest of the catalogue comes with orders (T-ORD-01). Their names are in the i18n catalogs by
 // code. Category values are a CHECK in the migration.
 model ServiceItem {
-  tenantId  String   @map("tenant_id") @db.Uuid
-  id        String   @id @default(uuid(7)) @db.Uuid
-  code      String
-  nameEn    String?  @map("name_en")
-  nameBn    String?  @map("name_bn")
-  category  String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenantId          String   @map("tenant_id") @db.Uuid
+  id                String   @id @default(uuid(7)) @db.Uuid
+  code              String
+  nameEn            String?  @map("name_en")
+  nameBn            String?  @map("name_bn")
+  category          String
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  /// T-ORD-01 (FR-ORD-001, CP-01): reception may order it without a doctor.
+  directlyOrderable Boolean  @default(false) @map("directly_orderable")
+  /// T-ORD-01 (FR-ORD-007): expected hours to the report; null without a report.
+  reportHours       Int?     @map("report_hours")
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  version           Int      @default(1)
 
   tenant         Tenant          @relation(fields: [tenantId], references: [id])
   priceListItems PriceListItem[]

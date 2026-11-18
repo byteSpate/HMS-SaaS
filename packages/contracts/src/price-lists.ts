@@ -1,8 +1,9 @@
-// Price list contracts (T-BIL-01; FR-CFG-001, FR-CFG-002, FR-BIL-007; C-041; ADR-007). An
-// administrator edits the hospital's doctor fees in a DRAFT price list version, previews what
-// changes against the version in force, and publishes it now or from a later time. A doctor fee
-// is a new-patient fee, a follow-up fee, and the follow-up window in days. Amounts travel as
-// decimal strings with two decimals ("500.00"), never as JSON numbers.
+// Price list contracts (T-BIL-01, T-ORD-01; FR-CFG-001, FR-CFG-002, FR-BIL-007; C-041; ADR-007).
+// An administrator edits the hospital's doctor fees and service prices in a DRAFT price list
+// version, previews what changes against the version in force, and publishes it now or from a
+// later time. A doctor fee is a new-patient fee, a follow-up fee, and the follow-up window in days;
+// a service has one price. Amounts travel as decimal strings with two decimals ("500.00"), never
+// as JSON numbers.
 import { z } from 'zod';
 import { practitionerChoiceSchema } from './schedule-sessions.js';
 
@@ -48,6 +49,7 @@ export const priceListSummarySchema = z.strictObject({
   /** The published version that prices records now. */
   inForce: z.boolean(),
   doctorFeeCount: z.number().int(),
+  servicePriceCount: z.number().int(),
   version: z.number().int(),
 });
 export type PriceListSummary = z.infer<typeof priceListSummarySchema>;
@@ -57,8 +59,22 @@ export const priceListListSchema = z.strictObject({
 });
 export type PriceListList = z.infer<typeof priceListListSchema>;
 
+/** A service's price in a version (T-ORD-01); the service is named as it is now. */
+export const servicePriceSchema = z.strictObject({
+  service: z.strictObject({
+    serviceItemId: z.uuid(),
+    code: z.string(),
+    category: z.string(),
+    nameBn: z.string().nullable(),
+    nameEn: z.string().nullable(),
+  }),
+  unitPrice: moneyAmountSchema,
+});
+export type ServicePrice = z.infer<typeof servicePriceSchema>;
+
 export const priceListSchema = priceListSummarySchema.extend({
   doctorFees: z.array(doctorFeeSchema),
+  servicePrices: z.array(servicePriceSchema),
 });
 export type PriceList = z.infer<typeof priceListSchema>;
 
@@ -70,6 +86,13 @@ export const setDoctorFeeRequestSchema = z.strictObject({
   expectedVersion,
 });
 export type SetDoctorFeeRequest = z.infer<typeof setDoctorFeeRequestSchema>;
+
+/** Sets one service's price in the draft (T-ORD-01); C-041: more than zero. */
+export const setServicePriceRequestSchema = z.strictObject({
+  unitPrice: feeSchema,
+  expectedVersion,
+});
+export type SetServicePriceRequest = z.infer<typeof setServicePriceRequestSchema>;
 
 /** Removes one doctor's fee from the draft, with the draft version the screen showed. */
 export const removeDoctorFeeRequestSchema = z.strictObject({ expectedVersion });
@@ -98,9 +121,18 @@ export const priceListChangeSchema = z.strictObject({
 });
 export type PriceListChange = z.infer<typeof priceListChangeSchema>;
 
+export const servicePriceChangeSchema = z.strictObject({
+  service: servicePriceSchema.shape.service,
+  change: z.enum(PRICE_LIST_CHANGE_KINDS),
+  before: moneyAmountSchema.nullable(),
+  after: moneyAmountSchema.nullable(),
+});
+export type ServicePriceChange = z.infer<typeof servicePriceChangeSchema>;
+
 /** FR-CFG-002: the preview before publishing, against the version in force now. */
 export const priceListChangesSchema = z.strictObject({
   comparedWithVersionNo: z.number().int().nullable(),
   changes: z.array(priceListChangeSchema),
+  serviceChanges: z.array(servicePriceChangeSchema),
 });
 export type PriceListChanges = z.infer<typeof priceListChangesSchema>;

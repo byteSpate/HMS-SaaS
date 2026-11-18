@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assertDraft,
   diffDoctorFees,
+  diffServicePrices,
   effectiveTimeFor,
   isFollowUp,
   type FeeValues,
@@ -82,5 +83,32 @@ describe('follow-up (C-041)', () => {
 
   it('is never the first consultation with the doctor', () => {
     expect(isFollowUp(null, '2026-11-12', 30)).toBe(false);
+  });
+});
+
+describe('diffServicePrices (T-ORD-01)', () => {
+  it('lists added, changed and removed service prices, and skips unchanged ones', () => {
+    const before = new Map([
+      ['a', Money.parse('100.00')],
+      ['b', Money.parse('200.00')],
+      ['c', Money.parse('300.00')],
+    ]);
+    const after = new Map([
+      ['a', Money.parse('100.00')],
+      ['b', Money.parse('250.00')],
+      ['d', Money.parse('50.00')],
+    ]);
+    expect(
+      diffServicePrices(before, after).map((row) => [
+        row.serviceItemId,
+        row.change,
+        row.before?.toDecimalString() ?? null,
+        row.after?.toDecimalString() ?? null,
+      ]),
+    ).toEqual([
+      ['b', 'CHANGED', '200.00', '250.00'],
+      ['c', 'REMOVED', '300.00', null],
+      ['d', 'ADDED', null, '50.00'],
+    ]);
   });
 });

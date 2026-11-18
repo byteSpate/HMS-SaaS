@@ -1,6 +1,7 @@
 // /api/v1/billing/price-lists (T-BIL-01; FR-CFG-001, FR-CFG-002, FR-BIL-007; C-041): staff with
 // admin.price.publish (ADM, FIN) list the price list versions, open the draft, set or remove a
-// doctor's fee in it, preview the changes and publish it now or from a later time.
+// doctor's fee or a service price (T-ORD-01) in it, preview the changes and publish it now or
+// from a later time.
 import {
   Body,
   Controller,
@@ -21,6 +22,7 @@ import {
   publishPriceListRequestSchema,
   removeDoctorFeeRequestSchema,
   setDoctorFeeRequestSchema,
+  setServicePriceRequestSchema,
   type PractitionerChoiceList,
   type PriceList,
   type PriceListChanges,
@@ -28,6 +30,7 @@ import {
   type PublishPriceListRequest,
   type RemoveDoctorFeeRequest,
   type SetDoctorFeeRequest,
+  type SetServicePriceRequest,
 } from '@hms/contracts';
 import { DomainError } from '@hms/domain-kernel';
 import { RequirePermission } from '@hms/mod-identity-access';
@@ -173,6 +176,51 @@ export class PriceListsController {
     @Body(new ZodBodyPipe(removeDoctorFeeRequestSchema)) request: RemoveDoctorFeeRequest,
   ): Promise<PriceList> {
     return this.priceLists.removeDoctorFee(priceListId, practitionerId, request.expectedVersion);
+  }
+
+  @Put(':priceListId/service-prices/:serviceItemId')
+  @Idempotent('billing.service_price.set')
+  @RequirePermission('admin.price.publish')
+  @ApiParam({ name: 'priceListId', format: 'uuid' })
+  @ApiParam({ name: 'serviceItemId', format: 'uuid' })
+  @ApiEndpoint({
+    summary: "Set a service's price in the draft",
+    description:
+      'One price, more than 0.00, for an orderable service of this hospital (T-ORD-01). After ' +
+      'publication, orders of the service are charged at this price.',
+    body: setServicePriceRequestSchema,
+    success: { status: 200, description: 'The draft', schema: priceListSchema },
+    errors: DRAFT_ERRORS,
+    csrf: true,
+  })
+  setServicePrice(
+    @Param('priceListId', uuidPipe('Price list')) priceListId: string,
+    @Param('serviceItemId', uuidPipe('Service')) serviceItemId: string,
+    @Body(new ZodBodyPipe(setServicePriceRequestSchema)) request: SetServicePriceRequest,
+  ): Promise<PriceList> {
+    return this.priceLists.setServicePrice(priceListId, serviceItemId, request);
+  }
+
+  @Post(':priceListId/service-prices/:serviceItemId/remove')
+  @HttpCode(200)
+  @Idempotent('billing.service_price.remove')
+  @RequirePermission('admin.price.publish')
+  @ApiParam({ name: 'priceListId', format: 'uuid' })
+  @ApiParam({ name: 'serviceItemId', format: 'uuid' })
+  @ApiEndpoint({
+    summary: "Remove a service's price from the draft",
+    description: 'After publication the service can no longer be ordered until it has a price.',
+    body: removeDoctorFeeRequestSchema,
+    success: { status: 200, description: 'The draft', schema: priceListSchema },
+    errors: DRAFT_ERRORS,
+    csrf: true,
+  })
+  removeServicePrice(
+    @Param('priceListId', uuidPipe('Price list')) priceListId: string,
+    @Param('serviceItemId', uuidPipe('Service')) serviceItemId: string,
+    @Body(new ZodBodyPipe(removeDoctorFeeRequestSchema)) request: RemoveDoctorFeeRequest,
+  ): Promise<PriceList> {
+    return this.priceLists.removeServicePrice(priceListId, serviceItemId, request.expectedVersion);
   }
 
   @Post(':priceListId/publish')

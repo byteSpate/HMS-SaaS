@@ -11,11 +11,13 @@ import { CashierSessionService } from './application/cashier-session.service.js'
 import { BILLING_CLOCK } from './application/context.js';
 import { InvoiceService } from './application/invoice.service.js';
 import { PaymentService } from './application/payment.service.js';
+import { ServiceCatalogueService } from './application/service-catalogue.service.js';
 import { PriceListService } from './application/price-list.service.js';
 import { CashierSessionsController } from './http/cashier-sessions.controller.js';
 import { InvoicesController } from './http/invoices.controller.js';
 import { PaymentsController } from './http/payments.controller.js';
 import { PriceListsController } from './http/price-lists.controller.js';
+import { ServicesController } from './http/services.controller.js';
 
 export interface BillingModuleOptions {
   /** Tests pass a fixed clock, so effective times are known. */
@@ -32,12 +34,14 @@ export class BillingModule {
         InvoicesController,
         CashierSessionsController,
         PaymentsController,
+        ServicesController,
       ],
       providers: [
         PriceListService,
         InvoiceService,
         CashierSessionService,
         PaymentService,
+        ServiceCatalogueService,
         { provide: BILLING_CLOCK, useValue: options.clock ?? systemClock },
       ],
     };

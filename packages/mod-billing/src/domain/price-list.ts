@@ -81,3 +81,29 @@ export function isFollowUp(
   if (!lastConsultationDate) return false;
   return dayNumber(visitDate) - dayNumber(lastConsultationDate) <= followUpDays;
 }
+
+export interface ServicePriceChange {
+  serviceItemId: string;
+  change: 'ADDED' | 'CHANGED' | 'REMOVED';
+  before: Money | null;
+  after: Money | null;
+}
+
+/** FR-CFG-002 for services (T-ORD-01): one row per service whose price changes. */
+export function diffServicePrices(
+  before: ReadonlyMap<string, Money>,
+  after: ReadonlyMap<string, Money>,
+): ServicePriceChange[] {
+  const ids = [...new Set([...before.keys(), ...after.keys()])].sort();
+  return ids.flatMap((serviceItemId): ServicePriceChange[] => {
+    const old = before.get(serviceItemId) ?? null;
+    const next = after.get(serviceItemId) ?? null;
+    if (old && next) {
+      return old.equals(next)
+        ? []
+        : [{ serviceItemId, change: 'CHANGED', before: old, after: next }];
+    }
+    if (next) return [{ serviceItemId, change: 'ADDED', before: null, after: next }];
+    return [{ serviceItemId, change: 'REMOVED', before: old, after: null }];
+  });
+}

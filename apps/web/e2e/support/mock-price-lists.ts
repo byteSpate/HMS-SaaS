@@ -1,4 +1,4 @@
-// In-memory stand-in for the price list endpoints (T-BIL-01), answering with payloads that satisfy
+// In-memory stand-in for the price list endpoints (T-BIL-01, T-ORD-01 service prices), answering with payloads that satisfy
 // the shared contracts. Used by the doctor-fee browser tests; the real behaviour (versions in
 // force, the draft-only trigger, audit) is covered by apps/api/src/price-lists.api.spec.ts. Names
 // are synthetic.
@@ -9,10 +9,12 @@ import {
   publishPriceListRequestSchema,
   removeDoctorFeeRequestSchema,
   setDoctorFeeRequestSchema,
+  setServicePriceRequestSchema,
   type DoctorFee,
   type PractitionerChoice,
   type PriceListChange,
   type PriceList,
+  type ServiceRecord,
 } from '@hms/contracts';
 
 const ID = (n: number): string => `0199e0b0-0000-7000-8000-${String(n).padStart(12, '0')}`;
@@ -44,7 +46,7 @@ export const MOCK_DOCTORS: PractitionerChoice[] = [
   },
 ];
 
-export function createPriceListStore() {
+export function createPriceListStore(services: readonly ServiceRecord[] = []) {
   let next = 870;
   const versions: PriceList[] = [];
 
@@ -60,6 +62,7 @@ export function createPriceListStore() {
       ...version,
       inForce: version.priceListId === inForceId(),
       doctorFeeCount: version.doctorFees.length,
+      servicePriceCount: version.servicePrices.length,
     });
 
   /** A test seeds the fees in force, as if published earlier. */
@@ -72,8 +75,10 @@ export function createPriceListStore() {
       publishedAt: new Date(Date.now() - 86_400_000).toISOString(),
       inForce: true,
       doctorFeeCount: fees.length,
+      servicePriceCount: 0,
       version: 2,
       doctorFees: fees,
+      servicePrices: [],
     });
   }
 
@@ -93,8 +98,10 @@ export function createPriceListStore() {
       publishedAt: null,
       inForce: false,
       doctorFeeCount: 0,
+      servicePriceCount: 0,
       version: 1,
       doctorFees: source ? [...source.doctorFees] : [],
+      servicePrices: source ? [...source.servicePrices] : [],
     };
     versions.push(draft);
     return { status: 201, body: view(draft) };
@@ -177,6 +184,7 @@ export function createPriceListStore() {
       body: priceListChangesSchema.parse({
         comparedWithVersionNo: inForce?.versionNo ?? null,
         changes: rows,
+        serviceChanges: [],
       }),
     };
   }
@@ -202,6 +210,7 @@ export function createPriceListStore() {
     const priceLists = [...versions].reverse().map((version) => {
       const summary: Record<string, unknown> = { ...view(version) };
       delete summary.doctorFees;
+      delete summary.servicePrices;
       return summary;
     });
     return { status: 200, body: priceListListSchema.parse({ priceLists }) };
@@ -210,6 +219,61 @@ export function createPriceListStore() {
   function read(priceListId: string): PriceListAnswer {
     const version = versions.find((row) => row.priceListId === priceListId);
     return version ? { status: 200, body: view(version) } : problem(404, 'NOT_FOUND');
+  }
+
+  /** T-ORD-01: one price per service in the draft, the service named from the catalogue mock. */
+  function setServicePrice(priceListId: string, serviceItemId: string, body: unknown) {
+    const draft = findDraft(priceListId);
+    if (!draft) return problem(409, 'INVALID_TRANSITION');
+    const request = setServicePriceRequestSchema.safeParse(body);
+    if (!request.success) return problem(422, 'VALIDATION_FAILED');
+    if (request.data.expectedVersion !== draft.version) return problem(409, 'STALE_RECORD');
+    const service = services.find((row) => row.serviceItemId === serviceItemId);
+    if (!service) return problem(422, 'VALIDATION_FAILED');
+    draft.servicePrices = [
+      ...draft.servicePrices.filter((row) => row.service.serviceItemId !== serviceItemId),
+      {
+        service: {
+          serviceItemId,
+          code: service.code,
+          category: service.category,
+          nameBn: service.nameBn,
+          nameEn: service.nameEn,
+        },
+        unitPrice: request.data.unitPrice,
+      },
+    ];
+    draft.version += 1;
+    return { status: 200, body: view(draft) };
+  }
+
+  function removeServicePrice(priceListId: string, serviceItemId: string) {
+    const draft = findDraft(priceListId);
+    if (!draft) return problem(409, 'INVALID_TRANSITION');
+    draft.servicePrices = draft.servicePrices.filter(
+      (row) => row.service.serviceItemId !== serviceItemId,
+    );
+    draft.version += 1;
+    return { status: 200, body: view(draft) };
+  }
+
+  /** A doctor's fee or a service's price in one version: set, or remove. */
+  function answerItem(
+    priceListId: string,
+    section: string,
+    itemId: string,
+    action: string | undefined,
+    body: unknown,
+  ): PriceListAnswer | undefined {
+    if (section === 'service-prices') {
+      return action === 'remove'
+        ? removeServicePrice(priceListId, itemId)
+        : setServicePrice(priceListId, itemId, body);
+    }
+    if (section !== 'doctor-fees') return undefined;
+    return action === 'remove'
+      ? removeFee(priceListId, itemId, body)
+      : setFee(priceListId, itemId, body);
   }
 
   function answer(method: string, path: string, body: unknown): PriceListAnswer | undefined {
@@ -223,11 +287,7 @@ export function createPriceListStore() {
     if (!section) return read(priceListId);
     if (section === 'changes') return changes(priceListId);
     if (section === 'publish') return publish(priceListId, body);
-    if (section === 'doctor-fees' && practitionerId) {
-      return action === 'remove'
-        ? removeFee(priceListId, practitionerId, body)
-        : setFee(priceListId, practitionerId, body);
-    }
+    if (practitionerId) return answerItem(priceListId, section, practitionerId, action, body);
     return undefined;
   }
 
