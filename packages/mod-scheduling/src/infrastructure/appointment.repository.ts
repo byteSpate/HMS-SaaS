@@ -198,3 +198,26 @@ export async function updateAppointmentStatus(
   });
   return result.count;
 }
+
+/**
+ * T-CLI-03 (FR-CLI-005): the date (YYYY-MM-DD) of the patient's next booked visit with the
+ * practitioner after `afterDate`, for the prescription's "next visit" line; null when none.
+ */
+export async function findNextBookedDate(
+  tx: TenantTx,
+  query: { patientId: string; practitionerId: string; afterDate: string },
+): Promise<string | null> {
+  const row = await tx.appointment.findFirst({
+    where: {
+      patientId: query.patientId,
+      status: 'BOOKED',
+      scheduleSession: {
+        practitionerId: query.practitionerId,
+        sessionDate: { gt: new Date(`${query.afterDate}T00:00:00Z`) },
+      },
+    },
+    select: { scheduleSession: { select: { sessionDate: true } } },
+    orderBy: { scheduleSession: { sessionDate: 'asc' } },
+  });
+  return row ? dateOf(row.scheduleSession.sessionDate) : null;
+}

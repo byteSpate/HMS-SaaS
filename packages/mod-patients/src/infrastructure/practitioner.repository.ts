@@ -218,3 +218,22 @@ export async function findPractitionerIdOfAccount(
   const row = await tx.practitioner.findFirst({ where: { userId }, select: { id: true } });
   return row?.id ?? null;
 }
+
+/** T-CLI-03 (FR-CLI-005): what a prescription's doctor header prints. */
+export interface PractitionerPrintDetails {
+  nameEn: string | null;
+  nameBn: string | null;
+  degrees: string | null;
+  specialty: string | null;
+  registrationNo: string | null;
+}
+
+export async function findPractitionerPrintDetails(
+  tx: TenantTx,
+  practitionerId: string,
+): Promise<PractitionerPrintDetails | null> {
+  return tx.practitioner.findUnique({
+    where: { id: practitionerId },
+    select: { nameEn: true, nameBn: true, degrees: true, specialty: true, registrationNo: true },
+  });
+}

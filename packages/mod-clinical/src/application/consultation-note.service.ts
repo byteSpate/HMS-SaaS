@@ -13,85 +13,40 @@ import type {
 } from '@hms/contracts';
 import { withTenant, type PrismaClient, type TenantTx } from '@hms/database';
 import { DomainError, type Clock } from '@hms/domain-kernel';
-import { findStaffNames } from '@hms/mod-identity-access';
-import { findPractitionerIdOfAccount } from '@hms/mod-patients';
-import { PRISMA, recordChange, requestScope, type Scope } from '@hms/platform';
+import { PRISMA, recordChange, requestScope } from '@hms/platform';
 import {
   assertCanAmend,
   assertCanDiscard,
   assertCanSaveDraft,
   assertCanSign,
   noteStatusOf,
-  type StoredNoteState,
 } from '../domain/consultation-note.js';
 import {
   findNoteOf,
-  insertNote,
+  insertDocument,
   insertVersion,
   markConsulted,
-  updateNote,
-  type NoteChange,
+  type DocumentChange,
   type StoredNote,
 } from '../infrastructure/clinical-document.repository.js';
 import {
-  findConsultationOf,
-  type StoredConsultation,
-} from '../infrastructure/consultation.repository.js';
+  changeDocument,
+  documentView,
+  isUniqueViolation,
+  ownConsultation,
+  stateOf,
+} from './clinical-documents.js';
 import { CLINICAL_CLOCK } from './context.js';
 
 const staleNote = (currentVersion: number) =>
   new DomainError('STALE_RECORD', 'The note changed elsewhere; reload it', { currentVersion });
 
-const stateOf = (note: StoredNote | null): StoredNoteState | null =>
-  note
-    ? {
-        status: note.status,
-        signedVersionNo: note.signedVersionNo,
-        hasDraft: note.draft !== null,
-        version: note.version,
-      }
-    : null;
-
-/** Two first saves at once: the unique note per consultation turns the second into STALE_RECORD. */
-const isUniqueViolation = (error: unknown) =>
-  typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002';
-
-/** The signed-in doctor's own consultation; another doctor's reads as missing. */
-async function ownConsultation(
-  tx: TenantTx,
-  scope: Scope,
-  consultationId: string,
-): Promise<StoredConsultation> {
-  const practitionerId = await findPractitionerIdOfAccount(tx, scope.userId);
-  const consultation = practitionerId
-    ? await findConsultationOf(tx, consultationId, practitionerId)
-    : null;
-  if (!consultation) throw new DomainError('NOT_FOUND', 'Consultation not found');
-  return consultation;
-}
-
-async function toNote(
+function toNote(
   tx: TenantTx,
   consultationId: string,
   note: StoredNote | null,
 ): Promise<ConsultationNote> {
-  const names = await findStaffNames(tx, note?.versions.map((version) => version.signedBy) ?? []);
-  return {
-    consultationId,
-    status: noteStatusOf(stateOf(note)),
-    draft: note?.draft ?? null,
-    draftSavedAt: note?.draftSavedAt?.toISOString() ?? null,
-    amendReason: note?.amendReason ?? null,
-    versions:
-      note?.versions.map((version) => ({
-        versionNo: version.versionNo,
-        content: version.content,
-        signedAt: version.signedAt.toISOString(),
-        signedBy: names.get(version.signedBy) ?? '',
-        amendReason: version.amendReason,
-      })) ?? [],
-    version: note?.version ?? 0,
-  };
+  return documentView(tx, consultationId, note, noteStatusOf);
 }
 
 @Injectable()
@@ -122,8 +77,9 @@ export class ConsultationNoteService {
         const note = await findNoteOf(tx, consultationId);
         assertCanSaveDraft(stateOf(note), request.expectedVersion);
         if (!note) {
-          await insertNote(tx, {
+          await insertDocument(tx, {
             tenantId: scope.tenantId,
+            kind: 'CONSULTATION_NOTE',
             consultationId,
             visitId: consultation.visitId,
             patientId: consultation.patientId,
@@ -240,19 +196,13 @@ export class ConsultationNoteService {
     });
   }
 
-  /** The version check decides a race between the read and the write (SP-03). */
-  private async change(
+  private change(
     tx: TenantTx,
     note: StoredNote,
     expectedVersion: number,
     at: Date,
-    change: NoteChange,
+    change: DocumentChange,
   ): Promise<void> {
-    const changed = await updateNote(
-      tx,
-      { documentId: note.documentId, expectedVersion, at },
-      change,
-    );
-    if (changed === 0) throw staleNote(expectedVersion + 1);
+    return changeDocument(tx, { document: note, expectedVersion, at }, change, staleNote);
   }
 }

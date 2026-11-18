@@ -6,8 +6,10 @@ import type { ConsultationNote, NoteContent, SignedNoteVersion } from '@hms/cont
 import { NOTE_SECTIONS } from '@hms/contracts';
 import { formatDateTime, toLocaleDigits, type Locale } from '@hms/i18n';
 import { Button, StatusBadge } from '@hms/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
+import { consultationNotesApi, noteQueryKey } from '../../api/consultation-notes';
 import { AmendDialog } from './amend-dialog';
 import { ALLERGY_LABEL, SECTION_LABEL } from './note-labels';
 
@@ -68,6 +70,7 @@ export function NoteView({
   canAmend: boolean;
 }) {
   const t = useTranslations();
+  const queryClient = useQueryClient();
   const [amending, setAmending] = useState(false);
   const [latest, ...earlier] = note.versions;
   if (!latest) return null;
@@ -101,8 +104,20 @@ export function NoteView({
       ) : null}
       {amending ? (
         <AmendDialog
-          consultationId={consultationId}
-          version={note.version}
+          texts={{
+            title: t('note.amendTitle'),
+            body: t('note.amendBody'),
+            reason: t('note.amendReason'),
+            submit: t('note.amendSubmit'),
+          }}
+          onAmend={async (reason, key) => {
+            const next = await consultationNotesApi.amend(
+              consultationId,
+              { reason, expectedVersion: note.version },
+              key,
+            );
+            queryClient.setQueryData(noteQueryKey(consultationId), next);
+          }}
           onOpenChange={setAmending}
         />
       ) : null}

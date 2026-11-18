@@ -63,6 +63,10 @@ model Tenant {
   paymentAllocations   PaymentAllocation[]
   receiptPrints        ReceiptPrint[]
 
+  medicines         Medicine[]
+  prescribingTerms  PrescribingTerm[]
+  prescriptionLines PrescriptionLine[]
+
   @@map("tenant")
   @@schema("hms")
 }
@@ -492,6 +496,7 @@ model Patient {
 
   visits            Visit[]
   clinicalDocuments ClinicalDocument[]
+  prescriptionLines PrescriptionLine[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, mrn])
@@ -892,10 +897,10 @@ model Consultation {
   updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz
   version        Int       @default(1)
 
-  tenant       Tenant            @relation(fields: [tenantId], references: [id])
-  visit        Visit             @relation(fields: [tenantId, visitId], references: [tenantId, id])
-  practitioner Practitioner      @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
-  note         ClinicalDocument?
+  tenant       Tenant             @relation(fields: [tenantId], references: [id])
+  visit        Visit              @relation(fields: [tenantId, visitId], references: [tenantId, id])
+  practitioner Practitioner       @relation(fields: [tenantId, practitionerId], references: [tenantId, id])
+  documents    ClinicalDocument[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, visitId])
@@ -911,7 +916,7 @@ model ClinicalDocument {
   consultationId  String    @map("consultation_id") @db.Uuid
   visitId         String    @map("visit_id") @db.Uuid
   patientId       String    @map("patient_id") @db.Uuid
-  /// CONSULTATION_NOTE (CHECK in the migration).
+  /// CONSULTATION_NOTE or PRESCRIPTION (CHECK in the migration); one of each per consultation.
   kind            String    @default("CONSULTATION_NOTE")
   authorUserId    String    @map("author_user_id") @db.Uuid
   /// DRAFT or SIGNED (CHECK in the migration).
@@ -931,7 +936,7 @@ model ClinicalDocument {
   versions     ClinicalDocumentVersion[]
 
   @@unique([tenantId, id])
-  @@unique([tenantId, consultationId])
+  @@unique([tenantId, consultationId, kind])
   @@index([tenantId, patientId], map: "clinical_document_patient_idx")
   @@map("clinical_document")
   @@schema("hms")
@@ -950,10 +955,11 @@ model ClinicalDocumentVersion {
   amendsVersionId String?  @map("amends_version_id") @db.Uuid
   amendReason     String?  @map("amend_reason")
 
-  tenant    Tenant                    @relation(fields: [tenantId], references: [id])
-  document  ClinicalDocument          @relation(fields: [tenantId, documentId], references: [tenantId, id])
-  amends    ClinicalDocumentVersion?  @relation("Amends", fields: [tenantId, amendsVersionId], references: [tenantId, id])
-  amendedBy ClinicalDocumentVersion[] @relation("Amends")
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id])
+  document          ClinicalDocument          @relation(fields: [tenantId, documentId], references: [tenantId, id])
+  amends            ClinicalDocumentVersion?  @relation("Amends", fields: [tenantId, amendsVersionId], references: [tenantId, id])
+  amendedBy         ClinicalDocumentVersion[] @relation("Amends")
+  prescriptionLines PrescriptionLine[]
 
   @@unique([tenantId, id])
   @@unique([tenantId, documentId, versionNo], map: "clinical_document_version_document_version_no_key")
@@ -1085,5 +1091,84 @@ model ReceiptPrint {
   @@unique([tenantId, id])
   @@unique([tenantId, paymentId, copyNo], map: "receipt_print_payment_copy_key")
   @@map("receipt_print")
+  @@schema("hms")
+}
+
+// The prescribing catalogue (T-CLI-03; FR-CLI-004, FR-PHA-011 subset; Q-067 interim). Owned by
+// mod-pharmacy; stock, batches and packs extend it in Phase 4. Case-insensitive unique brand,
+// strength and form per hospital (expression index in the migration).
+model Medicine {
+  tenantId     String   @map("tenant_id") @db.Uuid
+  id           String   @id @default(uuid(7)) @db.Uuid
+  brandName    String   @map("brand_name")
+  genericName  String   @map("generic_name")
+  strength     String?
+  form         String
+  nameBn       String?  @map("name_bn")
+  manufacturer String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy    String   @map("created_by") @db.Uuid
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  updatedBy    String   @map("updated_by") @db.Uuid
+  version      Int      @default(1)
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  prescriptionLines PrescriptionLine[]
+
+  @@unique([tenantId, id])
+  @@map("medicine")
+  @@schema("hms")
+}
+
+// A hospital's bilingual route, frequency or duration choice for prescription lines (T-CLI-03;
+// Q-067 interim: vocabularies entered by the hospital).
+model PrescribingTerm {
+  tenantId  String   @map("tenant_id") @db.Uuid
+  id        String   @id @default(uuid(7)) @db.Uuid
+  /// ROUTE, FREQUENCY or DURATION (CHECK in the migration); never changes.
+  kind      String
+  labelBn   String?  @map("label_bn")
+  labelEn   String?  @map("label_en")
+  sortOrder Int      @default(0) @map("sort_order")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdBy String   @map("created_by") @db.Uuid
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  updatedBy String   @map("updated_by") @db.Uuid
+  version   Int      @default(1)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, id])
+  @@index([tenantId, kind, sortOrder], map: "prescribing_term_kind_idx")
+  @@map("prescribing_term")
+  @@schema("hms")
+}
+
+// One line of a signed prescription version (T-CLI-03; FR-CLI-001, FR-CLI-006; FPR-06): the
+// medicine and the fulfilment choice, for the pharmacy (Phase 4). The full line as written
+// (dose, labels, instructions) is in the version's content. Append-only.
+model PrescriptionLine {
+  tenantId          String   @map("tenant_id") @db.Uuid
+  id                String   @id @default(uuid(7)) @db.Uuid
+  documentVersionId String   @map("document_version_id") @db.Uuid
+  patientId         String   @map("patient_id") @db.Uuid
+  lineNo            Int      @map("line_no")
+  medicineId        String   @map("medicine_id") @db.Uuid
+  /// HOSPITAL_PHARMACY or EXTERNAL (CHECK in the migration).
+  fulfilment        String
+  quantity          Int?
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tenant          Tenant                  @relation(fields: [tenantId], references: [id])
+  documentVersion ClinicalDocumentVersion @relation(fields: [tenantId, documentVersionId], references: [tenantId, id])
+  patient         Patient                 @relation(fields: [tenantId, patientId], references: [tenantId, id])
+  medicine        Medicine                @relation(fields: [tenantId, medicineId], references: [tenantId, id])
+
+  @@unique([tenantId, id])
+  @@unique([tenantId, documentVersionId, lineNo], map: "prescription_line_version_line_no_key")
+  @@index([tenantId, patientId, fulfilment], map: "prescription_line_patient_idx")
+  @@map("prescription_line")
   @@schema("hms")
 }

@@ -6,4 +6,5 @@ export {
   type DayAppointment,
   type DaySession,
 } from './application/day-sessions.js';
+export { findNextBookedDate } from './infrastructure/appointment.repository.js';
 export { SchedulingModule, type SchedulingModuleOptions } from './scheduling.module.js';

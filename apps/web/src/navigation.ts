@@ -4,7 +4,7 @@
 // chosen hospital's roles (T-ACC-05); the API still checks every request.
 // Items sit under the section headings of the Role Home v2 design (Front office, Clinical,
 // Finance, Administration); the order keeps each section's items together.
-// Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01, T-BIL-01, T-BIL-03, T-CLI-01.
+// Implements: T-UI-02, T-ACC-05, T-PAT-02, T-PRA-01, T-SCH-01, T-BIL-01, T-BIL-03, T-CLI-01, T-CLI-03.
 import type { IconName } from '@hms/ui';
 
 // Full catalog keys, so the unused-key check can see them as literals.
@@ -17,6 +17,8 @@ export type NavLabelKey =
   | 'nav.cashierSessions'
   | 'nav.practitioners'
   | 'nav.departments'
+  | 'nav.medicines'
+  | 'nav.prescribingLists'
   | 'nav.doctorFees'
   | 'nav.users'
   | 'nav.roles'
@@ -98,6 +100,23 @@ export const NAVIGATION: readonly NavDefinition[] = [
     labelKey: 'nav.departments',
     href: '/admin/departments',
     icon: 'hospital-building',
+    requires: 'admin.config.publish',
+    groupKey: 'nav.groupAdministration',
+  },
+  // T-CLI-03: the medicine catalogue and prescribing lists doctors prescribe from.
+  {
+    id: 'medicines',
+    labelKey: 'nav.medicines',
+    href: '/admin/medicines',
+    icon: 'pill',
+    requires: 'admin.config.publish',
+    groupKey: 'nav.groupAdministration',
+  },
+  {
+    id: 'prescribing-lists',
+    labelKey: 'nav.prescribingLists',
+    href: '/admin/prescribing-lists',
+    icon: 'file-text',
     requires: 'admin.config.publish',
     groupKey: 'nav.groupAdministration',
   },

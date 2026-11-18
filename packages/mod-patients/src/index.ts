@@ -4,7 +4,9 @@ export { findPatientRefs, isBookablePatient } from './infrastructure/patient.rep
 export {
   findPractitionerChoices,
   findPractitionerIdOfAccount,
+  findPractitionerPrintDetails,
   isSchedulablePractitioner,
   listPractitionerChoices,
+  type PractitionerPrintDetails,
 } from './infrastructure/practitioner.repository.js';
 export { PatientsModule, type PatientsModuleOptions } from './patients.module.js';

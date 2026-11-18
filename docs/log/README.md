@@ -148,3 +148,5 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-16 | [T-CLI-02: consultation note (draft, sign, amend)](2026-11-16-T-CLI-02-consultation-note.md)                                            |
 | 2026-11-17 | [T-UI-02: staff shell and page states (design refresh)](2026-11-17-T-UI-02-design-refresh.md)                                           |
 | 2026-11-17 | [T-UI-03: role home dashboards](2026-11-17-T-UI-03-role-home.md)                                                                        |
+| 2026-11-18 | [T-CLI-03 (part 1): medicine catalogue and prescribing lists](2026-11-18-T-CLI-03-medicine-catalogue.md)                                |
+| 2026-11-18 | [T-CLI-03 (part 2): prescription and its print](2026-11-18-T-CLI-03-prescription.md)                                                    |

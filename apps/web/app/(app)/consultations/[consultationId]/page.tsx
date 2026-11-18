@@ -1,7 +1,7 @@
 'use client';
-// A consultation the doctor started from the worklist (T-CLI-01, T-CLI-02; UC-CLI-01; W-03): the
-// patient, the consultation's status and start time, and the consultation note (draft, sign,
-// amend). Orders and the prescription (T-ORD-01, T-CLI-03) join this screen later. Only the
+// A consultation the doctor started from the worklist (T-CLI-01, T-CLI-02, T-CLI-03; UC-CLI-01;
+// W-03): the patient, the consultation's status and start time, the consultation note and the
+// prescription (draft, sign, amend, print). Orders (T-ORD-01) join this screen later. Only the
 // doctor's own consultation reads; another is NOT_FOUND (clinical.consultation.record).
 import { formatDateTime, type Locale } from '@hms/i18n';
 import { Alert, PageLayout, Skeleton, StatusBadge } from '@hms/ui';
@@ -11,15 +11,20 @@ import { useParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { consultationQueryKey, worklistApi } from '../../../../src/api/worklist';
 import { NotePanel } from '../../../../src/components/consultation/note-panel';
+import { PrescriptionPanel } from '../../../../src/components/prescription/prescription-panel';
 import { displayName } from '../../../../src/components/patients/patient-text';
 import { WORKLIST_STATUS } from '../../../../src/components/worklist/worklist-rules';
 import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
+import { useCachedSession } from '../../../../src/session/use-session';
 
 export default function ConsultationPage() {
   const t = useTranslations();
   const locale = useLocale() as Locale;
   const errorMessage = useApiErrorMessage();
   const { consultationId } = useParams<{ consultationId: string }>();
+  const canPrescribe = (useCachedSession()?.permissions ?? []).includes(
+    'clinical.prescription.create',
+  );
   const consultation = useQuery({
     queryKey: consultationQueryKey(consultationId),
     queryFn: () => worklistApi.consultation(consultationId),
@@ -50,6 +55,7 @@ export default function ConsultationPage() {
             </span>
           </p>
           <NotePanel consultationId={consultationId} />
+          {canPrescribe ? <PrescriptionPanel consultationId={consultationId} /> : null}
         </div>
       ) : null}
     </PageLayout>

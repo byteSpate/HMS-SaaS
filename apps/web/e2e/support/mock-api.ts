@@ -8,6 +8,8 @@ import { createAdminStore } from './mock-admin';
 import { createAppointmentStore } from './mock-appointments';
 import { createPatientStore } from './mock-patients';
 import { createDepartmentStore } from './mock-departments';
+import { createMedicineStore } from './mock-medicines';
+import { createPrescriptionStore } from './mock-prescriptions';
 import { createPractitionerStore } from './mock-practitioners';
 import { createBillingStore } from './mock-billing';
 import { createPaymentStore } from './mock-payments';
@@ -125,6 +127,8 @@ export async function installMockApi(page: Page, world: MockWorld) {
   const patients = createPatientStore();
   const practitioners = createPractitionerStore();
   const departments = createDepartmentStore();
+  const medicines = createMedicineStore();
+  const prescriptions = createPrescriptionStore(medicines.medicines, medicines.terms);
   const priceLists = createPriceListStore();
   const billing = createBillingStore();
   const cashierDesk = createPaymentStore(billing.openSession);
@@ -230,6 +234,8 @@ export async function installMockApi(page: Page, world: MockWorld) {
       patients.answer(request.method(), path, body as never) ??
       practitioners.answer(request.method(), path, body) ??
       departments.answer(request.method(), path, body) ??
+      medicines.answer(request.method(), path, body, new URL(request.url()).searchParams) ??
+      prescriptions.answer(request.method(), path, body) ??
       priceLists.answer(request.method(), path, body) ??
       billing.answer(request.method(), path, body, new URL(request.url()).searchParams) ??
       cashierDesk.answer(
@@ -299,6 +305,8 @@ export async function installMockApi(page: Page, world: MockWorld) {
     patients,
     practitioners,
     departments,
+    medicines,
+    prescriptions,
     priceLists,
     billing,
     cashierDesk,

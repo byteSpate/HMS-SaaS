@@ -1,15 +1,18 @@
 // Nest module of the clinical record (T-VIS-01 check-in, T-CLI-01 doctor worklist, T-CLI-02
-// consultation note; D section 5: mod-clinical owns visit, consultation and clinical documents).
-// Needs the database and request pipeline from the app, and the identity module's guards for its
-// markers. Scheduling, billing, patients and the hospital's facility are reached through those
-// modules' public entries only.
+// consultation note, T-CLI-03 prescription; D section 5: mod-clinical owns visit, consultation
+// and clinical documents). Needs the database and request pipeline from the app, and the identity
+// module's guards for its markers. Scheduling, billing, patients and the hospital's facility are
+// reached through those modules' public entries only; the medicine catalogue through the
+// pharmacy module's.
 import { Module, type DynamicModule } from '@nestjs/common';
 import { systemClock, type Clock } from '@hms/domain-kernel';
 import { CLINICAL_CLOCK } from './application/context.js';
 import { ConsultationNoteService } from './application/consultation-note.service.js';
+import { PrescriptionService } from './application/prescription.service.js';
 import { VisitService } from './application/visit.service.js';
 import { WorklistService } from './application/worklist.service.js';
 import { ConsultationNotesController } from './http/consultation-notes.controller.js';
+import { PrescriptionsController } from './http/prescriptions.controller.js';
 import { VisitsController } from './http/visits.controller.js';
 import { WorklistController } from './http/worklist.controller.js';
 
@@ -23,10 +26,16 @@ export class ClinicalModule {
   static forRoot(options: ClinicalModuleOptions = {}): DynamicModule {
     return {
       module: ClinicalModule,
-      controllers: [VisitsController, WorklistController, ConsultationNotesController],
+      controllers: [
+        VisitsController,
+        WorklistController,
+        ConsultationNotesController,
+        PrescriptionsController,
+      ],
       providers: [
         VisitService,
         ConsultationNoteService,
+        PrescriptionService,
         WorklistService,
         { provide: CLINICAL_CLOCK, useValue: options.clock ?? systemClock },
       ],

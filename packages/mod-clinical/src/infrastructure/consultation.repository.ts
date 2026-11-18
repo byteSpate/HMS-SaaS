@@ -98,6 +98,7 @@ export interface StoredConsultation {
   consultationId: string;
   visitId: string;
   patientId: string;
+  practitionerId: string;
   status: ConsultationStatus;
   startedAt: Date;
   version: number;
@@ -106,6 +107,7 @@ export interface StoredConsultation {
 const CONSULTATION = {
   id: true,
   visitId: true,
+  practitionerId: true,
   status: true,
   startedAt: true,
   version: true,
@@ -115,6 +117,7 @@ const CONSULTATION = {
 type ConsultationRow = {
   id: string;
   visitId: string;
+  practitionerId: string;
   status: string;
   startedAt: Date;
   version: number;
@@ -125,6 +128,7 @@ const toStored = (row: ConsultationRow): StoredConsultation => ({
   consultationId: row.id,
   visitId: row.visitId,
   patientId: row.visit.patientId,
+  practitionerId: row.practitionerId,
   status: row.status as ConsultationStatus,
   startedAt: row.startedAt,
   version: row.version,

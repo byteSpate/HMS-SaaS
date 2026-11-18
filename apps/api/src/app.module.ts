@@ -3,6 +3,7 @@ import { BillingModule } from '@hms/mod-billing';
 import { ClinicalModule } from '@hms/mod-clinical';
 import { IdentityAccessModule, loadAuthConfig } from '@hms/mod-identity-access';
 import { PatientsModule } from '@hms/mod-patients';
+import { PharmacyModule } from '@hms/mod-pharmacy';
 import { SchedulingModule } from '@hms/mod-scheduling';
 import { DatabaseModule, parseEncryptionKey, RequestPipelineModule } from '@hms/platform';
 import { AppController } from './app.controller.js';
@@ -34,6 +35,7 @@ function requireEnv(name: string): string {
     SchedulingModule.forRoot(),
     BillingModule.forRoot(),
     ClinicalModule.forRoot(),
+    PharmacyModule.forRoot(),
   ],
   controllers: [AppController, HealthController, OperationsController, PoliciesController],
 })

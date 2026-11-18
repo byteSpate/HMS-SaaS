@@ -1,6 +1,8 @@
-// An outpatient hospital over HTTP for API integration tests (T-VIS-01, T-BIL-04; AS-009): a
-// doctor with a published fee, a session today, patients, bookings and check-ins, all through the
-// real routes, so the invoices a test pays are the ones check-in really issues. Synthetic data.
+// An outpatient hospital over HTTP for API integration tests (T-VIS-01, T-BIL-04, T-CLI-03;
+// AS-009): a doctor with a published fee, a session today, patients, bookings and check-ins, all
+// through the real routes, so the invoices a test pays are the ones check-in really issues. A
+// doctor may have a staff account of their own (FR-PRA-003) and a paid fee, to open a
+// consultation. Synthetic data.
 import { randomUUID } from 'node:crypto';
 import type { PermissionCode } from '@hms/contracts';
 import type { PrismaClient } from '@hms/database';
@@ -44,11 +46,17 @@ export async function createOpdWorld(options: OpdWorldOptions) {
   const tenantId = await seedTenant(prisma);
   await seedEntitlements(prisma, tenantId, ['patients', 'scheduling', 'clinical', 'billing']);
 
-  async function staffOf(permissions: readonly PermissionCode[]): Promise<StaffSession> {
+  async function accountOf(
+    permissions: readonly PermissionCode[],
+  ): Promise<{ userId: string; session: StaffSession }> {
     const user = await seedUser(prisma, { passwordHash });
     const membership = await seedMembership(prisma, tenantId, user.id);
     if (permissions.length > 0) await grantPermissions(prisma, tenantId, membership, permissions);
-    return client.sessionOf(user.username, password);
+    return { userId: user.id, session: await client.sessionOf(user.username, password) };
+  }
+
+  async function staffOf(permissions: readonly PermissionCode[]): Promise<StaffSession> {
+    return (await accountOf(permissions)).session;
   }
 
   const post = (session: StaffSession, path: string, body: unknown) =>
@@ -62,12 +70,22 @@ export async function createOpdWorld(options: OpdWorldOptions) {
     'visit.checkin',
   ]);
 
-  /** Doctors with their new-patient fee, all in one published price list version. */
-  async function doctors(fees: readonly string[]): Promise<string[]> {
+  /**
+   * Doctors with their new-patient fee, all in one published price list version. `userIds` links
+   * a doctor to a staff account (FR-PRA-003), in the same order as the fees.
+   */
+  async function doctors(
+    fees: readonly string[],
+    userIds: readonly (string | undefined)[] = [],
+  ): Promise<string[]> {
     const ids: string[] = [];
     for (const [index] of fees.entries()) {
+      const userId = userIds[index];
       const doctor = await answerOf<{ practitionerId: string }>(
-        await post(admin, '/practitioners', { nameEn: `Doctor ${index + 1}` }),
+        await post(admin, '/practitioners', {
+          nameEn: `Doctor ${index + 1}`,
+          ...(userId ? { userId } : {}),
+        }),
       );
       ids.push(doctor.practitionerId);
     }
@@ -157,5 +175,93 @@ export async function createOpdWorld(options: OpdWorldOptions) {
     return { visitId: visit.visitId, patientId, invoiceId: visit.doctorFee.invoice.invoiceId };
   }
 
-  return { tenantId, staffOf, doctors, patient, checkIn };
+  /**
+   * Doctors signed in with their own accounts, one per permission set, priced in one published
+   * price list version (a second version at the same instant is refused).
+   */
+  async function signedInDoctors(
+    permissionSets: readonly (readonly PermissionCode[])[],
+    fee = '500.00',
+  ): Promise<{ practitionerId: string; session: StaffSession }[]> {
+    const accounts = [];
+    for (const permissions of permissionSets) accounts.push(await accountOf(permissions));
+    const ids = await doctors(
+      accounts.map(() => fee),
+      accounts.map((account) => account.userId),
+    );
+    return accounts.map((account, index) => {
+      const practitionerId = ids[index];
+      if (!practitionerId) throw new Error('No doctor');
+      return { practitionerId, session: account.session };
+    });
+  }
+
+  /** One doctor signed in with their own account and the given permissions. */
+  async function signedInDoctor(
+    permissions: readonly PermissionCode[],
+    fee = '500.00',
+  ): Promise<{ practitionerId: string; session: StaffSession }> {
+    const [doctor] = await signedInDoctors([permissions], fee);
+    if (!doctor) throw new Error('No doctor');
+    return doctor;
+  }
+
+  // A cashier with an open session, made on first use.
+  let cashier: StaffSession | undefined;
+  async function cashierOf(): Promise<StaffSession> {
+    if (cashier) return cashier;
+    cashier = await staffOf([
+      'billing.cashier_session.manage',
+      'billing.payment.record',
+      'billing.invoice.issue',
+    ]);
+    await answerOf(await post(cashier, '/billing/cashier-sessions', { openingFloat: '0.00' }));
+    return cashier;
+  }
+
+  /** The cashier takes the whole doctor fee, so the doctor may start the consultation. */
+  async function payDoctorFee(visit: CheckedInVisit): Promise<void> {
+    const desk = await cashierOf();
+    const invoice = await answerOf<{ balance: string; lines: { lineId: string }[] }>(
+      await client.call(desk, 'GET', `/billing/invoices/${visit.invoiceId}`),
+      200,
+    );
+    const line = invoice.lines[0];
+    if (!line) throw new Error('The doctor-fee invoice has no line');
+    await answerOf(
+      await post(desk, '/billing/payments', {
+        patientId: visit.patientId,
+        method: 'CASH',
+        amount: invoice.balance,
+        allocations: [{ lineId: line.lineId, amount: invoice.balance }],
+      }),
+    );
+  }
+
+  /** Checks the patient in, pays the fee and starts the consultation as the doctor. */
+  async function consultation(
+    doctor: { practitionerId: string; session: StaffSession },
+    patientId: string,
+  ): Promise<{ consultationId: string; visit: CheckedInVisit }> {
+    const visit = await checkIn(doctor.practitionerId, patientId);
+    await payDoctorFee(visit);
+    const started = await answerOf<{ consultationId: string }>(
+      await post(doctor.session, `/visits/${visit.visitId}/consultation/start`, {
+        expectedVersion: 1,
+      }),
+    );
+    return { consultationId: started.consultationId, visit };
+  }
+
+  return {
+    tenantId,
+    staffOf,
+    doctors,
+    patient,
+    checkIn,
+    signedInDoctor,
+    signedInDoctors,
+    payDoctorFee,
+    consultation,
+  };
 }

@@ -20,6 +20,7 @@
     "@hms/mod-clinical": "workspace:*",
     "@hms/mod-identity-access": "workspace:*",
     "@hms/mod-patients": "workspace:*",
+    "@hms/mod-pharmacy": "workspace:*",
     "@hms/mod-scheduling": "workspace:*",
     "@hms/platform": "workspace:*",
     "@nestjs/common": "12.3.2",
