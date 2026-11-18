@@ -78,6 +78,10 @@ From version 2 on the page says "Amended" with the date. Printing is audited and
 | `prettier --check` on every changed file                                                   | Clean                                                                                                                                                                                     |
 | `pnpm turbo run test --concurrency=1`                                                      | 35 of 35 test tasks (api 247 of 247) on the second run; the first stopped on the outbox relay test, which timed out draining the day's backlog of test events and passes alone (11 of 11) |
 
+## Riding along
+
+- **Audit exception (owner decision 2026-11-18):** CI's `pnpm audit --prod --audit-level=high` failed on GHSA-fc5q-39xc-vjpf, a picomatch ReDoS with no patched release. The only path is next-intl's optional `@parcel/watcher`, for a CLI this project does not run, and its install script is already blocked. The advisory is in `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml`. Remove it once next-intl or picomatch ships a fix.
+
 ## Known limitations
 
 - **No pharmacy request yet:** HOSPITAL_PHARMACY lines are recorded and announced (`PrescriptionSigned`), but dispensing, stock and charges come with the pharmacy epic (EP-19). Stock is not reserved (FR-PHA-009 is OPEN, Q-014).

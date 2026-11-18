@@ -13,6 +13,14 @@ overrides:
   body-parser: 2.4.0
   qs: 6.16.2
 
+# Advisories accepted for `pnpm audit` (CI fails at high). Each entry says why and when to remove it.
+auditConfig:
+  ignoreGhsas:
+    # picomatch ReDoS (2026-11-18, no patched release yet), reached only through next-intl's
+    # optional @parcel/watcher, which serves the message-extraction CLI we do not run (its
+    # install script is blocked below). Remove once next-intl or picomatch ships a fix.
+    - GHSA-fc5q-39xc-vjpf
+
 # Only these packages may run install scripts (pnpm blocks all others).
 allowBuilds:
   # next-intl's optional watcher is only for its message-extraction CLI, which we do not run.
