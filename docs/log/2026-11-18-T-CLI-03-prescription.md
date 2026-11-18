@@ -90,7 +90,7 @@ From version 2 on the page says "Amended" with the date. Printing is audited and
 - **Next visit** comes from a booked appointment with the same doctor after the consultation date. A next visit planned in the note is not read.
 - **The patient banner shows no age or sex** yet: the shared patient reference carries name and MRN only.
 - **A covering doctor cannot write another doctor's prescription;** only the consultation's doctor can, as for the note.
-- **Supabase is behind:** both migrations of this feature are applied locally only. `pnpm db:deploy` against Supabase applies them (see the deploy impact below).
+- **Supabase:** both migrations were applied on 2026-11-18 after PR #59 merged (37 migrations, up to date). Staging still runs `main`, which has no clinical documents, so the index swap does not affect it.
 - **The Bangla texts** need the native-speaker review (A1, Q-050).
 
 Deploy impact: migration `20261118100000_prescription`. It replaces `clinical_document_kind_check`, replaces the unique index (tenant, consultation) with (tenant, consultation, kind) and adds the append-only `prescription_line` table. Apply it with this version of the API: the previous version reads a consultation's note without filtering by kind, so it is safe only until the first prescription is written. No new variable, service or origin.

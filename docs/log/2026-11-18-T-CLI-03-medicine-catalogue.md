@@ -61,7 +61,7 @@ This is the first part of T-CLI-03. The prescription itself (lines, fulfilment c
 - **No duplicate rule for terms:** two entries with the same label are allowed; the administrator sees both in the list.
 - **The search is a plain `ILIKE` on brand and generic name** without a trigram index; enough for a hospital catalogue of a few thousand rows.
 - **No seed catalogue:** each hospital enters its own (no clinical content ships with the product).
-- **Supabase is behind:** the migration is applied locally only; `pnpm db:deploy` against Supabase applies it (expand-only).
+- **Supabase:** applied on 2026-11-18 after PR #59 merged (37 migrations, up to date).
 - **The Bangla texts** need the native-speaker review (A1, Q-050).
 
 Deploy impact: migration `20261118090000_medicine_catalogue` (two new tables, expand-only); new workspace package `@hms/mod-pharmacy` built with the API. No new variable, service or origin.
