@@ -526,6 +526,16 @@ export const en = {
     paymentCANCELLED: 'Cancelled',
     reportIn: 'report in {hours} h',
     cancelReasonShown: 'Cancelled: {reason}',
+    directTitle: 'Tests and services',
+    directHint:
+      'Order tests reception may order directly; this opens a diagnostic visit. Other tests need a doctor.',
+    cancel: 'Cancel order',
+    cancelTitle: 'Cancel {name}',
+    cancelBody:
+      'Only an order that is not paid and not started can be cancelled. Its invoice line is cancelled too.',
+    cancelReason: 'Reason for cancelling',
+    cancelSubmit: 'Cancel order',
+    cancelled: 'Order cancelled.',
   },
   cashier: {
     title: 'Cashier desk',

@@ -527,6 +527,16 @@ export const bnBD: Messages = {
     paymentCANCELLED: 'বাতিল',
     reportIn: '{hours} ঘণ্টায় রিপোর্ট',
     cancelReasonShown: 'বাতিল: {reason}',
+    directTitle: 'পরীক্ষা ও সেবা',
+    directHint:
+      'রিসেপশন সরাসরি যে পরীক্ষা অর্ডার করতে পারে সেগুলো দিন; এতে একটি ডায়াগনস্টিক ভিজিট খোলে। অন্য পরীক্ষায় ডাক্তার লাগবে।',
+    cancel: 'অর্ডার বাতিল',
+    cancelTitle: '{name} বাতিল',
+    cancelBody:
+      'শুধু পরিশোধ হয়নি এবং কাজ শুরু হয়নি এমন অর্ডার বাতিল করা যায়। এর ইনভয়েস লাইনও বাতিল হবে।',
+    cancelReason: 'বাতিলের কারণ',
+    cancelSubmit: 'অর্ডার বাতিল করুন',
+    cancelled: 'অর্ডার বাতিল হয়েছে।',
   },
   cashier: {
     title: 'ক্যাশিয়ার ডেস্ক',

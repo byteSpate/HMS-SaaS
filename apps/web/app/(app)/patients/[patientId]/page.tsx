@@ -12,6 +12,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useState, type ReactNode } from 'react';
 import { patientQueryKeys, patientsApi } from '../../../../src/api/patients';
 import { PatientAppointments } from '../../../../src/components/appointments/patient-appointments';
+import { PatientOrders } from '../../../../src/components/orders/patient-orders';
 import { CorrectionDialog } from '../../../../src/components/patients/correction-dialog';
 import { displayName, usePatientText } from '../../../../src/components/patients/patient-text';
 import { useApiErrorMessage } from '../../../../src/i18n/use-api-error-message';
@@ -147,6 +148,10 @@ export default function PatientPage() {
       {/* T-SCH-02: booking needs its own permission; the API enforces it. */}
       {data && can('scheduling.appointment.book') ? (
         <PatientAppointments patientId={data.patientId} />
+      ) : null}
+      {/* T-VIS-02: a diagnostic visit needs both codes; the API enforces them. */}
+      {data && can('visit.create') && can('order.direct_diagnostic.create') ? (
+        <PatientOrders patientId={data.patientId} canCancel={can('order.service.cancel')} />
       ) : null}
       {correcting && data ? <CorrectionDialog patient={data} onOpenChange={setCorrecting} /> : null}
     </PageLayout>

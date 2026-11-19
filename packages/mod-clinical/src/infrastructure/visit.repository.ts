@@ -56,3 +56,32 @@ export async function lastConsultationAt(
   });
   return row?.arrivedAt ?? null;
 }
+
+/** UC-VIS-02 (T-VIS-02; FR-VIS-001): a direct diagnostic visit, with no doctor or session. */
+export async function insertDiagnosticVisit(
+  tx: TenantTx,
+  values: { tenantId: string; facilityId: string; patientId: string; userId: string; at: Date },
+): Promise<{ id: string; arrivedAt: Date }> {
+  return tx.visit.create({
+    data: {
+      tenantId: values.tenantId,
+      facilityId: values.facilityId,
+      patientId: values.patientId,
+      kind: 'DIAGNOSTIC',
+      arrivedAt: values.at,
+      createdBy: values.userId,
+      updatedAt: values.at,
+    },
+    select: { id: true, arrivedAt: true },
+  });
+}
+
+/** The patient's OPEN visits, newest first (reception's view of their orders). */
+export async function openVisitIdsOf(tx: TenantTx, patientId: string): Promise<string[]> {
+  const rows = await tx.visit.findMany({
+    where: { patientId, status: 'OPEN' },
+    select: { id: true },
+    orderBy: { arrivedAt: 'desc' },
+  });
+  return rows.map((row) => row.id);
+}

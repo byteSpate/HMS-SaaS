@@ -2,7 +2,7 @@
 // FR-ORD-002, FR-ORD-004, FR-ORD-008). The API is the contract-valid mock in
 // support/mock-orders.ts; texts come from the catalogs. Names are synthetic.
 import AxeBuilder from '@axe-core/playwright';
-import { messages } from '@hms/i18n';
+import { messages, toLocaleDigits } from '@hms/i18n';
 import { expect, type Page, test } from '@playwright/test';
 import { installMockApi, newWorld, type MockWorld } from './support/mock-api';
 
@@ -54,7 +54,8 @@ test('FR-ORD-008: types, adds with Enter, places the orders; they show as not pa
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);
 
-  await page.getByRole('button', { name: /২টি অর্ডার দিন|2/ }).click();
+  // The button names the count in the screen's digits (ICU plural in the catalog).
+  await page.getByRole('button', { name: new RegExp(toLocaleDigits('2', 'bn-BD')) }).click();
   await expect(page.getByText(bn.orders.placed).first()).toBeVisible();
   await expect(page.getByText(bn.orders.paymentUNPAID)).toHaveCount(2);
   const placed = requests.find((r) => r.method === 'POST' && r.path.endsWith('/orders'));

@@ -151,5 +151,7 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-18 | [T-CLI-03 (part 1): medicine catalogue and prescribing lists](2026-11-18-T-CLI-03-medicine-catalogue.md)                                |
 | 2026-11-18 | [T-CLI-03 (part 2): prescription and its print](2026-11-18-T-CLI-03-prescription.md)                                                    |
 | 2026-11-18 | [Chore: Next.js 16.4.6 and the T-CLI-03 Supabase migrations](2026-11-18-nextjs-16.4.6.md)                                               |
-| 2026-11-19 | [T-ORD-01 (part 1): service catalogue and service prices](2026-11-19-T-ORD-01-service-catalogue.md)                                     |
-| 2026-11-19 | [T-ORD-01 (part 2): doctor orders from the consultation](2026-11-19-T-ORD-01-doctor-orders.md)                                          |
+| 2026-11-18 | [T-ORD-01 (part 1): service catalogue and service prices](2026-11-18-T-ORD-01-service-catalogue.md)                                     |
+| 2026-11-18 | [T-ORD-01 (part 2): doctor orders from the consultation](2026-11-18-T-ORD-01-doctor-orders.md)                                          |
+| 2026-11-18 | [T-VIS-02 and T-ORD-03: direct diagnostic orders and order cancellation](2026-11-18-T-VIS-02-T-ORD-03-direct-orders-cancel.md)          |
+| 2026-11-18 | [Day summary](2026-11-18-day-summary.md)                                                                                                |

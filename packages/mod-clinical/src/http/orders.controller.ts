@@ -4,6 +4,8 @@
 // - GET /orders/services?q=: the doctor's picker, every active priced service.
 // - GET /orders/direct-services?q=: reception's picker, only directly orderable services
 //   (order.direct_diagnostic.create, FR-ORD-001).
+// - POST /orders/{id}/cancel: cancel a REQUESTED, unpaid order with a reason (order.service.cancel,
+//   T-ORD-03, UC-ORD-02 interim rule).
 import {
   Body,
   Controller,
@@ -17,18 +19,23 @@ import {
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiParam, ApiTags } from '@nestjs/swagger';
 import {
+  cancelOrderRequestSchema,
   orderableServiceListSchema,
   orderableServiceQuerySchema,
   placeOrdersRequestSchema,
   serviceOrderListSchema,
+  serviceOrderSchema,
+  type CancelOrderRequest,
   type OrderableServiceList,
   type OrderableServiceQuery,
   type PlaceOrdersRequest,
+  type ServiceOrder,
   type ServiceOrderList,
 } from '@hms/contracts';
 import { DomainError } from '@hms/domain-kernel';
 import { RequirePermission } from '@hms/mod-identity-access';
 import { ApiEndpoint, Idempotent, SESSION_SECURITY, ZodBodyPipe } from '@hms/platform';
+import { OrderCancellationService } from '../application/order-cancellation.service.js';
 import { OrderService } from '../application/order.service.js';
 
 const ACCESS_ERRORS = ['UNAUTHENTICATED', 'PERMISSION_DENIED', 'ENTITLEMENT_MISSING'] as const;
@@ -42,7 +49,47 @@ const PICKER = {
 @ApiCookieAuth(SESSION_SECURITY)
 @Controller()
 export class OrdersController {
-  constructor(@Inject(OrderService) private readonly orders: OrderService) {}
+  constructor(
+    @Inject(OrderService) private readonly orders: OrderService,
+    @Inject(OrderCancellationService) private readonly cancellation: OrderCancellationService,
+  ) {}
+
+  @Post('orders/:orderId/cancel')
+  @HttpCode(200)
+  @Idempotent('clinical.order.cancel')
+  @RequirePermission('order.service.cancel')
+  @ApiParam({ name: 'orderId', format: 'uuid' })
+  @ApiEndpoint({
+    summary: 'Cancel an order (interim rule)',
+    description:
+      'Only while the order is REQUESTED and its invoice line has no payment: the line is ' +
+      'cancelled and the service invoice total drops (UC-ORD-02). Paid, or work started: ' +
+      'FEATURE_NOT_AVAILABLE until Q-017 defines the reversal. The reason is mandatory.',
+    body: cancelOrderRequestSchema,
+    success: { status: 200, description: 'The cancelled order', schema: serviceOrderSchema },
+    errors: [
+      ...ACCESS_ERRORS,
+      'VALIDATION_FAILED',
+      'NOT_FOUND',
+      'STALE_RECORD',
+      'INVALID_TRANSITION',
+      'FEATURE_NOT_AVAILABLE',
+      'IDEMPOTENCY_KEY_REUSED',
+    ],
+    csrf: true,
+  })
+  cancel(
+    @Param(
+      'orderId',
+      new ParseUUIDPipe({
+        exceptionFactory: () => new DomainError('NOT_FOUND', 'Order not found'),
+      }),
+    )
+    orderId: string,
+    @Body(new ZodBodyPipe(cancelOrderRequestSchema)) request: CancelOrderRequest,
+  ): Promise<ServiceOrder> {
+    return this.cancellation.cancel(orderId, request);
+  }
 
   @Get('orders/services')
   @RequirePermission('order.service.create')

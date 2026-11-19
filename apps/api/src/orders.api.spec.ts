@@ -3,9 +3,11 @@ import { Module } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import type {
+  DiagnosticVisit,
   Invoice,
   OrderableServiceList,
   PriceList,
+  ServiceOrder,
   ServiceOrderList,
   ServiceRecord,
 } from '@hms/contracts';
@@ -33,7 +35,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { configureApp } from './http/configure-app.js';
 
 // Service orders over real HTTP against PostgreSQL (T-ORD-01; FR-ORD-001..005, FR-ORD-007;
-// UC-CLI-01 step 3; C-008, C-011; FPR-09). "Now" is 10:00 in Dhaka on 2026-11-19. Synthetic data.
+// UC-CLI-01 step 3; T-VIS-02 UC-VIS-02; T-ORD-03 UC-ORD-02; C-008, C-011; FPR-09). "Now" is 10:00 in Dhaka on 2026-11-19. Synthetic data.
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required');
 
@@ -318,5 +320,187 @@ describe('service orders over HTTP', () => {
       tx.serviceOrder.count({ where: { visitId: opd.visit.visitId } }),
     );
     expect(count).toBe(1);
+  });
+
+  const RECEPTION = [
+    'visit.create',
+    'order.direct_diagnostic.create',
+    'order.service.cancel',
+  ] as const;
+
+  /** A cashier with an open session who pays one line in full. */
+  async function payLine(
+    opd: Awaited<ReturnType<typeof consulting>>,
+    patientId: string,
+    amount: string,
+  ) {
+    const cashier = await opd.staffOf([
+      'billing.cashier_session.manage',
+      'billing.payment.record',
+      'billing.invoice.issue',
+    ]);
+    await ok(await post(cashier, '/billing/cashier-sessions', { openingFloat: '0.00' }), 201);
+    const list = await ok<{ invoices: Invoice[] }>(
+      await client.call(cashier, 'GET', `/billing/invoices?patientId=${patientId}`),
+    );
+    const line = list.invoices
+      .flatMap((invoice) => invoice.lines)
+      .find((row) => row.amount === amount);
+    if (!line) throw new Error('No line');
+    await ok(
+      await post(cashier, '/billing/payments', {
+        patientId,
+        method: 'CASH',
+        amount,
+        allocations: [{ lineId: line.lineId, amount }],
+      }),
+      201,
+    );
+  }
+
+  it('UC-VIS-02: reception opens a diagnostic visit with direct orders, no doctor fee', async () => {
+    const opd = await consulting();
+    const reception = await opd.staffOf([...RECEPTION]);
+    const patientId = await opd.patient('Rahim Uddin');
+    const visit = await ok<DiagnosticVisit>(
+      await post(reception, '/visits/diagnostic', {
+        patientId,
+        items: [item(opd.cbc.serviceItemId)],
+      }),
+      201,
+    );
+    expect(
+      visit.orders.map((order) => [order.source, order.service.code, order.payment.eligibility]),
+    ).toEqual([['RECEPTION_DIRECT', 'CBC', 'NOT_ELIGIBLE']]);
+    const [stored, invoices] = await withTenant(prisma, { tenantId: opd.tenantId }, (tx) =>
+      Promise.all([
+        tx.visit.findUniqueOrThrow({
+          where: { id: visit.visitId },
+          select: { kind: true, attendingPractitionerId: true },
+        }),
+        tx.invoice.findMany({ where: { visitId: visit.visitId }, select: { type: true } }),
+      ]),
+    );
+    expect(stored).toEqual({ kind: 'DIAGNOSTIC', attendingPractitionerId: null });
+    expect(invoices.map((row) => row.type)).toEqual(['SERVICE']);
+    const listed = await ok<ServiceOrderList>(
+      await client.call(reception, 'GET', `/visits/orders?patientId=${patientId}`),
+    );
+    expect(listed.orders.map((order) => order.orderId)).toEqual(
+      visit.orders.map((order) => order.orderId),
+    );
+  });
+
+  it('FR-ORD-001: a service that needs a doctor is refused and nothing is kept', async () => {
+    const opd = await consulting();
+    const reception = await opd.staffOf([...RECEPTION]);
+    const patientId = await opd.patient('Rina Das');
+    const res = await post(reception, '/visits/diagnostic', {
+      patientId,
+      items: [item(opd.cbc.serviceItemId), item(opd.xray.serviceItemId)],
+    });
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as Problem).code).toBe('TEST_NOT_DIRECTLY_ORDERABLE');
+    const visits = await withTenant(prisma, { tenantId: opd.tenantId }, (tx) =>
+      tx.visit.count({ where: { patientId } }),
+    );
+    expect(visits).toBe(0);
+    const orderOnly = await opd.staffOf(['order.direct_diagnostic.create']);
+    expect(
+      (
+        await post(orderOnly, '/visits/diagnostic', {
+          patientId,
+          items: [item(opd.cbc.serviceItemId)],
+        })
+      ).status,
+    ).toBe(403);
+  });
+
+  it('UC-ORD-02: cancels an unpaid order; the line is cancelled and the total drops', async () => {
+    const opd = await consulting();
+    const placed = await ok<ServiceOrderList>(
+      await post(opd.doctor.session, orders(opd.consultationId), {
+        items: [item(opd.cbc.serviceItemId), item(opd.xray.serviceItemId)],
+      }),
+      201,
+    );
+    const cbcOrder = placed.orders.find((order) => order.service.code === 'CBC');
+    if (!cbcOrder) throw new Error('No CBC order');
+    const cancelPath = `/orders/${cbcOrder.orderId}/cancel`;
+    expect(
+      (await post(opd.doctor.session, cancelPath, { reason: '', expectedVersion: 1 })).status,
+    ).toBe(422);
+    expect(
+      (await post(opd.doctor.session, cancelPath, { reason: 'Ordered twice', expectedVersion: 2 }))
+        .status,
+    ).toBe(409);
+    const cancelled = await ok<ServiceOrder>(
+      await post(opd.doctor.session, cancelPath, { reason: 'Ordered twice', expectedVersion: 1 }),
+    );
+    expect(cancelled).toMatchObject({
+      status: 'CANCELLED',
+      cancelReason: 'Ordered twice',
+      version: 2,
+    });
+    expect(cancelled.payment.lineStatus).toBe('CANCELLED');
+
+    const [service, events] = await withTenant(prisma, { tenantId: opd.tenantId }, (tx) =>
+      Promise.all([
+        tx.invoice.findFirstOrThrow({
+          where: { visitId: opd.visit.visitId, type: 'SERVICE' },
+          select: { total: true },
+        }),
+        tx.outboxEvent.findMany({
+          where: { eventType: { in: ['OrderCancelled', 'InvoiceLineCancelled'] } },
+          select: { eventType: true, aggregateId: true },
+        }),
+      ]),
+    );
+    expect(service.total.toFixed(2)).toBe('800.00');
+    expect(
+      events
+        .filter((event) => event.aggregateId === cbcOrder.orderId)
+        .map((event) => event.eventType),
+    ).toEqual(['OrderCancelled']);
+    const again = await post(opd.doctor.session, cancelPath, {
+      reason: 'Again',
+      expectedVersion: 2,
+    });
+    expect(((await again.json()) as Problem).code).toBe('INVALID_TRANSITION');
+  });
+
+  it('UC-ORD-02 D1: a paid order cannot be cancelled yet, and nothing changes', async () => {
+    const opd = await consulting();
+    const placed = await ok<ServiceOrderList>(
+      await post(opd.doctor.session, orders(opd.consultationId), {
+        items: [item(opd.cbc.serviceItemId)],
+      }),
+      201,
+    );
+    await payLine(opd, opd.visit.patientId, '450.00');
+    const order = placed.orders[0];
+    if (!order) throw new Error('No order');
+    const res = await post(opd.doctor.session, `/orders/${order.orderId}/cancel`, {
+      reason: 'Changed mind',
+      expectedVersion: 1,
+    });
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as Problem).code).toBe('FEATURE_NOT_AVAILABLE');
+    const after = await ok<ServiceOrderList>(
+      await client.call(opd.doctor.session, 'GET', orders(opd.consultationId)),
+    );
+    expect(after.orders[0]).toMatchObject({
+      status: 'REQUESTED',
+      payment: { eligibility: 'ELIGIBLE', lineStatus: 'ACTIVE' },
+    });
+    const viewer = await opd.staffOf(['order.service.create']);
+    expect(
+      (
+        await post(viewer, `/orders/${order.orderId}/cancel`, {
+          reason: 'No right',
+          expectedVersion: 1,
+        })
+      ).status,
+    ).toBe(403);
   });
 });

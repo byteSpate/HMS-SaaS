@@ -19,7 +19,8 @@ export function OrderList({
   action,
 }: {
   orders: ServiceOrder[];
-  action?: (order: ServiceOrder) => ReactNode;
+  /** A row action such as cancel; omitted or undefined for none. */
+  action: ((order: ServiceOrder) => ReactNode) | undefined;
 }) {
   const t = useTranslations();
   const locale = useLocale() as Locale;

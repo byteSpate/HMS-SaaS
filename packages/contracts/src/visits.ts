@@ -3,6 +3,7 @@
 // serial number in the doctor's queue and issues the doctor-fee invoice. When the doctor has no
 // fee configured the visit still exists and the answer says so (UC-VIS-01 A1).
 import { z } from 'zod';
+import { placeOrdersRequestSchema, serviceOrderSchema } from './orders.js';
 import { invoiceSummarySchema } from './invoices.js';
 import { practitionerChoiceSchema } from './schedule-sessions.js';
 
@@ -37,3 +38,26 @@ export const visitCheckInSchema = z.strictObject({
   doctorFee: doctorFeeOutcomeSchema,
 });
 export type VisitCheckIn = z.infer<typeof visitCheckInSchema>;
+
+/**
+ * UC-VIS-02 diagnostic path (T-VIS-02; FR-VIS-001, FR-ORD-001, FR-BIL-009): reception opens a
+ * DIAGNOSTIC visit for the patient with directly orderable services, in one request. No
+ * consultation and no doctor fee; the orders go on the visit's service invoice.
+ */
+export const createDiagnosticVisitRequestSchema = z.strictObject({
+  patientId: z.uuid(),
+  items: placeOrdersRequestSchema.shape.items,
+});
+export type CreateDiagnosticVisitRequest = z.infer<typeof createDiagnosticVisitRequestSchema>;
+
+export const diagnosticVisitSchema = z.strictObject({
+  visitId: z.uuid(),
+  patientId: z.uuid(),
+  arrivedAt: z.iso.datetime(),
+  orders: z.array(serviceOrderSchema),
+});
+export type DiagnosticVisit = z.infer<typeof diagnosticVisitSchema>;
+
+/** A patient's orders in their open visits, for reception (T-VIS-02, T-ORD-03). */
+export const patientOrdersQuerySchema = z.strictObject({ patientId: z.uuid() });
+export type PatientOrdersQuery = z.infer<typeof patientOrdersQuerySchema>;

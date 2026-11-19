@@ -1,5 +1,5 @@
 // Nest module of the clinical record (T-VIS-01 check-in, T-CLI-01 doctor worklist, T-CLI-02
-// consultation note, T-CLI-03 prescription, T-ORD-01 orders; D section 5: mod-clinical owns visit, consultation
+// consultation note, T-CLI-03 prescription, T-ORD-01 orders, T-VIS-02 diagnostic visits, T-ORD-03 order cancellation; D section 5: mod-clinical owns visit, consultation
 // and clinical documents). Needs the database and request pipeline from the app, and the identity
 // module's guards for its markers. Scheduling, billing, patients and the hospital's facility are
 // reached through those modules' public entries only; the medicine catalogue through the
@@ -8,11 +8,14 @@ import { Module, type DynamicModule } from '@nestjs/common';
 import { systemClock, type Clock } from '@hms/domain-kernel';
 import { CLINICAL_CLOCK } from './application/context.js';
 import { ConsultationNoteService } from './application/consultation-note.service.js';
+import { DirectOrderService } from './application/direct-order.service.js';
+import { OrderCancellationService } from './application/order-cancellation.service.js';
 import { OrderService } from './application/order.service.js';
 import { PrescriptionService } from './application/prescription.service.js';
 import { VisitService } from './application/visit.service.js';
 import { WorklistService } from './application/worklist.service.js';
 import { ConsultationNotesController } from './http/consultation-notes.controller.js';
+import { DirectOrdersController } from './http/direct-orders.controller.js';
 import { OrdersController } from './http/orders.controller.js';
 import { PrescriptionsController } from './http/prescriptions.controller.js';
 import { VisitsController } from './http/visits.controller.js';
@@ -34,12 +37,15 @@ export class ClinicalModule {
         ConsultationNotesController,
         PrescriptionsController,
         OrdersController,
+        DirectOrdersController,
       ],
       providers: [
         VisitService,
         ConsultationNoteService,
         PrescriptionService,
         OrderService,
+        DirectOrderService,
+        OrderCancellationService,
         WorklistService,
         { provide: CLINICAL_CLOCK, useValue: options.clock ?? systemClock },
       ],

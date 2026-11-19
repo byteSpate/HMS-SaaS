@@ -1,6 +1,6 @@
 # T-ORD-01 (part 2): doctor orders from the consultation
 
-- **Date:** 2026-11-19
+- **Date:** 2026-11-18
 - **Commit:** this commit
 - **Implements:** T-ORD-01; FR-ORD-002, FR-ORD-003, FR-ORD-004, FR-ORD-005, FR-ORD-007, FR-ORD-008; UC-CLI-01 step 3; C-008, C-011; FPR-09; SP-01; FR-AUD-001
 

@@ -3,9 +3,13 @@
 // unpaid. The real behaviour (charges, invoice lines, eligibility, audit) is covered by
 // apps/api/src/orders.api.spec.ts.
 import {
+  cancelOrderRequestSchema,
+  createDiagnosticVisitRequestSchema,
+  diagnosticVisitSchema,
   orderableServiceListSchema,
   placeOrdersRequestSchema,
   serviceOrderListSchema,
+  serviceOrderSchema,
   type ServiceOrder,
   type ServiceRecord,
 } from '@hms/contracts';
@@ -22,6 +26,8 @@ export function createOrderStore(services: readonly ServiceRecord[]) {
   let next = 1200;
   /** Orders by visit; the mock keys a consultation's orders by its ID. */
   const orders = new Map<string, ServiceOrder[]>();
+  /** Reception's diagnostic visits by patient. */
+  const byPatient = new Map<string, string[]>();
 
   const orderable = (direct: boolean, text: string) =>
     services
@@ -83,7 +89,61 @@ export function createOrderStore(services: readonly ServiceRecord[]) {
     return { status: 201, body: serviceOrderListSchema.parse({ orders: list }) };
   }
 
+  /** UC-VIS-02: one diagnostic visit per request, keyed by the patient for the reception list. */
+  function diagnostic(body: unknown) {
+    const request = createDiagnosticVisitRequestSchema.safeParse(body);
+    if (!request.success) return problem(422, 'VALIDATION_FAILED');
+    const visitId = ID(next++);
+    const placed = place(visitId, 'RECEPTION_DIRECT', { items: request.data.items });
+    if (placed.status !== 201) return placed;
+    const list = orders.get(visitId) ?? [];
+    byPatient.set(request.data.patientId, [
+      ...(byPatient.get(request.data.patientId) ?? []),
+      visitId,
+    ]);
+    return {
+      status: 201,
+      body: diagnosticVisitSchema.parse({
+        visitId,
+        patientId: request.data.patientId,
+        arrivedAt: new Date().toISOString(),
+        orders: list,
+      }),
+    };
+  }
+
+  /** UC-ORD-02 interim rule: only REQUESTED and unpaid. */
+  function cancel(orderId: string, body: unknown) {
+    const request = cancelOrderRequestSchema.safeParse(body);
+    if (!request.success) return problem(422, 'VALIDATION_FAILED');
+    for (const list of orders.values()) {
+      const index = list.findIndex((order) => order.orderId === orderId);
+      const order = list[index];
+      if (!order) continue;
+      if (request.data.expectedVersion !== order.version) return problem(409, 'STALE_RECORD');
+      if (order.payment.eligibility === 'ELIGIBLE') return problem(409, 'FEATURE_NOT_AVAILABLE');
+      const cancelled = serviceOrderSchema.parse({
+        ...order,
+        status: 'CANCELLED',
+        cancelReason: request.data.reason,
+        payment: { ...order.payment, lineStatus: 'CANCELLED' },
+        version: order.version + 1,
+      });
+      list[index] = cancelled;
+      return { status: 200, body: cancelled };
+    }
+    return problem(404, 'NOT_FOUND');
+  }
+
   function answer(method: string, path: string, body: unknown, params: URLSearchParams) {
+    if (path === '/visits/diagnostic' && method === 'POST') return diagnostic(body);
+    if (path === '/visits/orders' && method === 'GET') {
+      const visits = byPatient.get(params.get('patientId') ?? '') ?? [];
+      const list = visits.flatMap((visitId) => orders.get(visitId) ?? []);
+      return { status: 200, body: serviceOrderListSchema.parse({ orders: list }) };
+    }
+    const cancelPath = /^\/orders\/([^/]+)\/cancel$/.exec(path);
+    if (cancelPath?.[1] && method === 'POST') return cancel(cancelPath[1], body);
     const picker = /^\/orders\/(services|direct-services)$/.exec(path);
     if (picker && method === 'GET') {
       const services = orderable(picker[1] === 'direct-services', params.get('q') ?? '');

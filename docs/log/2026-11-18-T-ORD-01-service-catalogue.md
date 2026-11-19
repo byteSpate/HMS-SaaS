@@ -1,6 +1,6 @@
 # T-ORD-01 (part 1): service catalogue and service prices
 
-- **Date:** 2026-11-19
+- **Date:** 2026-11-18
 - **Commit:** this commit
 - **Implements:** T-ORD-01 (first part); FR-ORD-001 (directly orderable flag), FR-ORD-007 (expected report time), FR-CFG-001, FR-CFG-002, FR-BIL-007, FR-I18N-006, FR-AUD-001; SP-03; C-008, C-041
 

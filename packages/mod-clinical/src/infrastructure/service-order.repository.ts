@@ -140,6 +140,20 @@ export async function listOrdersOfVisit(tx: TenantTx, visitId: string): Promise<
   return rows.map(toStored);
 }
 
+/** The orders of several visits, newest visit first, each in placement order. */
+export async function listOrdersOfVisits(
+  tx: TenantTx,
+  visitIds: readonly string[],
+): Promise<StoredOrder[]> {
+  if (visitIds.length === 0) return [];
+  const rows = await tx.serviceOrder.findMany({
+    where: { visitId: { in: [...visitIds] } },
+    select: COLUMNS,
+    orderBy: [{ createdAt: 'desc' }, { invoiceLine: { lineNo: 'asc' } }],
+  });
+  return rows.map(toStored);
+}
+
 export async function findOrder(tx: TenantTx, orderId: string): Promise<StoredOrder | null> {
   const row = await tx.serviceOrder.findUnique({ where: { id: orderId }, select: COLUMNS });
   return row ? toStored(row) : null;
