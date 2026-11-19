@@ -155,3 +155,4 @@ Where it can fail, which logs or queries to check, and how to reproduce locally.
 | 2026-11-18 | [T-ORD-01 (part 2): doctor orders from the consultation](2026-11-18-T-ORD-01-doctor-orders.md)                                          |
 | 2026-11-18 | [T-VIS-02 and T-ORD-03: direct diagnostic orders and order cancellation](2026-11-18-T-VIS-02-T-ORD-03-direct-orders-cancel.md)          |
 | 2026-11-18 | [Day summary](2026-11-18-day-summary.md)                                                                                                |
+| 2026-11-19 | [T-ORD-02: the payment gate and the department worklist](2026-11-19-T-ORD-02-payment-gate.md)                                           |

@@ -13,3 +13,4 @@ export { issueDoctorFee, type DoctorFeeRequest } from './application/doctor-fee.
 export { doctorFeeEligibilityOf } from './application/doctor-fee-eligibility.js';
 export { findLineStates, type LineState } from './infrastructure/invoice.repository.js';
 export { cancelUnpaidLine } from './application/line-cancellation.js';
+export { assertEligible } from './application/eligibility.js';

@@ -373,6 +373,8 @@ export async function listOpenInvoicesSince(tx: TenantTx, since: Date): Promise<
 export interface LineState {
   amount: Money;
   paid: Money;
+  /** T-ORD-02: what is still to pay; nothing for a line that no longer counts. */
+  due: Money;
   eligibility: 'ELIGIBLE' | 'NOT_ELIGIBLE';
   status: 'ACTIVE' | 'CANCELLED' | 'REVERSED';
 }
@@ -393,6 +395,10 @@ export async function findLineStates(
       {
         amount: moneyOf(row.netAmount),
         paid: moneyOf(row.allocatedAmount),
+        due:
+          row.status === 'ACTIVE'
+            ? moneyOf(row.netAmount).minus(moneyOf(row.allocatedAmount))
+            : Money.zero(),
         eligibility: row.eligibility as LineState['eligibility'],
         status: row.status as LineState['status'],
       },

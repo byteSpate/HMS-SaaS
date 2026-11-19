@@ -34,6 +34,8 @@ const cashier: readonly PermissionCode[] = [
 
 const labTechnologist: readonly PermissionCode[] = [
   'patient.record.search',
+  // C-100: the lab starts paid orders from the department worklist until T-LAB-02 collects them.
+  'order.service.start',
   'lab.specimen.collect',
   'lab.specimen.receive',
   'lab.specimen.reject',

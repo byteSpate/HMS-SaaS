@@ -1,4 +1,4 @@
-// Service order rows in PostgreSQL (T-ORD-01, T-VIS-02, T-ORD-03; FR-ORD-002, FR-ORD-004). Every
+// Service order rows in PostgreSQL (T-ORD-01, T-VIS-02, T-ORD-03, T-ORD-02; FR-ORD-002, FR-ORD-004). Every
 // function runs in the caller's withTenant() transaction, so RLS limits it to one hospital
 // (ADR-003). Only the fulfilment state of an order changes after it is written.
 import type { OrderPriority, OrderSource, OrderStatus, OrderableCategory } from '@hms/contracts';
@@ -174,6 +174,41 @@ export async function markCancelled(
       updatedAt: target.at,
       version: { increment: 1 },
     },
+  });
+  return result.count;
+}
+
+/**
+ * T-ORD-02 department worklist (FR-LAB-004): orders placed since the start of the hospital's day
+ * that are still waiting or in progress, urgent first, then oldest first. Bounded so a busy day
+ * cannot make one page unbounded.
+ */
+export async function listDepartmentOrders(
+  tx: TenantTx,
+  filter: { since: Date; category?: OrderableCategory },
+): Promise<StoredOrder[]> {
+  const rows = await tx.serviceOrder.findMany({
+    where: {
+      status: { in: ['REQUESTED', 'IN_PROGRESS'] },
+      createdAt: { gte: filter.since },
+      ...(filter.category ? { category: filter.category } : {}),
+    },
+    select: COLUMNS,
+    // 'URGENT' sorts after 'ROUTINE', so descending puts urgent orders first.
+    orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }, { invoiceLine: { lineNo: 'asc' } }],
+    take: 200,
+  });
+  return rows.map(toStored);
+}
+
+/** FR-ORD-004: only a REQUESTED order at the expected version starts; 0 rows otherwise. */
+export async function markStarted(
+  tx: TenantTx,
+  target: { orderId: string; expectedVersion: number; at: Date },
+): Promise<number> {
+  const result = await tx.serviceOrder.updateMany({
+    where: { id: target.orderId, version: target.expectedVersion, status: 'REQUESTED' },
+    data: { status: 'IN_PROGRESS', updatedAt: target.at, version: { increment: 1 } },
   });
   return result.count;
 }

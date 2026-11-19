@@ -1,8 +1,9 @@
-// Service order contracts (T-ORD-01, T-VIS-02, T-ORD-03; FR-ORD-001..008; UC-CLI-01 step 3;
+// Service order contracts (T-ORD-01, T-VIS-02, T-ORD-03, T-ORD-02; FR-ORD-001..008; UC-CLI-01 step 3;
 // UC-ORD-01, UC-ORD-02). An order asks for one catalogue service for a visit, from the doctor's
 // consultation or directly at reception. Its fulfilment status is its own (FR-ORD-004); whether
 // it is paid comes from its invoice line in billing and is shown beside it, never stored here.
 import { z } from 'zod';
+import { patientRefSchema } from './payments.js';
 import { moneyAmountSchema } from './price-lists.js';
 import { orderableCategorySchema, orderableServiceSchema } from './services.js';
 
@@ -38,6 +39,8 @@ export type PlaceOrdersRequest = z.infer<typeof placeOrdersRequestSchema>;
 export const orderPaymentSchema = z.strictObject({
   amount: moneyAmountSchema,
   paid: moneyAmountSchema,
+  /** T-ORD-02: still to pay, computed by billing (0.00 once paid or when the line is cancelled). */
+  due: moneyAmountSchema,
   eligibility: z.enum(['ELIGIBLE', 'NOT_ELIGIBLE']),
   lineStatus: z.enum(['ACTIVE', 'CANCELLED', 'REVERSED']),
 });
@@ -89,3 +92,25 @@ export const cancelOrderRequestSchema = z.strictObject({
   expectedVersion: z.number().int().min(1),
 });
 export type CancelOrderRequest = z.infer<typeof cancelOrderRequestSchema>;
+
+/** T-ORD-02 (FR-ORD-004): start the work; the order's version guards a race (SP-03). */
+export const startOrderRequestSchema = z.strictObject({
+  expectedVersion: z.number().int().min(1),
+});
+export type StartOrderRequest = z.infer<typeof startOrderRequestSchema>;
+
+/** T-ORD-02 department worklist: one category, or every orderable category when absent. */
+export const departmentWorklistQuerySchema = z.strictObject({
+  category: orderableCategorySchema.optional(),
+});
+export type DepartmentWorklistQuery = z.infer<typeof departmentWorklistQuerySchema>;
+
+/**
+ * FR-LAB-004: today's orders waiting for a department or in progress, with the patient. The
+ * screen splits them by the payment state: ELIGIBLE orders are ready, the rest await payment.
+ */
+export const departmentWorklistSchema = z.strictObject({
+  orders: z.array(serviceOrderSchema.extend({ patient: patientRefSchema })),
+});
+export type DepartmentWorklist = z.infer<typeof departmentWorklistSchema>;
+export type DepartmentWorklistOrder = DepartmentWorklist['orders'][number];

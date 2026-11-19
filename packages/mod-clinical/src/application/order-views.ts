@@ -36,6 +36,7 @@ export async function orderViews(
         payment: {
           amount: line.amount.toDecimalString(),
           paid: line.paid.toDecimalString(),
+          due: line.due.toDecimalString(),
           eligibility: line.eligibility,
           lineStatus: line.status,
         },

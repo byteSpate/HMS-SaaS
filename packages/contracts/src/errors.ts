@@ -54,6 +54,10 @@ export const problemSchema = z.object({
   reason: z.string().optional(),
   /** The patients a registration must confirm against (DUPLICATE_CANDIDATES_PRESENT). */
   candidateIds: z.array(z.string()).optional(),
+  /** T-ORD-02: each unpaid line and what is due on which invoice (PAYMENT_NOT_ELIGIBLE). */
+  lines: z
+    .array(z.object({ lineId: z.string(), invoiceNumber: z.string(), due: z.string() }))
+    .optional(),
 });
 
 export type Problem = z.infer<typeof problemSchema>;

@@ -171,6 +171,7 @@ The "Default template" column lists the proposed role templates (RCP = Reception
 | `order.direct_diagnostic.create` | Reception direct test orders | RCP | Per-test policy CP-01 | FR-ORD-001 |
 | `order.service.create` | Clinician orders | DOC | — | FR-ORD-002 |
 | `order.service.cancel` | Cancel an order | DOC, RCP (before payment) | Stage rules (Q-017) | FR-ORD-006 |
+| `order.service.start` | Start a paid order in a department (C-100) | LBT, LBA | Payment gate (FR-BIL-003) | FR-ORD-004, FR-LAB-004 |
 | `clinical.consultation.record` | Write consultation note | DOC | — | FR-CLI-003 |
 | `clinical.document.sign` | Sign clinical document | DOC | — | FR-CLI-003 |
 | `clinical.document.amend` | Amend signed document | DOC (author) | Reason required | FR-CLI-003 |

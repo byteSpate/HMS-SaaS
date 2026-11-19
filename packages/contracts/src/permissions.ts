@@ -41,6 +41,8 @@ export const permissionCatalogue = {
   'order.direct_diagnostic.create': 'clinical',
   'order.service.create': 'clinical',
   'order.service.cancel': 'clinical',
+  // T-ORD-02 (FR-ORD-004, FR-BIL-003): a department starts a paid order. PROPOSED in C-100.
+  'order.service.start': 'clinical',
   'clinical.consultation.record': 'clinical',
   'clinical.document.sign': 'clinical',
   'clinical.document.amend': 'clinical',

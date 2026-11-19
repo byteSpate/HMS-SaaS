@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import type {
+  DepartmentWorklist,
   DiagnosticVisit,
   Invoice,
   OrderableServiceList,
@@ -207,8 +208,20 @@ describe('service orders over HTTP', () => {
     ]);
     // FR-ORD-005: the paid doctor fee does not make the orders eligible.
     expect(placed.orders.map((order) => order.payment)).toEqual([
-      { amount: '450.00', paid: '0.00', eligibility: 'NOT_ELIGIBLE', lineStatus: 'ACTIVE' },
-      { amount: '800.00', paid: '0.00', eligibility: 'NOT_ELIGIBLE', lineStatus: 'ACTIVE' },
+      {
+        amount: '450.00',
+        paid: '0.00',
+        due: '450.00',
+        eligibility: 'NOT_ELIGIBLE',
+        lineStatus: 'ACTIVE',
+      },
+      {
+        amount: '800.00',
+        paid: '0.00',
+        due: '800.00',
+        eligibility: 'NOT_ELIGIBLE',
+        lineStatus: 'ACTIVE',
+      },
     ]);
     expect(placed.orders[1]).toMatchObject({
       source: 'CONSULTATION',
@@ -328,11 +341,12 @@ describe('service orders over HTTP', () => {
     'order.service.cancel',
   ] as const;
 
-  /** A cashier with an open session who pays one line in full. */
+  /** A cashier with an open session who pays the line of `amount`, in full unless `pay` is less. */
   async function payLine(
     opd: Awaited<ReturnType<typeof consulting>>,
     patientId: string,
     amount: string,
+    pay = amount,
   ) {
     const cashier = await opd.staffOf([
       'billing.cashier_session.manage',
@@ -351,8 +365,8 @@ describe('service orders over HTTP', () => {
       await post(cashier, '/billing/payments', {
         patientId,
         method: 'CASH',
-        amount,
-        allocations: [{ lineId: line.lineId, amount }],
+        amount: pay,
+        allocations: [{ lineId: line.lineId, amount: pay }],
       }),
       201,
     );
@@ -502,5 +516,111 @@ describe('service orders over HTTP', () => {
         })
       ).status,
     ).toBe(403);
+  });
+
+  // T-ORD-02: the department worklist and the payment gate (FR-BIL-003, FR-LAB-004, UC-BIL-02).
+  const LAB = ['order.service.start'] as const;
+  const worklist = (session: StaffSession, category?: string) =>
+    client.call(
+      session,
+      'GET',
+      category ? `/orders/worklist?category=${category}` : '/orders/worklist',
+    );
+  const start = (session: StaffSession, orderId: string, expectedVersion: number, key?: string) =>
+    post(session, `/orders/${orderId}/start`, { expectedVersion }, key);
+
+  async function placed(opd: Awaited<ReturnType<typeof consulting>>, ids: string[]) {
+    const list = await ok<ServiceOrderList>(
+      await post(opd.doctor.session, orders(opd.consultationId), {
+        items: ids.map((id) => item(id)),
+      }),
+      201,
+    );
+    return list.orders;
+  }
+
+  it('FR-LAB-004: the worklist shows an unpaid order awaiting payment, and ready once paid', async () => {
+    const opd = await consulting();
+    const [cbc] = await placed(opd, [opd.cbc.serviceItemId, opd.xray.serviceItemId]);
+    if (!cbc) throw new Error('No order');
+    const lab = await opd.staffOf(LAB);
+    const labOnly = await ok<DepartmentWorklist>(await worklist(lab, 'LAB'));
+    expect(labOnly.orders).toHaveLength(1);
+    expect(labOnly.orders[0]).toMatchObject({
+      orderId: cbc.orderId,
+      status: 'REQUESTED',
+      patient: { patientId: opd.visit.patientId, nameEn: 'Salma Begum' },
+      payment: { amount: '450.00', paid: '0.00', due: '450.00', eligibility: 'NOT_ELIGIBLE' },
+    });
+    expect((await ok<DepartmentWorklist>(await worklist(lab))).orders).toHaveLength(2);
+
+    await payLine(opd, opd.visit.patientId, '450.00');
+    const after = await ok<DepartmentWorklist>(await worklist(lab, 'LAB'));
+    expect(after.orders[0]?.payment).toMatchObject({
+      paid: '450.00',
+      due: '0.00',
+      eligibility: 'ELIGIBLE',
+    });
+  });
+
+  it('FR-BIL-003: starting a partly paid order is PAYMENT_NOT_ELIGIBLE with the amount due', async () => {
+    const opd = await consulting();
+    const [cbc] = await placed(opd, [opd.cbc.serviceItemId]);
+    if (!cbc) throw new Error('No order');
+    await payLine(opd, opd.visit.patientId, '450.00', '100.00');
+    const lab = await opd.staffOf(LAB);
+    const res = await start(lab, cbc.orderId, 1);
+    expect(res.status).toBe(409);
+    const problem = (await res.json()) as Problem & { lines?: unknown };
+    expect(problem.code).toBe('PAYMENT_NOT_ELIGIBLE');
+    expect(problem.lines).toEqual([
+      { lineId: expect.any(String), invoiceNumber: expect.any(String), due: '350.00' },
+    ]);
+    const unchanged = await ok<DepartmentWorklist>(await worklist(lab));
+    expect(unchanged.orders[0]).toMatchObject({ status: 'REQUESTED', version: 1 });
+  });
+
+  it('UC-BIL-02 gate: a paid order starts once; then it cannot start again or be cancelled', async () => {
+    const opd = await consulting();
+    const [cbc] = await placed(opd, [opd.cbc.serviceItemId]);
+    if (!cbc) throw new Error('No order');
+    await payLine(opd, opd.visit.patientId, '450.00');
+    const lab = await opd.staffOf(LAB);
+    const key = randomUUID();
+    const started = await ok<ServiceOrder>(await start(lab, cbc.orderId, 1, key));
+    expect(started).toMatchObject({ status: 'IN_PROGRESS', version: 2 });
+    // A retry with the same key answers the same and starts nothing twice (SP-01).
+    expect(await ok<ServiceOrder>(await start(lab, cbc.orderId, 1, key))).toMatchObject({
+      status: 'IN_PROGRESS',
+      version: 2,
+    });
+    const again = await start(lab, cbc.orderId, 2);
+    expect(again.status).toBe(409);
+    expect(((await again.json()) as Problem).code).toBe('INVALID_TRANSITION');
+    const stale = await start(lab, cbc.orderId, 1);
+    expect(((await stale.json()) as Problem).code).toBe('STALE_RECORD');
+    const cancel = await post(opd.doctor.session, `/orders/${cbc.orderId}/cancel`, {
+      reason: 'Too late now',
+      expectedVersion: 2,
+    });
+    expect(((await cancel.json()) as Problem).code).toBe('FEATURE_NOT_AVAILABLE');
+    const list = await ok<DepartmentWorklist>(await worklist(lab));
+    expect(list.orders[0]).toMatchObject({ status: 'IN_PROGRESS' });
+  });
+
+  it('needs order.service.start, and another hospital cannot see or start the order', async () => {
+    const opd = await consulting();
+    const [cbc] = await placed(opd, [opd.cbc.serviceItemId]);
+    if (!cbc) throw new Error('No order');
+    await payLine(opd, opd.visit.patientId, '450.00');
+    const doctorOnly = await opd.staffOf(['order.service.create']);
+    expect((await worklist(doctorOnly)).status).toBe(403);
+    expect((await start(doctorOnly, cbc.orderId, 1)).status).toBe(403);
+
+    const other = await consulting();
+    const otherLab = await other.staffOf(LAB);
+    expect((await start(otherLab, cbc.orderId, 1)).status).toBe(404);
+    const theirs = await ok<DepartmentWorklist>(await worklist(otherLab));
+    expect(theirs.orders.map((order) => order.orderId)).not.toContain(cbc.orderId);
   });
 });

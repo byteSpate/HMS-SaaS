@@ -60,7 +60,7 @@ For the order screens, billing exports `orderableServicesInForce`: the active se
 - **No orders yet:** the next commits add doctor orders, reception direct orders with walk-in visits, and cancellation.
 - **No seed catalogue:** each hospital enters its own services and prices.
 - **The search is a plain `ILIKE`** on code and names.
-- **Supabase:** the migration is local only until the orders PR merges.
+- **Supabase:** applied on 2026-11-19 after PR #60 merged, with `20261119100000_service_order` (39 migrations).
 - **The Bangla texts** need the native-speaker review (A1, Q-050).
 
 Deploy impact: migration `20261119090000_service_catalogue` (new columns with defaults, CHECKs, a partial unique index, a column grant; expand-only). No new variable, service or origin.

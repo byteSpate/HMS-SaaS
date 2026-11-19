@@ -29,6 +29,7 @@ describe('order rules', () => {
       payment: {
         amount: '450.00',
         paid: '0.00',
+        due: '450.00',
         eligibility: 'NOT_ELIGIBLE',
         lineStatus: 'ACTIVE',
       },

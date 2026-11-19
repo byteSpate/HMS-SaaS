@@ -1,15 +1,18 @@
-// In-memory stand-in for the order endpoints (T-ORD-01), answering with payloads that satisfy the
+// In-memory stand-in for the order endpoints (T-ORD-01, T-ORD-03, T-ORD-02), answering with payloads that satisfy the
 // shared contracts. Services come from the catalogue mock with fixed prices; each order starts
 // unpaid. The real behaviour (charges, invoice lines, eligibility, audit) is covered by
 // apps/api/src/orders.api.spec.ts.
 import {
   cancelOrderRequestSchema,
   createDiagnosticVisitRequestSchema,
+  departmentWorklistSchema,
   diagnosticVisitSchema,
   orderableServiceListSchema,
   placeOrdersRequestSchema,
   serviceOrderListSchema,
   serviceOrderSchema,
+  startOrderRequestSchema,
+  type PatientRef,
   type ServiceOrder,
   type ServiceRecord,
 } from '@hms/contracts';
@@ -76,6 +79,7 @@ export function createOrderStore(services: readonly ServiceRecord[]) {
         payment: {
           amount: PRICES[service.code] ?? '0.00',
           paid: '0.00',
+          due: PRICES[service.code] ?? '0.00',
           eligibility: 'NOT_ELIGIBLE',
           lineStatus: 'ACTIVE',
         },
@@ -126,7 +130,7 @@ export function createOrderStore(services: readonly ServiceRecord[]) {
         ...order,
         status: 'CANCELLED',
         cancelReason: request.data.reason,
-        payment: { ...order.payment, lineStatus: 'CANCELLED' },
+        payment: { ...order.payment, due: '0.00', lineStatus: 'CANCELLED' },
         version: order.version + 1,
       });
       list[index] = cancelled;
@@ -135,7 +139,76 @@ export function createOrderStore(services: readonly ServiceRecord[]) {
     return problem(404, 'NOT_FOUND');
   }
 
+  /** T-ORD-02: the patient each visit's orders belong to, for the department worklist. */
+  const patientOfVisit = new Map<string, PatientRef>();
+  const findOrder = (orderId: string) => {
+    for (const list of orders.values()) {
+      const index = list.findIndex((order) => order.orderId === orderId);
+      if (index >= 0) return { list, index };
+    }
+    return null;
+  };
+
+  /** The cashier takes the whole line (tests call this; the cashier mock is separate). */
+  function pay(orderId: string) {
+    const found = findOrder(orderId);
+    const order = found?.list[found.index];
+    if (!found || !order) throw new Error(`No order ${orderId}`);
+    found.list[found.index] = {
+      ...order,
+      payment: {
+        ...order.payment,
+        paid: order.payment.amount,
+        due: '0.00',
+        eligibility: 'ELIGIBLE',
+      },
+    };
+  }
+
+  /** FR-BIL-003: only a REQUESTED order whose line is fully paid starts. */
+  function start(orderId: string, body: unknown) {
+    const request = startOrderRequestSchema.safeParse(body);
+    if (!request.success) return problem(422, 'VALIDATION_FAILED');
+    const found = findOrder(orderId);
+    const order = found?.list[found.index];
+    if (!found || !order) return problem(404, 'NOT_FOUND');
+    if (request.data.expectedVersion !== order.version) return problem(409, 'STALE_RECORD');
+    if (order.status !== 'REQUESTED') return problem(409, 'INVALID_TRANSITION');
+    if (order.payment.eligibility !== 'ELIGIBLE') {
+      const refused = problem(409, 'PAYMENT_NOT_ELIGIBLE');
+      return {
+        ...refused,
+        body: {
+          ...refused.body,
+          lines: [{ lineId: ID(9000), invoiceNumber: 'S-000042', due: order.payment.due }],
+        },
+      };
+    }
+    const started = serviceOrderSchema.parse({
+      ...order,
+      status: 'IN_PROGRESS',
+      version: order.version + 1,
+    });
+    found.list[found.index] = started;
+    return { status: 200, body: started };
+  }
+
+  function worklist(category: string | null) {
+    const rows = [...orders.entries()].flatMap(([visitId, list]) => {
+      const patient = patientOfVisit.get(visitId);
+      if (!patient) return [];
+      return list
+        .filter((order) => order.status === 'REQUESTED' || order.status === 'IN_PROGRESS')
+        .filter((order) => !category || order.service.category === category)
+        .map((order) => ({ ...order, patient }));
+    });
+    return { status: 200, body: departmentWorklistSchema.parse({ orders: rows }) };
+  }
+
   function answer(method: string, path: string, body: unknown, params: URLSearchParams) {
+    if (path === '/orders/worklist' && method === 'GET') return worklist(params.get('category'));
+    const startPath = /^\/orders\/([^/]+)\/start$/.exec(path);
+    if (startPath?.[1] && method === 'POST') return start(startPath[1], body);
     if (path === '/visits/diagnostic' && method === 'POST') return diagnostic(body);
     if (path === '/visits/orders' && method === 'GET') {
       const visits = byPatient.get(params.get('patientId') ?? '') ?? [];
@@ -158,5 +231,11 @@ export function createOrderStore(services: readonly ServiceRecord[]) {
     };
   }
 
-  return { answer, orders, place };
+  /** T-ORD-02: places orders for a patient's visit, as the doctor would. */
+  function seedForPatient(visitId: string, patient: PatientRef, body: unknown) {
+    patientOfVisit.set(visitId, patient);
+    return place(visitId, 'CONSULTATION', body);
+  }
+
+  return { answer, orders, place, pay, seedForPatient };
 }
